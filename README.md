@@ -18,9 +18,6 @@ existing lore via hybrid retrieval (vector + graph), with a human-in-the-loop re
 gate before anything is written to canon. Foundry VTT and Markdown are export
 connectors, not the core of the product.
 
-See [docs/idea.md](docs/idea.md) for the full design rationale, if present locally
-(it's excluded from the public repo).
-
 **Status**: the manual entity/graph editor (v0) is done and usable. The LangGraph
 agent layer described above is planned, not yet built.
 
