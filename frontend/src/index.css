@@ -1,0 +1,305 @@
+:root {
+  color-scheme: light dark;
+  --font-ui: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Consolas", "SF Mono", monospace;
+  font: 14px/1.55 var(--font-ui);
+  color: var(--text);
+  background: var(--bg);
+}
+
+/*
+  Each preset is a complete theme (bg/surface/border/text AND accent), not
+  just an accent color layered on shared neutrals — a "Blue" preset should
+  actually look blue, the way VS Code/Notion themes each commit to their own
+  palette rather than reskinning one grey. `danger`/`warning` stay constant
+  across presets since they're semantic, not brand color.
+*/
+
+:root,
+:root:not([data-theme]):not([data-preset]),
+:root[data-theme="light"][data-preset="teal"] {
+  --bg: #f6faf9;
+  --bg-subtle: #eaf3f0;
+  --surface: #ffffff;
+  --border: #d7e6e1;
+  --border-strong: #b8cec6;
+  --text: #122420;
+  --text-muted: #547067;
+  --accent: #0f6b63;
+  --accent-soft: #dcefe9;
+  --accent-text: #ffffff;
+  --danger: #b3432b;
+  --warning: #a9791f;
+  --shadow: 0 8px 24px -8px rgba(16, 33, 30, 0.18);
+}
+:root[data-theme="dark"][data-preset="teal"] {
+  --bg: #0c1513;
+  --bg-subtle: #13201d;
+  --surface: #101b18;
+  --border: #223530;
+  --border-strong: #2e463f;
+  --text: #e6f2ee;
+  --text-muted: #83a89d;
+  --accent: #35d6b8;
+  --accent-soft: #143a32;
+  --accent-text: #06120f;
+  --danger: #e28066;
+  --warning: #d9ae55;
+  --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]):not([data-preset]) {
+    --bg: #0c1513;
+    --bg-subtle: #13201d;
+    --surface: #101b18;
+    --border: #223530;
+    --border-strong: #2e463f;
+    --text: #e6f2ee;
+    --text-muted: #83a89d;
+    --accent: #35d6b8;
+    --accent-soft: #143a32;
+    --accent-text: #06120f;
+  }
+}
+
+:root[data-theme="light"][data-preset="blue"] {
+  --bg: #f5f8fc;
+  --bg-subtle: #e9f0f9;
+  --surface: #ffffff;
+  --border: #d7e2f0;
+  --border-strong: #b6c8e3;
+  --text: #101a2c;
+  --text-muted: #55647f;
+  --accent: #2159b8;
+  --accent-soft: #dde8f9;
+  --accent-text: #ffffff;
+  --danger: #b3432b;
+  --warning: #a9791f;
+  --shadow: 0 8px 24px -8px rgba(12, 24, 45, 0.18);
+}
+:root[data-theme="dark"][data-preset="blue"] {
+  --bg: #0a0f1a;
+  --bg-subtle: #101929;
+  --surface: #0d1524;
+  --border: #1f2c46;
+  --border-strong: #2a3b5c;
+  --text: #e8edf8;
+  --text-muted: #8492b3;
+  --accent: #6ea3f5;
+  --accent-soft: #16233f;
+  --accent-text: #06101f;
+  --danger: #e28066;
+  --warning: #d9ae55;
+  --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme="light"][data-preset="green"] {
+  --bg: #f6faf5;
+  --bg-subtle: #e9f4e6;
+  --surface: #ffffff;
+  --border: #d7e9d3;
+  --border-strong: #b7d6b0;
+  --text: #12220f;
+  --text-muted: #547049;
+  --accent: #2f7d3a;
+  --accent-soft: #dff0da;
+  --accent-text: #ffffff;
+  --danger: #b3432b;
+  --warning: #a9791f;
+  --shadow: 0 8px 24px -8px rgba(18, 34, 15, 0.18);
+}
+:root[data-theme="dark"][data-preset="green"] {
+  --bg: #0b1409;
+  --bg-subtle: #10200d;
+  --surface: #0e1a0b;
+  --border: #223a1c;
+  --border-strong: #2d4d25;
+  --text: #e9f3e5;
+  --text-muted: #86aa7c;
+  --accent: #66d178;
+  --accent-soft: #163a1e;
+  --accent-text: #07130a;
+  --danger: #e28066;
+  --warning: #d9ae55;
+  --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme="light"][data-preset="violet"] {
+  --bg: #f9f7fc;
+  --bg-subtle: #efe9f7;
+  --surface: #ffffff;
+  --border: #e0d5ee;
+  --border-strong: #c9b6e2;
+  --text: #1c1526;
+  --text-muted: #675a7a;
+  --accent: #7645b8;
+  --accent-soft: #ece1f8;
+  --accent-text: #ffffff;
+  --danger: #b3432b;
+  --warning: #a9791f;
+  --shadow: 0 8px 24px -8px rgba(28, 21, 38, 0.18);
+}
+:root[data-theme="dark"][data-preset="violet"] {
+  --bg: #120c1a;
+  --bg-subtle: #1a1226;
+  --surface: #150e20;
+  --border: #2c2040;
+  --border-strong: #3b2c54;
+  --text: #efe8f7;
+  --text-muted: #9c8bb3;
+  --accent: #c199f0;
+  --accent-soft: #2a1e42;
+  --accent-text: #0d0816;
+  --danger: #e28066;
+  --warning: #d9ae55;
+  --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme="light"][data-preset="amber"] {
+  --bg: #fcf9f3;
+  --bg-subtle: #f5ecdb;
+  --surface: #ffffff;
+  --border: #ecdcbe;
+  --border-strong: #ddc190;
+  --text: #241c0f;
+  --text-muted: #7d6a48;
+  --accent: #a8660f;
+  --accent-soft: #f6e6c8;
+  --accent-text: #ffffff;
+  --danger: #b3432b;
+  --warning: #a9791f;
+  --shadow: 0 8px 24px -8px rgba(36, 28, 15, 0.18);
+}
+:root[data-theme="dark"][data-preset="amber"] {
+  --bg: #170f07;
+  --bg-subtle: #241a0b;
+  --surface: #1c1409;
+  --border: #3c2c14;
+  --border-strong: #503b1a;
+  --text: #f5ead4;
+  --text-muted: #b89f78;
+  --accent: #f0ac52;
+  --accent-soft: #3a2810;
+  --accent-text: #140d04;
+  --danger: #e28066;
+  --warning: #d9ae55;
+  --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme="light"][data-preset="slate"] {
+  --bg: #f6f6f8;
+  --bg-subtle: #ebebef;
+  --surface: #ffffff;
+  --border: #dfdfe4;
+  --border-strong: #c2c2cb;
+  --text: #17171b;
+  --text-muted: #63636d;
+  --accent: #46505f;
+  --accent-soft: #e7e9ed;
+  --accent-text: #ffffff;
+  --danger: #b3432b;
+  --warning: #a9791f;
+  --shadow: 0 8px 24px -8px rgba(15, 17, 21, 0.18);
+}
+:root[data-theme="dark"][data-preset="slate"] {
+  --bg: #111115;
+  --bg-subtle: #191a1f;
+  --surface: #16171b;
+  --border: #2b2c33;
+  --border-strong: #3a3c45;
+  --text: #ececed;
+  --text-muted: #93949e;
+  --accent: #a7b0c2;
+  --accent-soft: #262a33;
+  --accent-text: #101114;
+  --danger: #e28066;
+  --warning: #d9ae55;
+  --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme="light"][data-preset="noir"] {
+  --bg: #ffffff;
+  --bg-subtle: #f0f0f0;
+  --surface: #ffffff;
+  --border: #d9d9d9;
+  --border-strong: #b3b3b3;
+  --text: #0a0a0a;
+  --text-muted: #5c5c5c;
+  --accent: #000000;
+  --accent-soft: #ececec;
+  --accent-text: #ffffff;
+  --danger: #b3432b;
+  --warning: #a9791f;
+  --shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.18);
+}
+:root[data-theme="dark"][data-preset="noir"] {
+  --bg: #000000;
+  --bg-subtle: #0d0d0d;
+  --surface: #0a0a0a;
+  --border: #262626;
+  --border-strong: #3d3d3d;
+  --text: #f5f5f5;
+  --text-muted: #999999;
+  --accent: #ffffff;
+  --accent-soft: #1a1a1a;
+  --accent-text: #000000;
+  --danger: #e28066;
+  --warning: #d9ae55;
+  --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1 {
+  font-size: 24px;
+  margin: 0 0 16px;
+}
+
+h3 {
+  font-size: 15px;
+  margin: 24px 0 8px;
+  color: var(--text-muted);
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input,
+select,
+textarea {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-subtle);
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+a {
+  color: var(--accent);
+}
+
+.error-text {
+  color: var(--danger);
+}

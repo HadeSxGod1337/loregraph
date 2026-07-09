@@ -1,0 +1,853 @@
+.layout {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.navbar-brand {
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.navbar-links {
+  display: flex;
+  gap: 4px;
+}
+
+.navbar-links a {
+  text-decoration: none;
+  color: var(--text-muted);
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 13px;
+}
+
+.navbar-links a:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.navbar-links a.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.theme-picker {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-mode-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.theme-mode-toggle button {
+  border: none;
+  border-radius: 0;
+  background: var(--surface);
+  font-size: 12px;
+  padding: 5px 9px;
+}
+
+.theme-mode-toggle button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.theme-picker select {
+  font-size: 12px;
+  padding: 5px 7px;
+}
+
+.layout-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* "document" pages (list/edit) get a centered reading column; the graph
+   page opts out of this and goes full-bleed instead, see below. */
+.entity-list-page,
+.entity-edit-page {
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* entity list */
+
+.entity-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.button-primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+}
+
+.entity-list-filter {
+  width: 100%;
+  margin: 16px 0;
+}
+
+.entity-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.entity-list-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.entity-list-item:hover {
+  border-color: var(--accent);
+}
+
+.entity-list-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.entity-list-icon-empty {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+
+.entity-type-badge,
+.edge-type-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+/* entity edit */
+
+.entity-edit-page label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.entity-edit-page input,
+.entity-edit-page select {
+  color: var(--text);
+}
+
+.icon-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.icon-picker-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.icon-picker-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.icon-picker-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-picker-actions button {
+  font-size: 12px;
+}
+
+.icon-picker-placeholder {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.attachments-details {
+  margin-top: 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.attachments-details summary {
+  cursor: pointer;
+}
+
+.entity-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.button-danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.button-danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+/* field editor */
+
+.field-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.field-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.field-row-key {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.field-row-value {
+  flex: 1;
+}
+
+.field-row-value input,
+.field-row-value textarea {
+  width: 100%;
+}
+
+.field-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.field-row-card-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.field-row-card-toggle input {
+  padding: 0;
+  width: auto;
+}
+
+.field-type-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.field-type-picker-button {
+  font-size: 13px;
+}
+
+/* rich text */
+
+.rich-text-field {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.rich-text-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+  flex-wrap: wrap;
+}
+
+.rich-text-toolbar-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.rich-text-toolbar-btn:hover {
+  background: var(--surface);
+}
+
+.rich-text-toolbar-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.rich-text-toolbar-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+  margin: 2px 4px;
+}
+
+.rich-text-toolbar > button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rich-text-content {
+  padding: 8px 10px;
+}
+
+.rich-text-content .ProseMirror {
+  min-height: 80px;
+  outline: none;
+}
+
+.rich-text-content .ProseMirror img {
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+.rich-text-content .ProseMirror p {
+  margin: 0 0 8px;
+}
+
+/* attachments */
+
+.attachment-gallery {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.attachment-thumb {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.attachment-thumb img {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+/* edges */
+
+.edge-list ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edge-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edge-label {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.edge-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+/* graph — full-bleed: fills the whole area below the navbar, controls float
+   over the canvas rather than pushing it down in normal flow. */
+
+.graph-view-page {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.graph-empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.graph-controls {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 5;
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: var(--shadow);
+}
+
+.graph-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.graph-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+/* React Flow ships its own light-mode chrome (controls, edge label
+   background) with a stylesheet that (depending on JS import order) can
+   load after App.css, so these overrides are nested under .graph-canvas to
+   out-specificity the defaults regardless of load order rather than
+   relying on source order or !important. */
+.graph-canvas .react-flow__controls {
+  box-shadow: var(--shadow);
+}
+
+.graph-canvas .react-flow__controls-button {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.graph-canvas .react-flow__controls-button:hover {
+  background: var(--bg-subtle);
+}
+
+.graph-canvas .react-flow__controls-button svg {
+  fill: var(--text);
+}
+
+.graph-canvas .react-flow__attribution {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+/* React Flow's own theming hook — controls both the edge line and the
+   arrowhead marker consistently (see @xyflow/react/dist/style.css). */
+.graph-canvas .react-flow {
+  --xy-edge-stroke-default: var(--border-strong);
+  --xy-edge-stroke-selected-default: var(--accent);
+}
+
+/* floating-edge label (custom EdgeLabelRenderer div, not React Flow's
+   built-in SVG label — see FloatingEdge.tsx) */
+.graph-edge-label {
+  position: absolute;
+  z-index: 10;
+  pointer-events: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.entity-node {
+  position: relative;
+  padding: 10px 10px 10px 16px;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  width: 220px;
+  transition: border-color 0.15s, transform 0.12s;
+}
+
+.entity-node:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.entity-node-root {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.entity-node-selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* handle dots are only needed while dragging a connection — hide them at
+   rest and reveal on card hover so the card reads as a card, not a wired
+   diagram node. */
+.entity-node .react-flow__handle {
+  opacity: 0;
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  z-index: 1;
+}
+
+.entity-node:hover .react-flow__handle {
+  opacity: 1;
+}
+
+.entity-node-icon-slot {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+}
+
+.entity-node-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 7px;
+  object-fit: cover;
+  display: block;
+}
+
+.entity-node-icon-placeholder {
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 7px;
+  background: var(--bg-subtle);
+  border: 1px dashed var(--border-strong);
+}
+
+.entity-node-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.entity-node-title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.entity-node-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.entity-node-preview-item {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.entity-node-preview-item b {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* entity detail panel */
+
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 380px;
+  max-width: 92vw;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-head {
+  position: relative;
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+  background: var(--accent-soft);
+}
+
+.panel-head h2 {
+  font-size: 17px;
+  margin: 8px 0 0;
+}
+
+.panel-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  font-size: 15px;
+  padding: 0;
+}
+
+.panel-close:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.panel-body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel-section h3 {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.panel-section input {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+/* the field editor's key+value side-by-side layout doesn't fit the panel's
+   380px width — stack fields vertically here instead. */
+.panel .field-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel .field-row-key {
+  width: 100%;
+}
+
+.panel .field-row-actions {
+  align-self: flex-end;
+}
+
+.field-line {
+  display: flex;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.field-line:last-child {
+  border-bottom: none;
+}
+
+.field-line .k {
+  color: var(--text-muted);
+  width: 84px;
+  flex-shrink: 0;
+}
+
+.field-line:has(.v-rich-text) {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v-rich-text {
+  width: 100%;
+}
+
+.v-rich-text .rich-text-content {
+  padding: 0;
+}
+
+.v-rich-text .ProseMirror {
+  min-height: 0;
+}
+
+.v-rich-text .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.rel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.rel-row:last-child {
+  border-bottom: none;
+}
+
+.rel-row:hover .rel-title {
+  color: var(--accent);
+}
+
+.rel-arrow {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.rel-type {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.rel-title {
+  font-weight: 500;
+  flex: 1;
+}
+
+.rel-reason {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.portrait {
+  width: 100%;
+  max-height: 160px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+}
+
+.panel-actions {
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* edge create/edit popovers */
+
+.popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.edge-popover {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 280px;
+}
+
+.edge-popover h3 {
+  font-size: 13px;
+  margin: 0;
+}
+
+.edge-popover-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
