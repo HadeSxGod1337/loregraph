@@ -2,11 +2,20 @@ import { Link, NavLink } from "react-router-dom";
 
 import { useProject } from "../../hooks/useProjects";
 
-export function ProjectHeader({ projectId }: { projectId: string }) {
+interface ProjectHeaderProps {
+  projectId: string;
+  // Reserve space matching the detail panel's width so the nav links shift
+  // left to sit beside it instead of floating over its top edge.
+  reserveForPanel?: boolean;
+}
+
+export function ProjectHeader({ projectId, reserveForPanel }: ProjectHeaderProps) {
   const { data: project } = useProject(projectId);
 
   return (
-    <div className="project-header">
+    <div
+      className={`project-header${reserveForPanel ? " project-header-reserve" : ""}`}
+    >
       <Link to="/" className="project-header-back">
         ← All projects
       </Link>

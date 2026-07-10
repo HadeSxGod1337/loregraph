@@ -45,7 +45,7 @@ export function GraphViewPage() {
 
   return (
     <div className="graph-view-page">
-      <ProjectHeader projectId={projectId!} />
+      <ProjectHeader projectId={projectId!} reserveForPanel={selectedEntityId !== null} />
 
       <div className="graph-canvas-area">
         <GraphControls
@@ -74,15 +74,15 @@ export function GraphViewPage() {
             onPaneClick={() => setSelectedEntityId(null)}
           />
         )}
-      </div>
 
-      <EntityDetailPanel
-        key={selectedEntityId}
-        projectId={projectId!}
-        entityId={selectedEntityId}
-        onClose={() => setSelectedEntityId(null)}
-        onNavigate={setSelectedEntityId}
-      />
+        <EntityDetailPanel
+          key={selectedEntityId}
+          projectId={projectId!}
+          entityId={selectedEntityId}
+          onClose={() => setSelectedEntityId(null)}
+          onNavigate={setSelectedEntityId}
+        />
+      </div>
 
       {pendingConnection && (
         <div className="popover-backdrop" onClick={() => setPendingConnection(null)}>
