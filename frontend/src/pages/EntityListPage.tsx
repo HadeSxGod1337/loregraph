@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { API_URL } from "../api/client";
-import { ProjectHeader } from "../components/layout/ProjectHeader";
 import { useEntities } from "../hooks/useEntities";
 
 export function EntityListPage() {
@@ -12,8 +11,6 @@ export function EntityListPage() {
 
   return (
     <div className="entity-list-page">
-      <ProjectHeader projectId={projectId!} />
-
       <div className="entity-list-header">
         <h1>Entities</h1>
         <Link to={`/projects/${projectId}/entities/new`} className="button-primary">

@@ -8,7 +8,6 @@ import { FieldEditor } from "../components/entity/FieldEditor";
 import { IconPicker } from "../components/entity/IconPicker";
 import { EdgeForm } from "../components/edges/EdgeForm";
 import { EdgeList } from "../components/edges/EdgeList";
-import { ProjectHeader } from "../components/layout/ProjectHeader";
 import { useCreateEntity } from "../hooks/useEntities";
 import { useDeleteEntity, useEntity, useUpdateEntity } from "../hooks/useEntity";
 
@@ -54,8 +53,6 @@ export function EntityEditPage() {
 
   return (
     <div className="entity-edit-page">
-      <ProjectHeader projectId={projectId!} />
-
       <h1>{isNew ? "New Entity" : "Edit Entity"}</h1>
 
       <label>

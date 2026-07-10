@@ -6,7 +6,6 @@ import { EdgeQuickForm } from "../components/graph/EdgeQuickForm";
 import { EntityDetailPanel } from "../components/graph/EntityDetailPanel";
 import { GraphCanvas } from "../components/graph/GraphCanvas";
 import { GraphControls } from "../components/graph/GraphControls";
-import { ProjectHeader } from "../components/layout/ProjectHeader";
 import { useEntities } from "../hooks/useEntities";
 import { useSubgraph } from "../hooks/useSubgraph";
 
@@ -45,8 +44,6 @@ export function GraphViewPage() {
 
   return (
     <div className="graph-view-page">
-      <ProjectHeader projectId={projectId!} reserveForPanel={selectedEntityId !== null} />
-
       <div className="graph-canvas-area">
         <GraphControls
           entities={entities ?? []}

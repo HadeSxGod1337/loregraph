@@ -60,62 +60,20 @@
   gap: 8px;
 }
 
-.project-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  position: sticky;
-  top: var(--navbar-height);
-  z-index: 5;
-  background: var(--bg);
-  padding: 4px 0;
-}
-
-/* Applied while the detail panel is open (see GraphViewPage) so Entities/
-   Graph shift left to sit beside the panel instead of floating over it. */
-.project-header-reserve {
-  padding-right: var(--panel-width);
-}
-
-.project-header-back {
+.navbar-project-back {
   text-decoration: none;
   color: var(--text-muted);
-}
-
-.project-header-back:hover {
-  color: var(--text);
-}
-
-.project-header-name {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.project-header-links {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-}
-
-.project-header-links a {
-  text-decoration: none;
-  color: var(--text-muted);
-  padding: 6px 10px;
-  border-radius: 5px;
   font-size: 13px;
 }
 
-.project-header-links a:hover {
-  background: var(--bg-subtle);
+.navbar-project-back:hover {
   color: var(--text);
 }
 
-.project-header-links a.active {
-  background: var(--accent-soft);
-  color: var(--accent);
+.navbar-project-name {
   font-weight: 600;
+  color: var(--text);
+  font-size: 13px;
 }
 
 .theme-mode-toggle {
@@ -567,7 +525,6 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 16px 16px 0;
 }
 
 /* Everything below the (normal-flow) header — GraphControls floats over
@@ -787,11 +744,9 @@
 
 .panel {
   position: absolute;
-  /* pulls up past .project-header's margin-bottom so the panel is flush
-     against the header instead of leaving a gap above it */
-  top: -16px;
+  top: 0;
   right: 0;
-  height: calc(100% + 16px);
+  height: 100%;
   width: var(--panel-width);
   max-width: 92vw;
   background: var(--surface);
