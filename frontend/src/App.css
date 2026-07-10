@@ -55,6 +55,11 @@
   gap: 16px;
   margin-bottom: 16px;
   font-size: 13px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  padding: 4px 0;
 }
 
 .project-header-back {
@@ -204,6 +209,11 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  padding: 4px 0;
 }
 
 .project-list {
@@ -536,6 +546,18 @@
    over the canvas rather than pushing it down in normal flow. */
 
 .graph-view-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px 16px 0;
+}
+
+/* Everything below the (normal-flow) header — GraphControls floats over
+   this via position:absolute, so this is its positioning parent, kept
+   separate from .graph-view-page itself so it doesn't also anchor over
+   the header row above it. */
+.graph-canvas-area {
   position: relative;
   flex: 1;
   display: flex;

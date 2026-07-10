@@ -47,32 +47,34 @@ export function GraphViewPage() {
     <div className="graph-view-page">
       <ProjectHeader projectId={projectId!} />
 
-      <GraphControls
-        entities={entities ?? []}
-        rootId={rootId}
-        depth={depth}
-        edgeTypesInput={edgeTypesInput}
-        onRootChange={setRootId}
-        onDepthChange={setDepth}
-        onEdgeTypesInputChange={setEdgeTypesInput}
-      />
-
-      {!rootId && (
-        <p className="graph-empty-state">Pick a root entity to view its neighborhood.</p>
-      )}
-      {rootId && isLoading && <p className="graph-empty-state">Loading...</p>}
-      {rootId && subgraph && (
-        <GraphCanvas
-          nodes={subgraph.nodes}
-          edges={subgraph.edges}
+      <div className="graph-canvas-area">
+        <GraphControls
+          entities={entities ?? []}
           rootId={rootId}
-          selectedEntityId={selectedEntityId}
-          onNodeSelect={setSelectedEntityId}
-          onConnectNodes={(sourceId, targetId) => setPendingConnection({ sourceId, targetId })}
-          onEdgeSelect={setSelectedEdgeId}
-          onPaneClick={() => setSelectedEntityId(null)}
+          depth={depth}
+          edgeTypesInput={edgeTypesInput}
+          onRootChange={setRootId}
+          onDepthChange={setDepth}
+          onEdgeTypesInputChange={setEdgeTypesInput}
         />
-      )}
+
+        {!rootId && (
+          <p className="graph-empty-state">Pick a root entity to view its neighborhood.</p>
+        )}
+        {rootId && isLoading && <p className="graph-empty-state">Loading...</p>}
+        {rootId && subgraph && (
+          <GraphCanvas
+            nodes={subgraph.nodes}
+            edges={subgraph.edges}
+            rootId={rootId}
+            selectedEntityId={selectedEntityId}
+            onNodeSelect={setSelectedEntityId}
+            onConnectNodes={(sourceId, targetId) => setPendingConnection({ sourceId, targetId })}
+            onEdgeSelect={setSelectedEdgeId}
+            onPaneClick={() => setSelectedEntityId(null)}
+          />
+        )}
+      </div>
 
       <EntityDetailPanel
         key={selectedEntityId}
