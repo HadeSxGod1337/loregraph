@@ -8,12 +8,6 @@ export function NavBar() {
       <NavLink to="/" end className="navbar-brand">
         Loregraph
       </NavLink>
-      <div className="navbar-links">
-        <NavLink to="/" end>
-          Entities
-        </NavLink>
-        <NavLink to="/graph">Graph</NavLink>
-      </div>
       <ThemePicker />
     </nav>
   );

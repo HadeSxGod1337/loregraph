@@ -49,6 +49,53 @@
   gap: 8px;
 }
 
+.project-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.project-header-back {
+  text-decoration: none;
+  color: var(--text-muted);
+}
+
+.project-header-back:hover {
+  color: var(--text);
+}
+
+.project-header-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.project-header-links {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.project-header-links a {
+  text-decoration: none;
+  color: var(--text-muted);
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 13px;
+}
+
+.project-header-links a:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.project-header-links a.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .theme-mode-toggle {
   display: flex;
   border: 1px solid var(--border);
@@ -84,7 +131,8 @@
 /* "document" pages (list/edit) get a centered reading column; the graph
    page opts out of this and goes full-bleed instead, see below. */
 .entity-list-page,
-.entity-edit-page {
+.entity-edit-page,
+.project-list-page {
   max-width: 900px;
   width: 100%;
   margin: 0 auto;
@@ -147,6 +195,64 @@
 .entity-list-icon-empty {
   background: var(--bg-subtle);
   border: 1px solid var(--border);
+}
+
+/* project list */
+
+.project-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.project-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.project-card-link {
+  text-decoration: none;
+  color: var(--text);
+  min-width: 0;
+}
+
+.project-card-link h3 {
+  margin: 0 0 4px;
+}
+
+.project-card-link p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.project-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.project-create-form {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 360px;
 }
 
 .entity-type-badge,
@@ -528,17 +634,14 @@
 
 .entity-node {
   position: relative;
-  padding: 10px 10px 10px 16px;
+  padding: 10px 14px 10px 16px;
   clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
   border: 1px solid var(--border-strong);
   background: var(--surface);
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
+  box-shadow: var(--shadow);
   cursor: pointer;
   width: 220px;
-  transition: border-color 0.15s, transform 0.12s;
+  transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
 }
 
 .entity-node:hover {
@@ -572,27 +675,26 @@
   opacity: 1;
 }
 
+/* Overlaid on the card's clipped top-right corner rather than sitting in
+   the row's flow — a fixed-width icon column left a wide dead gap on cards
+   with short titles, since nothing was there to claim it. */
 .entity-node-icon-slot {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 30px;
+  height: 30px;
+  z-index: 1;
 }
 
 .entity-node-icon {
-  width: 40px;
-  height: 40px;
+  width: 100%;
+  height: 100%;
   border-radius: 7px;
   object-fit: cover;
   display: block;
-}
-
-.entity-node-icon-placeholder {
-  display: block;
-  width: 40px;
-  height: 40px;
-  border-radius: 7px;
-  background: var(--bg-subtle);
-  border: 1px dashed var(--border-strong);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
 .entity-node-info {
@@ -601,6 +703,10 @@
   align-items: flex-start;
   gap: 3px;
   min-width: 0;
+}
+
+.entity-node:has(.entity-node-icon-slot) .entity-node-info {
+  padding-right: 34px;
 }
 
 .entity-node-title {

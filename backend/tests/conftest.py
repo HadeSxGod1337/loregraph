@@ -23,3 +23,13 @@ def app(settings: Settings) -> FastAPI:
 def client(app: FastAPI) -> Iterator[TestClient]:
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def project_id(client: TestClient) -> str:
+    # Every test gets its own fresh project — isolated from the demo project
+    # that main.py auto-seeds on first startup (see _seed_demo_project_if_empty).
+    resp = client.post("/api/projects", json={"name": "Test Project"})
+    created_id = resp.json()["id"]
+    assert isinstance(created_id, str)
+    return created_id

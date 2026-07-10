@@ -5,9 +5,9 @@ import { useCreateEdge } from "../../hooks/useEdgesForEntity";
 
 const SUGGESTED_EDGE_TYPES = ["contains", "ally_of", "family_of", "enemy_of"];
 
-export function EdgeForm({ entityId }: { entityId: string }) {
-  const { data: entities } = useEntities();
-  const createEdge = useCreateEdge();
+export function EdgeForm({ projectId, entityId }: { projectId: string; entityId: string }) {
+  const { data: entities } = useEntities(projectId);
+  const createEdge = useCreateEdge(projectId);
 
   const [targetId, setTargetId] = useState("");
   const [edgeType, setEdgeType] = useState("");

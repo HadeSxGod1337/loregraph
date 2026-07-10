@@ -1,0 +1,38 @@
+{
+  "format_version": 1,
+  "name": "Loregraph Demo",
+  "description": "A tiny example campaign showing entities, fields, and relationships. Delete it once you're ready to build your own.",
+  "entities": [
+    {
+      "id": "demo-npc-elira",
+      "type": "npc",
+      "title": "Elira Voss",
+      "fields": [
+        { "key": "role", "field_type": "text", "value": "Guild Alchemist", "show_on_card": true },
+        { "key": "level", "field_type": "number", "value": 5, "show_on_card": true }
+      ]
+    },
+    {
+      "id": "demo-faction-guild",
+      "type": "faction",
+      "title": "The Verdant Guild",
+      "fields": [
+        { "key": "alignment", "field_type": "text", "value": "Neutral", "show_on_card": false }
+      ]
+    },
+    {
+      "id": "demo-location-town",
+      "type": "location",
+      "title": "Millhaven",
+      "fields": [
+        { "key": "population", "field_type": "number", "value": 1200, "show_on_card": true }
+      ]
+    }
+  ],
+  "edges": [
+    { "source_entity_id": "demo-npc-elira", "target_entity_id": "demo-faction-guild", "type": "member_of", "label": null },
+    { "source_entity_id": "demo-faction-guild", "target_entity_id": "demo-location-town", "type": "based_in", "label": null },
+    { "source_entity_id": "demo-npc-elira", "target_entity_id": "demo-location-town", "type": "lives_in", "label": "above the apothecary" }
+  ],
+  "attachments": []
+}

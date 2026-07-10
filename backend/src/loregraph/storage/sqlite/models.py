@@ -8,10 +8,23 @@ class Base(DeclarativeBase):
     pass
 
 
+class ProjectRow(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    description: Mapped[str | None] = mapped_column(default=None)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
+
+
 class EntityRow(Base):
     __tablename__ = "entities"
 
     id: Mapped[str] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
     type: Mapped[str] = mapped_column(index=True)
     title: Mapped[str]
     fields: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
@@ -29,6 +42,12 @@ class EdgeRow(Base):
     __tablename__ = "edges"
 
     id: Mapped[str] = mapped_column(primary_key=True)
+    # Denormalized from source/target's own project_id (both are validated to
+    # match at creation — see routers/edges.py) so project-scoped queries
+    # don't need a join against entities.
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
     source_entity_id: Mapped[str] = mapped_column(
         ForeignKey("entities.id", ondelete="CASCADE"), index=True
     )

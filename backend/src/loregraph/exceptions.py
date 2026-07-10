@@ -2,6 +2,22 @@ class CampaignError(Exception):
     """Base class for all domain errors raised by loregraph."""
 
 
+class ProjectNotFoundError(CampaignError):
+    def __init__(self, project_id: str) -> None:
+        super().__init__(f"Project not found: {project_id}")
+        self.project_id = project_id
+
+
+class CrossProjectEdgeError(CampaignError):
+    def __init__(self, source_entity_id: str, target_entity_id: str) -> None:
+        super().__init__(
+            f"Edge endpoints belong to different projects: "
+            f"{source_entity_id}, {target_entity_id}"
+        )
+        self.source_entity_id = source_entity_id
+        self.target_entity_id = target_entity_id
+
+
 class EntityNotFoundError(CampaignError):
     def __init__(self, entity_id: str) -> None:
         super().__init__(f"Entity not found: {entity_id}")
@@ -30,3 +46,9 @@ class InvalidIconReferenceError(CampaignError):
     def __init__(self, attachment_id: str) -> None:
         super().__init__(f"Attachment does not belong to this entity: {attachment_id}")
         self.attachment_id = attachment_id
+
+
+class UnsupportedExportFormatError(CampaignError):
+    def __init__(self, format_version: int) -> None:
+        super().__init__(f"Unsupported project export format_version: {format_version}")
+        self.format_version = format_version

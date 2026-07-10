@@ -1,18 +1,22 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { API_URL } from "../api/client";
+import { ProjectHeader } from "../components/layout/ProjectHeader";
 import { useEntities } from "../hooks/useEntities";
 
 export function EntityListPage() {
+  const { projectId } = useParams<{ projectId: string }>();
   const [typeFilter, setTypeFilter] = useState("");
-  const { data: entities, isLoading, error } = useEntities(typeFilter || undefined);
+  const { data: entities, isLoading, error } = useEntities(projectId!, typeFilter || undefined);
 
   return (
     <div className="entity-list-page">
+      <ProjectHeader projectId={projectId!} />
+
       <div className="entity-list-header">
         <h1>Entities</h1>
-        <Link to="/entities/new" className="button-primary">
+        <Link to={`/projects/${projectId}/entities/new`} className="button-primary">
           + New Entity
         </Link>
       </div>
@@ -30,7 +34,7 @@ export function EntityListPage() {
       <ul className="entity-list">
         {entities?.map((entity) => (
           <li key={entity.id}>
-            <Link to={`/entities/${entity.id}`} className="entity-list-item">
+            <Link to={`/projects/${projectId}/entities/${entity.id}`} className="entity-list-item">
               {entity.icon ? (
                 <img className="entity-list-icon" src={API_URL + entity.icon.url} alt="" />
               ) : (

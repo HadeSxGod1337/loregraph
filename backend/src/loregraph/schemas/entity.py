@@ -74,6 +74,7 @@ class EntityUpdate(BaseModel):
 
 class EntityOut(BaseModel):
     id: str
+    project_id: str
     type: str
     title: str
     fields: list[EntityFieldOut]

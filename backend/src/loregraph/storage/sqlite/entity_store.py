@@ -25,17 +25,20 @@ class SqliteEntityStore:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def list_entities(self, entity_type: str | None = None) -> list[EntityOut]:
-        stmt = select(EntityRow)
+    async def list_entities(
+        self, project_id: str, entity_type: str | None = None
+    ) -> list[EntityOut]:
+        stmt = select(EntityRow).where(EntityRow.project_id == project_id)
         if entity_type is not None:
             stmt = stmt.where(EntityRow.type == entity_type)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [_row_to_out(row) for row in rows]
 
-    async def create(self, data: EntityCreate) -> EntityOut:
+    async def create(self, data: EntityCreate, project_id: str) -> EntityOut:
         now = datetime.now(UTC)
         row = EntityRow(
             id=uuid.uuid4().hex,
+            project_id=project_id,
             type=data.type,
             title=data.title,
             fields=[f.model_dump(mode="json") for f in data.fields],
@@ -107,6 +110,7 @@ def _row_to_out(row: EntityRow) -> EntityOut:
     )
     return EntityOut(
         id=row.id,
+        project_id=row.project_id,
         type=row.type,
         title=row.title,
         fields=[EntityFieldOut.model_validate(f) for f in row.fields],

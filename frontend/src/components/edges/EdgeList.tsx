@@ -1,10 +1,10 @@
 import { useEntities } from "../../hooks/useEntities";
 import { useDeleteEdge, useEdgesForEntity } from "../../hooks/useEdgesForEntity";
 
-export function EdgeList({ entityId }: { entityId: string }) {
-  const { data: edges } = useEdgesForEntity(entityId);
-  const { data: entities } = useEntities();
-  const deleteEdge = useDeleteEdge();
+export function EdgeList({ projectId, entityId }: { projectId: string; entityId: string }) {
+  const { data: edges } = useEdgesForEntity(projectId, entityId);
+  const { data: entities } = useEntities(projectId);
+  const deleteEdge = useDeleteEdge(projectId);
 
   const titleFor = (id: string) => entities?.find((e) => e.id === id)?.title ?? id;
 

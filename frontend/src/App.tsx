@@ -5,15 +5,17 @@ import { Layout } from "./components/layout/Layout";
 import { EntityEditPage } from "./pages/EntityEditPage";
 import { EntityListPage } from "./pages/EntityListPage";
 import { GraphViewPage } from "./pages/GraphViewPage";
+import { ProjectListPage } from "./pages/ProjectListPage";
 
 function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<EntityListPage />} />
-        <Route path="/entities/new" element={<EntityEditPage />} />
-        <Route path="/entities/:id" element={<EntityEditPage />} />
-        <Route path="/graph" element={<GraphViewPage />} />
+        <Route path="/" element={<ProjectListPage />} />
+        <Route path="/projects/:projectId/entities" element={<EntityListPage />} />
+        <Route path="/projects/:projectId/entities/new" element={<EntityEditPage />} />
+        <Route path="/projects/:projectId/entities/:id" element={<EntityEditPage />} />
+        <Route path="/projects/:projectId/graph" element={<GraphViewPage />} />
       </Routes>
     </Layout>
   );

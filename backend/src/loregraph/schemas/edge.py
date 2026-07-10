@@ -17,6 +17,7 @@ class EdgeUpdate(BaseModel):
 
 class EdgeOut(BaseModel):
     id: str
+    project_id: str
     source_entity_id: str
     target_entity_id: str
     type: str

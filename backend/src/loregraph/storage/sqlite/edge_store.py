@@ -13,6 +13,12 @@ class SqliteEdgeStore:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    async def get(self, edge_id: str) -> EdgeOut:
+        row = await self._session.get(EdgeRow, edge_id)
+        if row is None:
+            raise EdgeNotFoundError(edge_id)
+        return _row_to_out(row)
+
     async def list_for_entity(self, entity_id: str) -> list[EdgeOut]:
         stmt = select(EdgeRow).where(
             or_(
@@ -23,16 +29,19 @@ class SqliteEdgeStore:
         rows = (await self._session.execute(stmt)).scalars().all()
         return [_row_to_out(row) for row in rows]
 
-    async def list_all(self, edge_types: frozenset[str] | None = None) -> list[EdgeOut]:
-        stmt = select(EdgeRow)
+    async def list_all(
+        self, project_id: str, edge_types: frozenset[str] | None = None
+    ) -> list[EdgeOut]:
+        stmt = select(EdgeRow).where(EdgeRow.project_id == project_id)
         if edge_types is not None:
             stmt = stmt.where(EdgeRow.type.in_(edge_types))
         rows = (await self._session.execute(stmt)).scalars().all()
         return [_row_to_out(row) for row in rows]
 
-    async def create(self, data: EdgeCreate) -> EdgeOut:
+    async def create(self, data: EdgeCreate, project_id: str) -> EdgeOut:
         row = EdgeRow(
             id=uuid.uuid4().hex,
+            project_id=project_id,
             source_entity_id=data.source_entity_id,
             target_entity_id=data.target_entity_id,
             type=data.type,
@@ -63,6 +72,7 @@ class SqliteEdgeStore:
 def _row_to_out(row: EdgeRow) -> EdgeOut:
     return EdgeOut(
         id=row.id,
+        project_id=row.project_id,
         source_entity_id=row.source_entity_id,
         target_entity_id=row.target_entity_id,
         type=row.type,

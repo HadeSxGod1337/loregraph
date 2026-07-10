@@ -12,16 +12,22 @@ import { IconPicker } from "../entity/IconPicker";
 import { RichTextView } from "../entity/RichTextView";
 
 interface EntityDetailPanelProps {
+  projectId: string;
   entityId: string | null;
   onClose: () => void;
   onNavigate: (entityId: string) => void;
 }
 
-export function EntityDetailPanel({ entityId, onClose, onNavigate }: EntityDetailPanelProps) {
-  const { data: entity } = useEntity(entityId ?? undefined);
-  const { data: edges } = useEdgesForEntity(entityId ?? undefined);
-  const { data: entities } = useEntities();
-  const updateEntity = useUpdateEntity(entityId ?? "");
+export function EntityDetailPanel({
+  projectId,
+  entityId,
+  onClose,
+  onNavigate,
+}: EntityDetailPanelProps) {
+  const { data: entity } = useEntity(projectId, entityId ?? undefined);
+  const { data: edges } = useEdgesForEntity(projectId, entityId ?? undefined);
+  const { data: entities } = useEntities(projectId);
+  const updateEntity = useUpdateEntity(projectId, entityId ?? "");
 
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [title, setTitle] = useState("");
@@ -113,7 +119,7 @@ export function EntityDetailPanel({ entityId, onClose, onNavigate }: EntityDetai
             <>
               <div className="panel-section">
                 <h3>Icon</h3>
-                <IconPicker entityId={entityId} icon={entity.icon} />
+                <IconPicker projectId={projectId} entityId={entityId} icon={entity.icon} />
               </div>
               <div className="panel-section">
                 <h3>Title &amp; type</h3>
@@ -125,7 +131,7 @@ export function EntityDetailPanel({ entityId, onClose, onNavigate }: EntityDetai
                 <FieldEditor fields={fields} entityId={entityId} onChange={setFields} />
               </div>
               <div className="panel-section">
-                <EdgeList entityId={entityId} />
+                <EdgeList projectId={projectId} entityId={entityId} />
               </div>
             </>
           )}
@@ -141,7 +147,7 @@ export function EntityDetailPanel({ entityId, onClose, onNavigate }: EntityDetai
               Save
             </button>
           )}
-          <Link to={`/entities/${entityId}`}>Open full editor →</Link>
+          <Link to={`/projects/${projectId}/entities/${entityId}`}>Open full editor →</Link>
         </div>
       </div>
   );

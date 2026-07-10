@@ -5,13 +5,14 @@ import { useCreateEdge } from "../../hooks/useEdgesForEntity";
 const SUGGESTED_EDGE_TYPES = ["contains", "ally_of", "family_of", "enemy_of"];
 
 interface EdgeQuickFormProps {
+  projectId: string;
   sourceId: string;
   targetId: string;
   onDone: () => void;
 }
 
-export function EdgeQuickForm({ sourceId, targetId, onDone }: EdgeQuickFormProps) {
-  const createEdge = useCreateEdge();
+export function EdgeQuickForm({ projectId, sourceId, targetId, onDone }: EdgeQuickFormProps) {
+  const createEdge = useCreateEdge(projectId);
   const [edgeType, setEdgeType] = useState("");
   const [label, setLabel] = useState("");
 

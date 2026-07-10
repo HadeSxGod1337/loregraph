@@ -5,45 +5,49 @@ import type { EdgeCreate, EdgeUpdate } from "../api/types";
 
 // Mirrors the same gap as entity mutations: the graph view reads from
 // `["subgraph", ...]`, not `["edges", ...]` — invalidate both.
-function invalidateEdgeCaches(queryClient: QueryClient, ...entityIds: string[]) {
+function invalidateEdgeCaches(
+  queryClient: QueryClient,
+  projectId: string,
+  ...entityIds: string[]
+) {
   for (const id of entityIds) {
-    void queryClient.invalidateQueries({ queryKey: ["edges", id] });
+    void queryClient.invalidateQueries({ queryKey: ["edges", projectId, id] });
   }
-  void queryClient.invalidateQueries({ queryKey: ["edges"] });
-  void queryClient.invalidateQueries({ queryKey: ["subgraph"] });
+  void queryClient.invalidateQueries({ queryKey: ["edges", projectId] });
+  void queryClient.invalidateQueries({ queryKey: ["subgraph", projectId] });
 }
 
-export function useEdgesForEntity(entityId: string | undefined) {
+export function useEdgesForEntity(projectId: string, entityId: string | undefined) {
   return useQuery({
-    queryKey: ["edges", entityId],
-    queryFn: () => edgesApi.listForEntity(entityId!),
+    queryKey: ["edges", projectId, entityId],
+    queryFn: () => edgesApi.listForEntity(projectId, entityId!),
     enabled: entityId !== undefined,
   });
 }
 
-export function useCreateEdge() {
+export function useCreateEdge(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: EdgeCreate) => edgesApi.create(data),
+    mutationFn: (data: EdgeCreate) => edgesApi.create(projectId, data),
     onSuccess: (edge) =>
-      invalidateEdgeCaches(queryClient, edge.source_entity_id, edge.target_entity_id),
+      invalidateEdgeCaches(queryClient, projectId, edge.source_entity_id, edge.target_entity_id),
   });
 }
 
-export function useUpdateEdge() {
+export function useUpdateEdge(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: EdgeUpdate }) =>
-      edgesApi.update(id, data),
+      edgesApi.update(projectId, id, data),
     onSuccess: (edge) =>
-      invalidateEdgeCaches(queryClient, edge.source_entity_id, edge.target_entity_id),
+      invalidateEdgeCaches(queryClient, projectId, edge.source_entity_id, edge.target_entity_id),
   });
 }
 
-export function useDeleteEdge() {
+export function useDeleteEdge(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => edgesApi.remove(id),
-    onSuccess: () => invalidateEdgeCaches(queryClient),
+    mutationFn: (id: string) => edgesApi.remove(projectId, id),
+    onSuccess: () => invalidateEdgeCaches(queryClient, projectId),
   });
 }

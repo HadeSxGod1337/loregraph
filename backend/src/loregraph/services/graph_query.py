@@ -8,6 +8,7 @@ from loregraph.storage.protocols import EdgeStore, EntityStore
 async def get_subgraph(
     entity_store: EntityStore,
     edge_store: EdgeStore,
+    project_id: str,
     root_id: str,
     depth: int,
     edge_types: frozenset[str] | None = None,
@@ -22,10 +23,13 @@ async def get_subgraph(
     this request, and SQLAlchemy's AsyncSession does not support concurrent
     use by multiple coroutines.
     """
-    if not await entity_store.exists(root_id):
+    root = await entity_store.get(root_id)
+    if root.project_id != project_id:
+        # Root belongs to a different project — treat it as not found rather
+        # than leaking its existence/data across the project boundary.
         raise EntityNotFoundError(root_id)
 
-    edges = await edge_store.list_all(edge_types)
+    edges = await edge_store.list_all(project_id, edge_types)
     adjacency: dict[str, list[str]] = defaultdict(list)
     for edge in edges:
         adjacency[edge.source_entity_id].append(edge.target_entity_id)

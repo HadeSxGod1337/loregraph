@@ -16,6 +16,7 @@ import { API_URL } from "../../api/client";
 import type { Edge, Entity } from "../../api/types";
 import { EntityNode, type EntityNodeData } from "./EntityNode";
 import { FloatingEdge } from "./FloatingEdge";
+import { edgeGroupOffsets } from "./floatingEdgeUtils";
 import { computeRadialLayout } from "./layout";
 import { getPreviewFields } from "./previewFields";
 
@@ -113,18 +114,34 @@ function GraphCanvasInner({
     selectedEntityId,
   );
 
-  const flowEdges: FlowEdge[] = useMemo(
-    () =>
-      edges.map((edge) => ({
-        id: edge.id,
-        source: edge.source_entity_id,
-        target: edge.target_entity_id,
-        type: "floating",
-        label: edge.label ? `${edge.type} — ${edge.label}` : edge.type,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
-      })),
-    [edges],
-  );
+  // Edges sharing the same pair of nodes (multiple relationship types, or a
+  // bidirectional pair) would otherwise draw as fully overlapping lines with
+  // stacked labels — give each edge in such a group its own offset so
+  // FloatingEdge can bow them apart into separate visible arcs.
+  const flowEdges: FlowEdge[] = useMemo(() => {
+    const groupIds = new Map<string, string[]>();
+    for (const edge of edges) {
+      const key = [edge.source_entity_id, edge.target_entity_id].sort().join("|");
+      const group = groupIds.get(key);
+      if (group) group.push(edge.id);
+      else groupIds.set(key, [edge.id]);
+    }
+    const offsetByEdgeId = new Map<string, number>();
+    for (const ids of groupIds.values()) {
+      const offsets = edgeGroupOffsets(ids.length);
+      ids.forEach((id, i) => offsetByEdgeId.set(id, offsets[i]));
+    }
+
+    return edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source_entity_id,
+      target: edge.target_entity_id,
+      type: "floating",
+      label: edge.label ? `${edge.type} — ${edge.label}` : edge.type,
+      markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
+      data: { offset: offsetByEdgeId.get(edge.id) ?? 0 },
+    }));
+  }, [edges]);
 
   // Re-fits only when the node *set* changes (new root/depth/filter) — this
   // depends on `nodes` (the entity list prop), never on `flowNodes`/drag

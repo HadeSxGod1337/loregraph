@@ -1,26 +1,28 @@
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  getStraightPath,
-  useInternalNode,
-  type EdgeProps,
-} from "@xyflow/react";
+import { BaseEdge, EdgeLabelRenderer, useInternalNode, type EdgeProps } from "@xyflow/react";
 
-import { getEdgeParams } from "./floatingEdgeUtils";
+import { getEdgeParams, getOffsetPath } from "./floatingEdgeUtils";
 
-export function FloatingEdge({ id, source, target, label, style, markerEnd }: EdgeProps) {
+export interface FloatingEdgeData extends Record<string, unknown> {
+  offset?: number;
+}
+
+export function FloatingEdge({
+  id,
+  source,
+  target,
+  label,
+  style,
+  markerEnd,
+  data,
+}: EdgeProps) {
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
 
   if (!sourceNode || !targetNode) return null;
 
   const { sx, sy, tx, ty } = getEdgeParams(sourceNode, targetNode);
-  const [edgePath, labelX, labelY] = getStraightPath({
-    sourceX: sx,
-    sourceY: sy,
-    targetX: tx,
-    targetY: ty,
-  });
+  const offset = (data as FloatingEdgeData | undefined)?.offset ?? 0;
+  const [edgePath, labelX, labelY] = getOffsetPath(sx, sy, tx, ty, offset);
 
   return (
     <>

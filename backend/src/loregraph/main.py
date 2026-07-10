@@ -1,21 +1,28 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from loregraph.api.routers import attachments, edges, entities, graph
+from loregraph.api.routers import attachments, edges, entities, graph, projects
 from loregraph.config import Settings
 from loregraph.exceptions import (
     AttachmentNotFoundError,
     CampaignError,
+    CrossProjectEdgeError,
     EdgeNotFoundError,
     EntityNotFoundError,
     InvalidEdgeReferenceError,
     InvalidIconReferenceError,
+    ProjectNotFoundError,
+    UnsupportedExportFormatError,
 )
+from loregraph.schemas.project_transfer import ProjectExport
+from loregraph.services.project_transfer import import_project
 from loregraph.storage.composition import StoreFactories
 from loregraph.storage.sqlite.attachment_store import SqliteAttachmentStore
 from loregraph.storage.sqlite.db import (
@@ -25,6 +32,31 @@ from loregraph.storage.sqlite.db import (
 )
 from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
+from loregraph.storage.sqlite.project_store import SqliteProjectStore
+
+SEED_DEMO_PROJECT_PATH = Path(__file__).parent / "seed" / "demo_project.json"
+
+
+async def _seed_demo_project_if_empty(
+    session_factory: async_sessionmaker[AsyncSession],
+    store_factories: StoreFactories,
+    attachments_dir: Path,
+) -> None:
+    async with session_factory() as session:
+        project_store = store_factories.project(session)
+        if await project_store.list_projects():
+            return
+        data = ProjectExport.model_validate_json(
+            SEED_DEMO_PROJECT_PATH.read_text(encoding="utf-8")
+        )
+        await import_project(
+            project_store,
+            store_factories.entity(session),
+            store_factories.edge(session),
+            store_factories.attachment(session),
+            attachments_dir,
+            data,
+        )
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -42,11 +74,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # concrete SQLite classes. api/deps.py depends only on this bundle
         # and on the Protocol types, never on loregraph.storage.sqlite.*.
         app.state.store_factories = StoreFactories(
+            project=SqliteProjectStore,
             entity=SqliteEntityStore,
             edge=SqliteEdgeStore,
             attachment=lambda session: SqliteAttachmentStore(
                 session, settings.attachments_dir
             ),
+        )
+        await _seed_demo_project_if_empty(
+            app.state.session_factory,
+            app.state.store_factories,
+            settings.attachments_dir,
         )
         yield
         await engine.dispose()
@@ -62,6 +100,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     _register_exception_handlers(app)
 
+    app.include_router(projects.router, prefix="/api")
     app.include_router(entities.router, prefix="/api")
     app.include_router(edges.router, prefix="/api")
     app.include_router(graph.router, prefix="/api")
@@ -77,6 +116,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 
 def _register_exception_handlers(app: FastAPI) -> None:
+    @app.exception_handler(ProjectNotFoundError)
+    async def _project_not_found(
+        _request: Request, exc: ProjectNotFoundError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
     @app.exception_handler(EntityNotFoundError)
     async def _entity_not_found(
         _request: Request, exc: EntityNotFoundError
@@ -98,6 +143,18 @@ def _register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(InvalidEdgeReferenceError)
     async def _invalid_edge_reference(
         _request: Request, exc: InvalidEdgeReferenceError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    @app.exception_handler(CrossProjectEdgeError)
+    async def _cross_project_edge(
+        _request: Request, exc: CrossProjectEdgeError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    @app.exception_handler(UnsupportedExportFormatError)
+    async def _unsupported_export_format(
+        _request: Request, exc: UnsupportedExportFormatError
     ) -> JSONResponse:
         return JSONResponse(status_code=422, content={"detail": str(exc)})
 

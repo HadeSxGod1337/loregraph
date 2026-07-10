@@ -6,15 +6,16 @@ import { useClearEntityIcon, useSetEntityIcon } from "../../hooks/useEntity";
 import { useUploadAttachment } from "../../hooks/useAttachments";
 
 interface IconPickerProps {
+  projectId: string;
   entityId: string | undefined;
   icon: AttachmentRef | null;
 }
 
-export function IconPicker({ entityId, icon }: IconPickerProps) {
+export function IconPicker({ projectId, entityId, icon }: IconPickerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadAttachment(entityId ?? "");
-  const setIcon = useSetEntityIcon(entityId ?? "");
-  const clearIcon = useClearEntityIcon(entityId ?? "");
+  const setIcon = useSetEntityIcon(projectId, entityId ?? "");
+  const clearIcon = useClearEntityIcon(projectId, entityId ?? "");
 
   async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

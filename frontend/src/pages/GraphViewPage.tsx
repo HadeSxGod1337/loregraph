@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 
 import { EdgeEditPopover } from "../components/graph/EdgeEditPopover";
 import { EdgeQuickForm } from "../components/graph/EdgeQuickForm";
 import { EntityDetailPanel } from "../components/graph/EntityDetailPanel";
 import { GraphCanvas } from "../components/graph/GraphCanvas";
 import { GraphControls } from "../components/graph/GraphControls";
+import { ProjectHeader } from "../components/layout/ProjectHeader";
 import { useEntities } from "../hooks/useEntities";
 import { useSubgraph } from "../hooks/useSubgraph";
 
@@ -14,7 +16,8 @@ interface PendingConnection {
 }
 
 export function GraphViewPage() {
-  const { data: entities } = useEntities();
+  const { projectId } = useParams<{ projectId: string }>();
+  const { data: entities } = useEntities(projectId!);
   const [rootId, setRootId] = useState("");
   const [depth, setDepth] = useState(2);
   const [edgeTypesInput, setEdgeTypesInput] = useState("");
@@ -32,6 +35,7 @@ export function GraphViewPage() {
   );
 
   const { data: subgraph, isLoading } = useSubgraph(
+    projectId!,
     rootId || undefined,
     depth,
     edgeTypes.length > 0 ? edgeTypes : undefined,
@@ -41,6 +45,8 @@ export function GraphViewPage() {
 
   return (
     <div className="graph-view-page">
+      <ProjectHeader projectId={projectId!} />
+
       <GraphControls
         entities={entities ?? []}
         rootId={rootId}
@@ -70,6 +76,7 @@ export function GraphViewPage() {
 
       <EntityDetailPanel
         key={selectedEntityId}
+        projectId={projectId!}
         entityId={selectedEntityId}
         onClose={() => setSelectedEntityId(null)}
         onNavigate={setSelectedEntityId}
@@ -79,6 +86,7 @@ export function GraphViewPage() {
         <div className="popover-backdrop" onClick={() => setPendingConnection(null)}>
           <div onClick={(e) => e.stopPropagation()}>
             <EdgeQuickForm
+              projectId={projectId!}
               sourceId={pendingConnection.sourceId}
               targetId={pendingConnection.targetId}
               onDone={() => setPendingConnection(null)}
@@ -90,7 +98,11 @@ export function GraphViewPage() {
       {selectedEdge && (
         <div className="popover-backdrop" onClick={() => setSelectedEdgeId(null)}>
           <div onClick={(e) => e.stopPropagation()}>
-            <EdgeEditPopover edge={selectedEdge} onDone={() => setSelectedEdgeId(null)} />
+            <EdgeEditPopover
+              projectId={projectId!}
+              edge={selectedEdge}
+              onDone={() => setSelectedEdgeId(null)}
+            />
           </div>
         </div>
       )}

@@ -6,13 +6,14 @@ import { useDeleteEdge, useUpdateEdge } from "../../hooks/useEdgesForEntity";
 const SUGGESTED_EDGE_TYPES = ["contains", "ally_of", "family_of", "enemy_of"];
 
 interface EdgeEditPopoverProps {
+  projectId: string;
   edge: Edge;
   onDone: () => void;
 }
 
-export function EdgeEditPopover({ edge, onDone }: EdgeEditPopoverProps) {
-  const updateEdge = useUpdateEdge();
-  const deleteEdge = useDeleteEdge();
+export function EdgeEditPopover({ projectId, edge, onDone }: EdgeEditPopoverProps) {
+  const updateEdge = useUpdateEdge(projectId);
+  const deleteEdge = useDeleteEdge(projectId);
   const [edgeType, setEdgeType] = useState(edge.type);
   const [label, setLabel] = useState(edge.label ?? "");
 
