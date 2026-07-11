@@ -1,12 +1,11 @@
-import Image from "@tiptap/extension-image";
-import Underline from "@tiptap/extension-underline";
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import { useRef, type ChangeEvent } from "react";
+import { useMemo, useRef, type ChangeEvent } from "react";
+import { useMatch } from "react-router-dom";
 
 import { API_URL } from "../../api/client";
 import type { ProseMirrorDoc } from "../../api/types";
 import { useUploadAttachment } from "../../hooks/useAttachments";
+import { buildRichTextExtensions } from "./entityLink";
 
 interface RichTextFieldProps {
   value: ProseMirrorDoc;
@@ -36,9 +35,12 @@ function ToolbarButton({ label, isActive, onClick }: ToolbarButtonProps) {
 export function RichTextField({ value, onChange, entityId }: RichTextFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadAttachment(entityId ?? "");
+  const match = useMatch("/projects/:projectId/*");
+  const projectId = match?.params.projectId;
+  const extensions = useMemo(() => buildRichTextExtensions(projectId), [projectId]);
 
   const editor = useEditor({
-    extensions: [StarterKit, Image, Underline],
+    extensions,
     content: value as JSONContent,
     onUpdate: ({ editor }) => onChange(editor.getJSON() as ProseMirrorDoc),
   });

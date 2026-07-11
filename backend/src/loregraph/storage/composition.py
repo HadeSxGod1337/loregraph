@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from loregraph.storage.protocols import (
+    AgentSessionStore,
     AttachmentStore,
     EdgeStore,
     EntityStore,
@@ -21,3 +22,4 @@ class StoreFactories:
     entity: Callable[[AsyncSession], EntityStore]
     edge: Callable[[AsyncSession], EdgeStore]
     attachment: Callable[[AsyncSession], AttachmentStore]
+    agent_session: Callable[[AsyncSession], AgentSessionStore]

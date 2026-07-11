@@ -4,7 +4,7 @@ data/
 *.db
 
 # private docs (not for the public repo)
-docs/idea.md
+docs/
 
 # python
 __pycache__/

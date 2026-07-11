@@ -59,6 +59,31 @@ class EdgeRow(Base):
     created_at: Mapped[datetime]
 
 
+class AgentSessionRow(Base):
+    """Catalog of agent runs. The LangGraph checkpointer owns the graph
+    *state*; this table owns the *listing* (review queue, statuses, usage) so
+    the UI never has to enumerate checkpoint threads."""
+
+    __tablename__ = "agent_sessions"
+
+    thread_id: Mapped[str] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[str] = mapped_column(index=True)
+    instruction: Mapped[str]
+    input_tokens: Mapped[int] = mapped_column(default=0)
+    output_tokens: Mapped[int] = mapped_column(default=0)
+    # JSON list of entity ids created by an approved run (a run commits a
+    # whole lore batch, not a single entity).
+    committed_entities_json: Mapped[str | None] = mapped_column(default=None)
+    # Snapshot of the review payload at interrupt time — lets list/detail
+    # endpoints work without compiling a graph or touching the checkpointer.
+    review_json: Mapped[str | None] = mapped_column(default=None)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
+
+
 class AttachmentRow(Base):
     __tablename__ = "attachments"
 

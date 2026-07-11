@@ -53,7 +53,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     } catch {
       // response had no JSON body; fall back to statusText
     }
-    throw new ApiError(response.status, detail);
+    // A bare "Not Found" is useless in the UI — always say what was called.
+    throw new ApiError(
+      response.status,
+      `${detail} (${method} ${path} → HTTP ${response.status})`,
+    );
   }
 
   if (response.status === 204) {

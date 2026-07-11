@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -11,7 +12,20 @@ from loregraph.main import create_app
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
-    return Settings(data_dir=tmp_path)
+    # _env_file=None: tests must not read the developer's real backend/.env
+    # (with real API keys). embedding_provider="disabled": API tests must not
+    # download embedding models; the vector layer has its own tests with a
+    # fake embedder. dict-splat because mypy doesn't see pydantic-settings'
+    # dynamic init kwargs.
+    kwargs: dict[str, Any] = {
+        "data_dir": tmp_path,
+        "embedding_provider": "disabled",
+        "anthropic_api_key": None,
+        "openai_api_key": None,
+        "llm_provider": "anthropic",
+        "_env_file": None,
+    }
+    return Settings(**kwargs)
 
 
 @pytest.fixture

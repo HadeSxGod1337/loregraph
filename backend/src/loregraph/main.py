@@ -1,29 +1,38 @@
+import asyncio
+import logging
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from loregraph.api.routers import attachments, edges, entities, graph, projects
+from loregraph.api.routers import agent, attachments, edges, entities, graph, projects
 from loregraph.config import Settings
 from loregraph.exceptions import (
+    AgentSessionNotFoundError,
     AttachmentNotFoundError,
     CampaignError,
+    ConfigurationError,
     CrossProjectEdgeError,
     EdgeNotFoundError,
     EntityNotFoundError,
+    GenerationError,
     InvalidEdgeReferenceError,
     InvalidIconReferenceError,
     ProjectNotFoundError,
     UnsupportedExportFormatError,
 )
+from loregraph.llm.embeddings import EmbeddingProvider, get_embedding_provider
 from loregraph.schemas.project_transfer import ProjectExport
 from loregraph.services.project_transfer import import_project
+from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.composition import StoreFactories
+from loregraph.storage.sqlite.agent_session_store import SqliteAgentSessionStore
 from loregraph.storage.sqlite.attachment_store import SqliteAttachmentStore
 from loregraph.storage.sqlite.db import (
     create_engine_for,
@@ -33,8 +42,31 @@ from loregraph.storage.sqlite.db import (
 from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
+from loregraph.storage.vectorstore.chroma_store import ChromaVectorStore
 
 SEED_DEMO_PROJECT_PATH = Path(__file__).parent / "seed" / "demo_project.json"
+
+logger = logging.getLogger(__name__)
+
+
+async def _warmup_embedding_provider(embedder: EmbeddingProvider) -> None:
+    """Load (and on first run download) the embedding model in the background
+    at startup, so the first agent request doesn't stall on it."""
+    try:
+        logger.info(
+            "Warming up embedding model %s (first run downloads it once)…",
+            embedder.model_id,
+        )
+        await embedder.embed(["warmup"])
+        logger.info("Embedding model %s is ready", embedder.model_id)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.warning(
+            "Embedding model warmup failed — it will be retried lazily on "
+            "first use (vector indexing degrades to a logged warning).",
+            exc_info=True,
+        )
 
 
 async def _seed_demo_project_if_empty(
@@ -80,13 +112,41 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             attachment=lambda session: SqliteAttachmentStore(
                 session, settings.attachments_dir
             ),
+            agent_session=SqliteAgentSessionStore,
         )
-        await _seed_demo_project_if_empty(
-            app.state.session_factory,
-            app.state.store_factories,
-            settings.attachments_dir,
+        # Vector layer is optional derived data: None when embeddings are
+        # disabled, and the manual editor must keep working either way.
+        embedder = get_embedding_provider(settings)
+        app.state.vector_index = (
+            VectorIndex(ChromaVectorStore(settings.chroma_dir, embedder))
+            if embedder is not None
+            else None
         )
-        yield
+        # Off the critical path: startup stays instant, but by the time the
+        # user first hits "Generate lore" the model is (usually) loaded.
+        warmup_task = (
+            asyncio.create_task(_warmup_embedding_provider(embedder))
+            if embedder is not None
+            else None
+        )
+        # LangGraph checkpointer: interrupted agent runs must survive process
+        # restarts, so the saver lives on disk for the app's whole lifetime.
+        async with AsyncExitStack() as stack:
+            app.state.agent_checkpointer = await stack.enter_async_context(
+                AsyncSqliteSaver.from_conn_string(
+                    str(settings.agent_checkpoint_db_path)
+                )
+            )
+            await _seed_demo_project_if_empty(
+                app.state.session_factory,
+                app.state.store_factories,
+                settings.attachments_dir,
+            )
+            yield
+            if warmup_task is not None and not warmup_task.done():
+                warmup_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await warmup_task
         await engine.dispose()
 
     app = FastAPI(title="Loregraph", lifespan=lifespan)
@@ -105,6 +165,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(edges.router, prefix="/api")
     app.include_router(graph.router, prefix="/api")
     app.include_router(attachments.router, prefix="/api")
+    app.include_router(agent.router, prefix="/api")
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
@@ -163,6 +224,24 @@ def _register_exception_handlers(app: FastAPI) -> None:
         _request: Request, exc: InvalidIconReferenceError
     ) -> JSONResponse:
         return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    @app.exception_handler(ConfigurationError)
+    async def _configuration_error(
+        _request: Request, exc: ConfigurationError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+    @app.exception_handler(AgentSessionNotFoundError)
+    async def _agent_session_not_found(
+        _request: Request, exc: AgentSessionNotFoundError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(GenerationError)
+    async def _generation_error(
+        _request: Request, exc: GenerationError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=502, content={"detail": str(exc)})
 
     @app.exception_handler(CampaignError)
     async def _campaign_error(_request: Request, exc: CampaignError) -> JSONResponse:

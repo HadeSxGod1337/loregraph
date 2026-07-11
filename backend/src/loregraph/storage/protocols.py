@@ -1,6 +1,11 @@
 from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
+from loregraph.schemas.agent import (
+    AgentReviewPayload,
+    AgentSessionOut,
+    AgentSessionStatus,
+)
 from loregraph.schemas.attachment import AttachmentOut
 from loregraph.schemas.edge import EdgeCreate, EdgeOut, EdgeUpdate
 from loregraph.schemas.entity import EntityCreate, EntityOut, EntityUpdate
@@ -43,6 +48,24 @@ class EdgeStore(Protocol):
     async def create(self, data: EdgeCreate, project_id: str) -> EdgeOut: ...
     async def update(self, edge_id: str, data: EdgeUpdate) -> EdgeOut: ...
     async def delete(self, edge_id: str) -> None: ...
+
+
+@runtime_checkable
+class AgentSessionStore(Protocol):
+    async def create(self, project_id: str, thread_id: str) -> AgentSessionOut: ...
+    async def get(self, thread_id: str) -> AgentSessionOut: ...
+    async def list_for_project(self, project_id: str) -> list[AgentSessionOut]: ...
+    async def update(
+        self,
+        thread_id: str,
+        *,
+        status: AgentSessionStatus | None = None,
+        title: str | None = None,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        committed_entity_ids: list[str] | None = None,
+        review: AgentReviewPayload | None = None,
+    ) -> AgentSessionOut: ...
 
 
 @runtime_checkable

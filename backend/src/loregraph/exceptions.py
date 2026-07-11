@@ -52,3 +52,33 @@ class UnsupportedExportFormatError(CampaignError):
     def __init__(self, format_version: int) -> None:
         super().__init__(f"Unsupported project export format_version: {format_version}")
         self.format_version = format_version
+
+
+class ConfigurationError(CampaignError):
+    """Agent layer is misconfigured (e.g. provider selected without an API key).
+
+    Deliberately never includes secret values in the message."""
+
+
+class RetrievalError(CampaignError):
+    """Vector or graph retrieval failed; generation must not proceed ungrounded."""
+
+
+class GenerationError(CampaignError):
+    """LLM did not produce a valid result within the allowed retry attempts."""
+
+
+class AgentSessionNotFoundError(CampaignError):
+    def __init__(self, thread_id: str) -> None:
+        super().__init__(f"Agent session not found: {thread_id}")
+        self.thread_id = thread_id
+
+
+class DuplicateEntityError(CampaignError):
+    def __init__(self, title: str, existing_entity_id: str) -> None:
+        super().__init__(
+            f"Entity duplicates an existing one: {title!r} "
+            f"(existing id: {existing_entity_id})"
+        )
+        self.title = title
+        self.existing_entity_id = existing_entity_id

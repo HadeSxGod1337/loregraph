@@ -1,0 +1,74 @@
+from typing import Any
+
+from loregraph.agent.state import NO_LORE_SENTINEL, AgentState
+from loregraph.llm.structured import StructuredGenerator
+from loregraph.prompts import render
+from loregraph.schemas.agent import GroundingReport, LoreDraft
+
+
+async def verify_grounding(
+    state: AgentState, *, extraction: StructuredGenerator, token_budget: int
+) -> dict[str, Any]:
+    """Verifier before review. Deterministic part always runs: relationship
+    endpoints must be real draft refs or retrieved entity ids (the model
+    never gets to invent connection targets), and grounded_in citations must
+    come from retrieval. The LLM-as-judge pass runs when there is lore to
+    check against and budget left. Warnings never block — the DM sees them."""
+    if state.draft is None:
+        return {}
+    warnings: list[str] = []
+    draft = state.draft
+
+    # -- Deterministic: relationship endpoints.
+    refs = {entity.ref for entity in draft.entities}
+    allowed_targets = refs | set(state.context_entity_ids)
+    kept = []
+    for relationship in draft.relationships:
+        if relationship.source_ref not in refs:
+            warnings.append(
+                f"Dropped relationship from unknown ref "
+                f"{relationship.source_ref!r} — sources must be draft entities."
+            )
+        elif relationship.target_ref not in allowed_targets:
+            warnings.append(
+                f"Dropped relationship to unknown target "
+                f"{relationship.target_ref!r} — the model must only link to "
+                f"draft entities or retrieved lore."
+            )
+        else:
+            kept.append(relationship)
+    if len(kept) != len(draft.relationships):
+        draft = LoreDraft(entities=draft.entities, relationships=kept)
+
+    # -- Deterministic: citations must come from retrieval.
+    allowed_citations = set(state.context_entity_ids)
+    claimed: set[str] = set()
+    for entity in draft.entities:
+        claimed.update(entity.grounded_in)
+    for relationship in draft.relationships:
+        claimed.update(relationship.grounded_in)
+    warnings.extend(
+        f"Draft cites lore id {bad_id!r} that was never retrieved — "
+        f"treat the related claims as unverified."
+        for bad_id in sorted(claimed - allowed_citations)
+    )
+
+    update: dict[str, Any] = {"draft": draft}
+
+    # -- LLM-as-judge, narrowly scoped to grounding.
+    if state.existing_lore != NO_LORE_SENTINEL and not state.over_budget(token_budget):
+        result = await extraction.generate(
+            GroundingReport,
+            system=render("verify_grounding.system.md"),
+            user=render(
+                "verify_grounding.user.md",
+                existing_lore=state.existing_lore,
+                draft=draft.model_dump_json(indent=2),
+            ),
+        )
+        warnings.extend(result.value.warnings)
+        update["input_tokens"] = state.input_tokens + result.input_tokens
+        update["output_tokens"] = state.output_tokens + result.output_tokens
+
+    update["warnings"] = [*state.warnings, *warnings]
+    return update

@@ -13,13 +13,37 @@
 
 Loregraph stores your campaign as **entities** (NPCs, factions, locations, items —
 anything) connected by a **graph** of typed relationships. You edit it directly, or
-(planned) an AI agent proposes NPCs, factions, and story hooks grounded in your
-existing lore via hybrid retrieval (vector + graph), with a human-in-the-loop review
+the AI agent proposes new entities and relationships grounded in your existing lore
+via hybrid retrieval (vector + graph), with a mandatory human-in-the-loop review
 gate before anything is written to canon. Foundry VTT and Markdown are export
 connectors, not the core of the product.
 
-**Status**: the manual entity/graph editor (v0) is done and usable. The LangGraph
-agent layer described above is planned, not yet built.
+**Status**: the manual entity/graph editor (v0) and a conversational agent
+layer are usable. The AI Assistant is a chat: it answers questions about
+your world (grounded in retrieved lore via tools, never from imagination),
+asks clarifying questions back, and creates whole pieces of world in one
+run — a batch of entities (it picks types and count itself) plus the
+relationship web between them and existing lore (LangGraph: assistant loop
+with read tools → propose pipeline: hybrid retrieve → duplicate checks →
+batch draft → grounding verification → review → commit). Turns stream over
+SSE — you see pipeline stages and answer tokens live. Inline batch review
+supports approve (with per-entity edits/exclusions), reject, and **request
+changes** — iterative revision of the same draft. The assistant lives as a
+drawer right in the graph view (an empty world opens it automatically) and
+on its own tab. Also: `[[wikilink]]` entity references in rich text, and a
+stdio MCP server (`loregraph-mcp`) for external MCP clients. Architecture:
+[docs/agent_architecture.md](docs/agent_architecture.md). Multi-step session
+preparation (orchestrator + parallel workers) and Foundry/Markdown connectors
+are planned.
+
+### AI Assistant setup (optional, BYOK)
+
+Create `backend/.env` with `CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...` (or
+`CAMPAIGN_LLM_PROVIDER=openai|ollama` + matching settings, see
+`backend/src/loregraph/config.py`). Without a key the manual editor works
+fully; the Assistant tab shows setup instructions. Semantic retrieval uses a
+local multilingual embedding model by default (downloaded on first use); the
+lore never leaves your machine except for the LLM calls you configure.
 
 ## Stack
 

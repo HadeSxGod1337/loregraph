@@ -169,7 +169,7 @@ async def import_project(
             EntityUpdate(
                 type=entity.type,
                 title=entity.title,
-                fields=_rewrite_field_urls(entity.fields, url_rewrites),
+                fields=_rewrite_fields(entity.fields, url_rewrites, entity_id_map),
             ),
         )
         if entity.icon_attachment_id is not None:
@@ -180,16 +180,39 @@ async def import_project(
     return project
 
 
-def _rewrite_field_urls(
-    fields: list[EntityFieldOut], url_rewrites: dict[str, str]
+def _rewrite_fields(
+    fields: list[EntityFieldOut],
+    url_rewrites: dict[str, str],
+    entity_id_map: dict[str, str],
 ) -> list[EntityFieldIn]:
     rewritten: list[EntityFieldIn] = []
     for field in fields:
         data = field.model_dump(mode="json")
-        if field.field_type is FieldType.RICH_TEXT and url_rewrites:
-            serialized = json.dumps(data["value"])
-            for old_fragment, new_fragment in url_rewrites.items():
-                serialized = serialized.replace(old_fragment, new_fragment)
-            data["value"] = json.loads(serialized)
+        if field.field_type is FieldType.RICH_TEXT:
+            if url_rewrites:
+                serialized = json.dumps(data["value"])
+                for old_fragment, new_fragment in url_rewrites.items():
+                    serialized = serialized.replace(old_fragment, new_fragment)
+                data["value"] = json.loads(serialized)
+            _rewrite_entity_links(data["value"], entity_id_map)
         rewritten.append(EntityFieldIn(**data))
     return rewritten
+
+
+def _rewrite_entity_links(node: object, entity_id_map: dict[str, str]) -> None:
+    """Remap wikilink (entityLink) node targets to the freshly created entity
+    ids. Import never reuses ids, so without this pass every [[link]] inside
+    rich text would silently point at ids that no longer exist. A target
+    missing from the map is left as-is — the UI renders it as a broken link
+    rather than guessing."""
+    if isinstance(node, dict):
+        attrs = node.get("attrs")
+        if node.get("type") == "entityLink" and isinstance(attrs, dict):
+            old_id = attrs.get("entityId")
+            if isinstance(old_id, str) and old_id in entity_id_map:
+                attrs["entityId"] = entity_id_map[old_id]
+        for child in node.get("content", []):
+            _rewrite_entity_links(child, entity_id_map)
+    elif isinstance(node, list):
+        for item in node:
+            _rewrite_entity_links(item, entity_id_map)

@@ -24,6 +24,7 @@ export function NavBar() {
               Entities
             </NavLink>
             <NavLink to={`/projects/${projectId}/graph`}>Graph</NavLink>
+            <NavLink to={`/projects/${projectId}/assistant`}>AI Assistant</NavLink>
           </div>
         </>
       )}

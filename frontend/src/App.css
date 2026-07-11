@@ -959,3 +959,745 @@
   gap: 8px;
   margin-top: 4px;
 }
+
+/* ---------- Entity wikilinks ---------- */
+
+.entity-link-wrapper {
+  display: inline;
+}
+
+.entity-link-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid var(--accent-soft);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.95em;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+.entity-link-chip:hover {
+  border-color: var(--accent);
+}
+
+.entity-link-chip.broken {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-muted);
+  text-decoration: line-through;
+  cursor: default;
+}
+
+.entity-link-suggestions {
+  position: absolute;
+  z-index: 1000;
+  min-width: 220px;
+  max-width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.entity-link-suggestions-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.entity-link-suggestions-list button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.entity-link-suggestions-list button.selected,
+.entity-link-suggestions-list button:hover {
+  background: var(--accent-soft);
+}
+
+.entity-link-suggestion-type {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.entity-link-suggestions-empty {
+  padding: 8px 12px;
+  color: var(--text-muted);
+}
+
+/* ---------- AI Assistant ---------- */
+
+.assistant-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.assistant-header h1 {
+  margin: 0 0 4px;
+}
+
+.assistant-hint {
+  color: var(--text-muted);
+  margin: 4px 0;
+}
+
+.assistant-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.assistant-form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.assistant-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9em;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 180px;
+}
+
+.assistant-form input,
+.assistant-form select,
+.assistant-form textarea {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.assistant-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.assistant-form-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.assistant-form-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.assistant-error {
+  color: var(--danger);
+  font-size: 0.9em;
+}
+
+.assistant-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.assistant-hint-chip {
+  padding: 6px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 16px;
+  background: var(--bg-subtle);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.assistant-hint-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.assistant-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.assistant-sessions h2 {
+  margin: 8px 0 0;
+}
+
+.assistant-session {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 12px 16px;
+}
+
+.assistant-session-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.assistant-session-instruction {
+  flex: 1;
+  min-width: 200px;
+}
+
+.assistant-session-usage {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.assistant-status {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.8em;
+  font-weight: 600;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.assistant-status-awaiting_review {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.assistant-status-committed {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.assistant-status-failed,
+.assistant-status-rejected {
+  background: var(--bg-subtle);
+  color: var(--danger);
+}
+
+.assistant-session-link {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--accent);
+}
+
+.assistant-review {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.assistant-review label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.assistant-review input,
+.assistant-review textarea {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.assistant-review-title {
+  position: relative;
+}
+
+.assistant-review-type {
+  position: absolute;
+  right: 8px;
+  top: 0;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.assistant-warnings {
+  margin: 0;
+  padding: 8px 12px;
+  list-style: none;
+  border: 1px solid #d9b44a;
+  border-radius: 8px;
+  background: rgba(217, 180, 74, 0.12);
+  color: var(--text);
+  font-size: 0.9em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assistant-provenance,
+.assistant-provenance-new {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.assistant-relationships h3 {
+  margin: 0 0 6px;
+  font-size: 0.95em;
+}
+
+.assistant-relationship {
+  flex-direction: row !important;
+  align-items: baseline;
+  gap: 8px !important;
+}
+
+.assistant-relationship em {
+  color: var(--text-muted);
+  font-style: normal;
+  font-size: 0.9em;
+  margin-left: 6px;
+}
+
+.assistant-review-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.assistant-approve {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.assistant-reject {
+  padding: 8px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: none;
+  color: var(--danger);
+  cursor: pointer;
+}
+
+.assistant-approve:disabled,
+.assistant-reject:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.assistant-onboarding {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.assistant-onboarding pre {
+  padding: 12px;
+  background: var(--bg-subtle);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+/* ---------- Assistant drawer in the graph view ---------- */
+
+/* Toggle sits top-left, right below the graph controls — exactly where the
+   drawer opens, and never over the entity detail panel (right side). */
+.assistant-drawer-toggle {
+  position: absolute;
+  top: 104px;
+  left: 16px;
+  z-index: 30;
+  padding: 8px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
+}
+
+.assistant-drawer-toggle:hover {
+  border-color: var(--accent);
+}
+
+/* The drawer lives on the LEFT (below the graph controls); the entity detail
+   panel owns the right side — the two never overlap. Full height: only the
+   transcript scrolls internally (thin scrollbar, and only on overflow) —
+   header and input stay pinned. */
+.assistant-drawer {
+  position: absolute;
+  top: 104px;
+  left: 16px;
+  bottom: 16px;
+  width: min(420px, calc(100vw - 48px));
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+  padding: 14px;
+}
+
+.assistant-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.assistant-drawer-close {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.assistant-drawer-close:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+/* Textareas grow vertically only — horizontal resize breaks out of the
+   drawer/card bounds. */
+.assistant-panel textarea {
+  resize: vertical;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.assistant-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.assistant-empty-invite {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--accent-soft);
+  border-radius: 8px;
+  color: var(--text);
+}
+
+.assistant-anchor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+/* ---------- Batch review ---------- */
+
+.assistant-draft-entities {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.assistant-draft-entity {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg);
+}
+
+.assistant-draft-entity.removed {
+  opacity: 0.5;
+}
+
+.assistant-draft-entity-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assistant-draft-keep {
+  flex-direction: row !important;
+}
+
+.assistant-draft-title {
+  flex: 1;
+  font-weight: 600;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+}
+
+.assistant-draft-type {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.assistant-draft-new {
+  cursor: help;
+}
+
+.assistant-draft-entity textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+.assistant-draft-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.assistant-relationship.removed span {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+/* ---------- Assistant chat ---------- */
+
+.assistant-panel {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Thin, theme-aware scrollbars for the assistant and the entity panel —
+   visible only when content actually overflows. */
+.assistant-transcript,
+.assistant-drawer,
+.assistant-onboarding,
+.panel {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.assistant-transcript::-webkit-scrollbar,
+.assistant-drawer::-webkit-scrollbar,
+.assistant-onboarding::-webkit-scrollbar,
+.panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.assistant-transcript::-webkit-scrollbar-thumb,
+.assistant-drawer::-webkit-scrollbar-thumb,
+.assistant-onboarding::-webkit-scrollbar-thumb,
+.panel::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+.assistant-transcript::-webkit-scrollbar-thumb:hover,
+.assistant-drawer::-webkit-scrollbar-thumb:hover,
+.assistant-onboarding::-webkit-scrollbar-thumb:hover,
+.panel::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+.assistant-transcript::-webkit-scrollbar-track,
+.assistant-drawer::-webkit-scrollbar-track,
+.assistant-onboarding::-webkit-scrollbar-track,
+.panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.assistant-onboarding {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.assistant-session-picker {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.assistant-session-picker select {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.assistant-session-picker button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.assistant-transcript {
+  /* Fill the drawer; scrolls only when messages overflow. */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 2px;
+}
+
+.assistant-bubble {
+  max-width: 92%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.assistant-bubble-user {
+  align-self: flex-end;
+  background: var(--accent-soft);
+  border-bottom-right-radius: 4px;
+}
+
+.assistant-bubble-assistant {
+  align-self: flex-start;
+  background: var(--bg-subtle);
+  border-bottom-left-radius: 4px;
+}
+
+.assistant-status-line {
+  align-self: flex-start;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  padding: 4px 8px;
+  animation: assistant-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes assistant-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+.assistant-chat-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.assistant-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.assistant-input-row select {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.assistant-input-row button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.assistant-input-row button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.assistant-review-cost {
+  margin: 0;
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.assistant-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.assistant-feedback button {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--accent);
+  cursor: pointer;
+}
