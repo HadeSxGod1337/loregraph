@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import type { EntityField, ProseMirrorDoc } from "../../api/types";
 import { RichTextField } from "./RichTextField";
 
@@ -13,12 +15,13 @@ interface FieldRowProps {
 }
 
 export function FieldRow({ field, entityId, onChange, onRemove }: FieldRowProps) {
+  const { t } = useTranslation();
   return (
     <div className="field-row">
       <input
         className="field-row-key"
         value={field.key}
-        placeholder="field name"
+        placeholder={t("fields.namePlaceholder")}
         onChange={(e) => onChange({ ...field, key: e.target.value })}
       />
       <div className="field-row-value">
@@ -26,22 +29,22 @@ export function FieldRow({ field, entityId, onChange, onRemove }: FieldRowProps)
       </div>
       <div className="field-row-actions">
         {CARD_ELIGIBLE_TYPES.has(field.field_type) && (
-          <label className="field-row-card-toggle" title="Show this field on the graph card">
+          <label className="field-row-card-toggle" title={t("fields.showOnCardTitle")}>
             <input
               type="checkbox"
               checked={field.show_on_card}
               onChange={(e) => onChange({ ...field, show_on_card: e.target.checked })}
             />
-            on card
+            {t("fields.showOnCard")}
           </label>
         )}
         <button
           type="button"
           className="field-row-remove button-danger"
           onClick={onRemove}
-          title="Remove this field"
+          title={t("fields.removeTitle")}
         >
-          Remove
+          {t("common.remove")}
         </button>
       </div>
     </div>
@@ -78,22 +81,38 @@ function renderValueInput(
         />
       );
     case "tag":
-      return (
-        <input
-          placeholder="comma, separated, tags"
-          value={(field.value as string[]).join(", ")}
-          onChange={(e) =>
-            onChange({
-              ...field,
-              value: e.target.value
-                .split(",")
-                .map((v) => v.trim())
-                .filter((v) => v.length > 0),
-            })
-          }
-        />
-      );
+      return <TagInput field={field} onChange={onChange} />;
     case "attachment":
-      return <span className="field-row-attachment">(attachment reference)</span>;
+      return <AttachmentPlaceholder />;
   }
+}
+
+function TagInput({
+  field,
+  onChange,
+}: {
+  field: EntityField;
+  onChange: (field: EntityField) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <input
+      placeholder={t("fields.tagsPlaceholder")}
+      value={(field.value as string[]).join(", ")}
+      onChange={(e) =>
+        onChange({
+          ...field,
+          value: e.target.value
+            .split(",")
+            .map((v) => v.trim())
+            .filter((v) => v.length > 0),
+        })
+      }
+    />
+  );
+}
+
+function AttachmentPlaceholder() {
+  const { t } = useTranslation();
+  return <span className="field-row-attachment">{t("fields.attachmentReference")}</span>;
 }

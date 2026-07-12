@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { projectsApi } from "../api/projects";
@@ -9,8 +10,10 @@ import {
   useImportProject,
   useProjects,
 } from "../hooks/useProjects";
+import { translateApiError } from "../i18n/eventText";
 
 export function ProjectListPage() {
+  const { t } = useTranslation();
   const { data: projects, isLoading, error } = useProjects();
   const createProject = useCreateProject();
   const importProject = useImportProject();
@@ -55,9 +58,9 @@ export function ProjectListPage() {
   return (
     <div className="project-list-page">
       <div className="project-list-header">
-        <h1>Projects</h1>
+        <h1>{t("projects.title")}</h1>
         <button type="button" onClick={() => fileInputRef.current?.click()}>
-          Import project
+          {t("projects.importProject")}
         </button>
         <input
           ref={fileInputRef}
@@ -68,10 +71,10 @@ export function ProjectListPage() {
         />
       </div>
 
-      {isLoading && <p>Loading...</p>}
-      {error && <p className="error-text">{(error as Error).message}</p>}
+      {isLoading && <p>{t("common.loading")}</p>}
+      {error && <p className="error-text">{translateApiError(error, t)}</p>}
       {importProject.isError && (
-        <p className="error-text">{(importProject.error as Error).message}</p>
+        <p className="error-text">{translateApiError(importProject.error, t)}</p>
       )}
 
       <div className="project-list">
@@ -84,22 +87,22 @@ export function ProjectListPage() {
         ))}
       </div>
 
-      {projects?.length === 0 && <p>No projects yet. Create one to get started.</p>}
+      {projects?.length === 0 && <p>{t("projects.noProjects")}</p>}
 
       <div className="project-create-form">
-        <h2>+ New Project</h2>
+        <h2>{t("projects.newProjectHeading")}</h2>
         <input
-          placeholder="Name"
+          placeholder={t("projects.namePlaceholder")}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <input
-          placeholder="Description (optional)"
+          placeholder={t("projects.descriptionPlaceholder")}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
         <button type="button" onClick={handleCreate} disabled={!name.trim()}>
-          Create
+          {t("projects.createButton")}
         </button>
       </div>
     </div>
@@ -113,6 +116,7 @@ function ProjectCard({
   project: Project;
   onExport: () => void;
 }) {
+  const { t } = useTranslation();
   const deleteProject = useDeleteProject();
   const [confirming, setConfirming] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -125,12 +129,12 @@ function ProjectCard({
       </Link>
       <div className="project-card-actions">
         <button type="button" onClick={onExport}>
-          Export
+          {t("projects.exportButton")}
         </button>
         {confirming ? (
           <>
             <input
-              placeholder={`Type "${project.name}" to confirm`}
+              placeholder={t("projects.deleteConfirmPlaceholder", { name: project.name })}
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
             />
@@ -140,10 +144,10 @@ function ProjectCard({
               disabled={confirmText !== project.name}
               onClick={() => deleteProject.mutate(project.id)}
             >
-              Confirm delete
+              {t("projects.confirmDeleteButton")}
             </button>
             <button type="button" onClick={() => setConfirming(false)}>
-              Cancel
+              {t("common.cancel")}
             </button>
           </>
         ) : (
@@ -152,7 +156,7 @@ function ProjectCard({
             className="button-danger"
             onClick={() => setConfirming(true)}
           >
-            Delete
+            {t("projects.deleteButton")}
           </button>
         )}
       </div>

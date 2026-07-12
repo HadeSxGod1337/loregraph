@@ -1,3 +1,13 @@
+import re
+
+
+def error_code(exc: Exception) -> str:
+    """Stable machine-readable code derived from the exception class name,
+    e.g. ProjectNotFoundError -> "project_not_found"."""
+    name = type(exc).__name__.removesuffix("Error")
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+
 class CampaignError(Exception):
     """Base class for all domain errors raised by loregraph."""
 
@@ -114,3 +124,22 @@ class ChatAttachmentLimitExceededError(CampaignError):
     def __init__(self, reason: str) -> None:
         super().__init__(f"Chat attachment limit exceeded: {reason}")
         self.reason = reason
+
+
+class AwaitingReviewConflictError(CampaignError):
+    """Raised when a chat message arrives while a draft is paused at review."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "A draft is awaiting review — approve, reject or request changes "
+            "before sending new messages."
+        )
+
+
+class NotAwaitingReviewError(CampaignError):
+    """Raised when a review decision arrives for a session that isn't paused
+    at the human_review gate."""
+
+    def __init__(self, status: str) -> None:
+        super().__init__(f"Session is not awaiting review (status: {status}).")
+        self.status = status

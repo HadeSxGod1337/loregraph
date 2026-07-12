@@ -1,12 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
-import type {
-  AgentReviewPayload,
-  AgentSession,
-  DraftEntity,
-  LoreDraft,
-} from "../../api/agent";
+import type { AgentReviewPayload, DraftEntity, LoreDraft } from "../../api/agent";
 import { ApiError, apiClient } from "../../api/client";
 import type { Edge, Entity } from "../../api/types";
 import {
@@ -16,28 +12,7 @@ import {
   useAgentSessions,
 } from "../../hooks/useAgent";
 import { useEntities } from "../../hooks/useEntities";
-
-// Human-readable stage labels — the "visible thinking" of the pipeline.
-const NODE_LABELS: Record<string, string> = {
-  assistant: "💭 Думаю…",
-  tools: "📚 Читаю лор…",
-  begin_proposal: "🚧 Готовлю черновик…",
-  retrieve_context: "🔎 Ищу связанный лор…",
-  check_duplicates_request: "🧭 Сверяю с существующим…",
-  generate_lore: "✍️ Пишу черновик мира…",
-  check_duplicates_draft: "🧭 Проверяю дубликаты…",
-  verify_grounding: "✔️ Проверяю факты…",
-  commit: "💾 Записываю в мир…",
-};
-
-const STATUS_LABELS: Record<AgentSession["status"], string> = {
-  idle: "Chat",
-  running: "Running…",
-  awaiting_review: "Awaiting review",
-  committed: "Committed",
-  rejected: "Rejected",
-  failed: "Failed",
-};
+import { translateEvent, translateWarning } from "../../i18n/eventText";
 
 interface AssistantPanelProps {
   projectId: string;
@@ -50,6 +25,7 @@ interface AssistantPanelProps {
  * clarifying questions back, and review whole lore batches inline — with
  * per-stage progress and token streaming. */
 export function AssistantPanel({ projectId, onCommitted }: AssistantPanelProps) {
+  const { t } = useTranslation();
   const { data: config, error: configError } = useAgentConfig();
   const { data: entities } = useEntities(projectId);
   const chat = useAgentChat(projectId, onCommitted);
@@ -57,11 +33,8 @@ export function AssistantPanel({ projectId, onCommitted }: AssistantPanelProps) 
   if (configError instanceof ApiError && configError.status === 404) {
     return (
       <div className="assistant-onboarding">
-        <h2>Backend needs a restart</h2>
-        <p>
-          The running backend doesn't expose the AI Assistant API yet (the
-          config endpoint returned 404). Restart it to pick up the new code:
-        </p>
+        <h2>{t("assistant.onboarding.restartHeading")}</h2>
+        <p>{t("assistant.onboarding.restartBody")}</p>
         <pre>{`cd backend
 uv sync
 uv run uvicorn loregraph.main:app --reload`}</pre>
@@ -82,6 +55,7 @@ uv run uvicorn loregraph.main:app --reload`}</pre>
 }
 
 function SessionPicker({ projectId, chat }: { projectId: string; chat: AgentChat }) {
+  const { t } = useTranslation();
   const { data: sessions } = useAgentSessions(projectId);
   const recent = (sessions ?? []).filter((s) => s.title).slice(0, 8);
   if (recent.length === 0 && !chat.threadId) return null;
@@ -93,16 +67,21 @@ function SessionPicker({ projectId, chat }: { projectId: string; chat: AgentChat
           if (e.target.value) void chat.openSession(e.target.value);
         }}
       >
-        <option value="">— история разговоров —</option>
+        <option value="">{t("assistant.historyPlaceholder")}</option>
         {recent.map((session) => (
           <option key={session.thread_id} value={session.thread_id}>
-            [{STATUS_LABELS[session.status]}] {session.title.slice(0, 60)}
+            [{t(`assistant.status.${session.status}` as const)}]{" "}
+            {session.title.slice(0, 60)}
           </option>
         ))}
       </select>
       {chat.threadId && (
-        <button type="button" onClick={chat.reset} title="Новый разговор">
-          + Новый
+        <button
+          type="button"
+          onClick={chat.reset}
+          title={t("assistant.newConversation")}
+        >
+          {t("assistant.newConversationButton")}
         </button>
       )}
     </div>
@@ -116,6 +95,7 @@ function Transcript({
   chat: AgentChat;
   entities: Entity[];
 }) {
+  const { t } = useTranslation();
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -129,8 +109,8 @@ function Transcript({
       {isEmpty && (
         <p className="assistant-empty-invite">
           {entities.length === 0
-            ? "Мир пуст. Опиши его парой предложений — ассистент предложит стартовый лор: локации, фракции, персонажей и связи. Ничего не попадёт в канон без твоего подтверждения. Можно и просто задавать вопросы."
-            : "Спроси о мире, попроси развить его часть или добавить новый лор — ассистент отвечает по существующему канону и предлагает черновики на ревью."}
+            ? t("assistant.emptyInviteEmptyWorld")
+            : t("assistant.emptyInviteHasWorld")}
         </p>
       )}
       {chat.messages.map((message, index) => (
@@ -147,12 +127,16 @@ function Transcript({
               ))}
             </div>
           )}
-          {message.text}
+          {message.event_code
+            ? translateEvent(message.event_code, message.event_params ?? {}, message.text, t)
+            : message.text}
         </div>
       ))}
       {chat.statusNode && (
         <div className="assistant-status-line">
-          {NODE_LABELS[chat.statusNode] ?? `⚙️ ${chat.statusNode}…`}
+          {t([`assistant.stage.${chat.statusNode}`, "assistant.stage.fallback"], {
+            node: chat.statusNode,
+          })}
         </div>
       )}
       {chat.pendingReview?.draft && (
@@ -180,6 +164,7 @@ function ChatInput({
   entities: Entity[];
   projectId: string;
 }) {
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const [anchorId, setAnchorId] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -227,7 +212,7 @@ function ChatInput({
                 type="button"
                 className="assistant-attachment-remove"
                 onClick={() => removeFile(index)}
-                title="Убрать файл"
+                title={t("assistant.removeFileTitle")}
               >
                 ×
               </button>
@@ -239,8 +224,8 @@ function ChatInput({
         rows={2}
         placeholder={
           reviewPending
-            ? "Сначала заверши ревью черновика выше (принять / изменить / отклонить)"
-            : "Спроси о мире или попроси новый лор… (Enter — отправить)"
+            ? t("assistant.inputPlaceholderBlocked")
+            : t("assistant.inputPlaceholderDefault")
         }
         value={text}
         disabled={blocked}
@@ -256,10 +241,10 @@ function ChatInput({
         {entities.length > 0 && (
           <select
             value={anchorId}
-            title="Контекст: вокруг какой сущности строить"
+            title={t("assistant.anchorTitle")}
             onChange={(e) => setAnchorId(e.target.value)}
           >
-            <option value="">весь мир</option>
+            <option value="">{t("assistant.anchorWholeWorld")}</option>
             {entities.map((entity) => (
               <option key={entity.id} value={entity.id}>
                 {entity.title}
@@ -270,7 +255,7 @@ function ChatInput({
         <button
           type="button"
           disabled={blocked}
-          title="Прикрепить файл к этому сообщению (картинка, PDF, текст)"
+          title={t("assistant.attachTitle")}
           onClick={() => fileInputRef.current?.click()}
         >
           📎
@@ -284,7 +269,7 @@ function ChatInput({
           style={{ display: "none" }}
         />
         <button type="button" disabled={!text.trim() || blocked} onClick={submit}>
-          {chat.busy ? "…" : "Отправить"}
+          {chat.busy ? t("assistant.sending") : t("assistant.sendButton")}
         </button>
       </div>
     </div>
@@ -292,17 +277,15 @@ function ChatInput({
 }
 
 function OnboardingCard({ provider }: { provider: string }) {
+  const { t } = useTranslation();
   return (
     <div className="assistant-onboarding">
-      <h2>Set up the AI Assistant</h2>
+      <h2>{t("assistant.onboarding.setupHeading")}</h2>
       <p>
-        The assistant runs on your own LLM API key (BYOK) — your lore never
-        leaves this machine except for the calls you make to your chosen
-        provider. Current provider: <code>{provider}</code>.
+        {t("assistant.onboarding.setupBody1", { provider })}{" "}
+        <code>{provider}</code>
       </p>
-      <p>
-        Create <code>backend/.env</code> with one of:
-      </p>
+      <p>{t("assistant.onboarding.setupBody2")}</p>
       <pre>
         {`# Anthropic (default)
 CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...
@@ -318,7 +301,7 @@ CAMPAIGN_LLM_MODEL_GENERATION=llama3
 CAMPAIGN_LLM_MODEL_EXTRACTION=llama3
 CAMPAIGN_LLM_MODEL_COMPOSITION=llama3`}
       </pre>
-      <p>Then restart the backend. The key is masked in all logs and errors.</p>
+      <p>{t("assistant.onboarding.setupBody3")}</p>
     </div>
   );
 }
@@ -339,6 +322,7 @@ function SuggestionHints({
   entities: Entity[];
   onPick: (hint: Hint) => void;
 }) {
+  const { t } = useTranslation();
   const { data: edges } = useQuery({
     queryKey: ["edges", projectId],
     queryFn: () => apiClient.get<Edge[]>(`/api/projects/${projectId}/edges`),
@@ -355,11 +339,11 @@ function SuggestionHints({
       .filter((entity) => !connected.has(entity.id))
       .slice(0, 2)
       .map((entity) => ({
-        text: `«${entity.title}» вне паутины — вплести?`,
-        instruction: `Вплети «${entity.title}» в мир: придумай, кто и что с ним связано, добавь недостающие сущности и связи.`,
+        text: t("assistant.hintIsolatedText", { title: entity.title }),
+        instruction: t("assistant.hintIsolatedInstruction", { title: entity.title }),
         anchorId: entity.id,
       }));
-  }, [edges, entities]);
+  }, [edges, entities, t]);
 
   if (hints.length === 0) return null;
   return (
@@ -393,6 +377,7 @@ function ReviewCard({
     feedback?: string,
   ) => void;
 }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<LoreDraft>(review.draft!);
   const [removedRefs, setRemovedRefs] = useState<Set<string>>(new Set());
   const [removedRelationships, setRemovedRelationships] = useState<Set<number>>(
@@ -452,8 +437,8 @@ function ReviewCard({
     <div className="assistant-review">
       {review.warnings.length > 0 && (
         <ul className="assistant-warnings">
-          {review.warnings.map((warning) => (
-            <li key={warning}>⚠ {warning}</li>
+          {review.warnings.map((warning, index) => (
+            <li key={`${warning.code}-${index}`}>⚠ {translateWarning(warning, t)}</li>
           ))}
         </ul>
       )}
@@ -469,7 +454,10 @@ function ReviewCard({
               }
             >
               <div className="assistant-draft-entity-head">
-                <label className="assistant-draft-keep" title="Включить в коммит">
+                <label
+                  className="assistant-draft-keep"
+                  title={t("assistant.review.includeInCommitTitle")}
+                >
                   <input
                     type="checkbox"
                     checked={!removed}
@@ -493,7 +481,7 @@ function ReviewCard({
                 {entity.grounded_in.length === 0 && (
                   <span
                     className="assistant-draft-new"
-                    title="Полностью новое — не основано на существующем лоре"
+                    title={t("assistant.review.newBadgeTitle")}
                   >
                     ✨
                   </span>
@@ -554,7 +542,9 @@ function ReviewCard({
       )}
 
       <p className="assistant-review-cost">
-        ~{review.input_tokens + review.output_tokens} tokens за черновик
+        {t("assistant.review.tokensSuffix", {
+          count: review.input_tokens + review.output_tokens,
+        })}
       </p>
 
       {showFeedback && (
@@ -562,7 +552,7 @@ function ReviewCard({
           <textarea
             rows={2}
             autoFocus
-            placeholder="Что изменить? Например: «сделай гильдию зловещей, добавь ей тайного лидера»"
+            placeholder={t("assistant.review.feedbackPlaceholder")}
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
           />
@@ -571,7 +561,7 @@ function ReviewCard({
             disabled={!feedback.trim() || busy}
             onClick={() => onDecision("revise", keptDraft(), feedback.trim())}
           >
-            Отправить на доработку
+            {t("assistant.review.sendRevision")}
           </button>
         </div>
       )}
@@ -583,14 +573,14 @@ function ReviewCard({
           disabled={busy || keptCount === 0}
           onClick={() => onDecision("approve", keptDraft())}
         >
-          Принять {keptCount}
+          {t("assistant.review.approve", { count: keptCount })}
         </button>
         <button
           type="button"
           disabled={busy}
           onClick={() => setShowFeedback((v) => !v)}
         >
-          ✏️ Просить изменения
+          {t("assistant.review.requestChanges")}
         </button>
         <button
           type="button"
@@ -598,7 +588,7 @@ function ReviewCard({
           disabled={busy}
           onClick={() => onDecision("reject", draft)}
         >
-          Отклонить
+          {t("assistant.review.reject")}
         </button>
       </div>
     </div>

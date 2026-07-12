@@ -1,7 +1,10 @@
+import { useTranslation } from "react-i18next";
+
 import { useEntities } from "../../hooks/useEntities";
 import { useDeleteEdge, useEdgesForEntity } from "../../hooks/useEdgesForEntity";
 
 export function EdgeList({ projectId, entityId }: { projectId: string; entityId: string }) {
+  const { t } = useTranslation();
   const { data: edges } = useEdgesForEntity(projectId, entityId);
   const { data: entities } = useEntities(projectId);
   const deleteEdge = useDeleteEdge(projectId);
@@ -10,8 +13,8 @@ export function EdgeList({ projectId, entityId }: { projectId: string; entityId:
 
   return (
     <div className="edge-list">
-      <h3>Relationships</h3>
-      {edges?.length === 0 && <p>No relationships yet.</p>}
+      <h3>{t("edges.relationshipsHeading")}</h3>
+      {edges?.length === 0 && <p>{t("edges.noRelationships")}</p>}
       <ul>
         {edges?.map((edge) => {
           const isOutgoing = edge.source_entity_id === entityId;
@@ -26,9 +29,9 @@ export function EdgeList({ projectId, entityId }: { projectId: string; entityId:
                 type="button"
                 className="button-danger"
                 onClick={() => deleteEdge.mutate(edge.id)}
-                title="Remove this relationship"
+                title={t("edges.removeTitle")}
               >
-                Remove
+                {t("common.remove")}
               </button>
             </li>
           );

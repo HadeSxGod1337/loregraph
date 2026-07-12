@@ -1,0 +1,233 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "remove": "Remove",
+    "create": "Create",
+    "edit": "Edit",
+    "replace": "Replace",
+    "upload": "Upload",
+    "uploading": "Uploading..."
+  },
+  "nav": {
+    "allProjects": "← All projects",
+    "entities": "Entities",
+    "graph": "Graph",
+    "assistant": "AI Assistant",
+    "settings": "⚙ Settings"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "projects": {
+    "title": "Projects",
+    "importProject": "Import project",
+    "noProjects": "No projects yet. Create one to get started.",
+    "newProjectHeading": "+ New Project",
+    "namePlaceholder": "Name",
+    "descriptionPlaceholder": "Description (optional)",
+    "createButton": "Create",
+    "exportButton": "Export",
+    "deleteConfirmPlaceholder": "Type \"{{name}}\" to confirm",
+    "confirmDeleteButton": "Confirm delete",
+    "deleteButton": "Delete"
+  },
+  "entities": {
+    "title": "Entities",
+    "newEntity": "+ New Entity",
+    "filterPlaceholder": "Filter by type (e.g. npc)",
+    "noEntities": "No entities yet. Create one to get started."
+  },
+  "entityEdit": {
+    "newTitle": "New Entity",
+    "editTitle": "Edit Entity",
+    "typeLabel": "Type",
+    "titleLabel": "Title",
+    "iconLabel": "Icon",
+    "otherFiles": "Other files"
+  },
+  "entityDetail": {
+    "fields": "Fields",
+    "noFields": "No fields yet.",
+    "relationships": "Relationships",
+    "noRelationships": "No relationships yet.",
+    "icon": "Icon",
+    "titleAndType": "Title & type",
+    "openFullEditor": "Open full editor →",
+    "attachmentPreview": "(attachment)",
+    "emptyValue": "—"
+  },
+  "graph": {
+    "pickRoot": "Pick a root entity to view its neighborhood.",
+    "emptyWorld": "Your world is empty — describe it in the AI panel and review the generated starting lore.",
+    "rootEntity": "Root entity",
+    "selectPlaceholder": "— select —",
+    "depth": "Depth",
+    "edgeTypesLabel": "Edge types (comma-separated, empty = all)",
+    "edgeTypesPlaceholder": "ally_of, family_of",
+    "closeAssistant": "Close assistant",
+    "openAssistant": "✨ AI Assistant"
+  },
+  "edges": {
+    "linkToEntity": "— link to entity —",
+    "edgeTypePlaceholder": "edge type (e.g. ally_of)",
+    "reasonPlaceholder": "reason / label (optional)",
+    "addRelationship": "Add relationship",
+    "newRelationship": "New relationship",
+    "editRelationship": "Edit relationship",
+    "removeTitle": "Remove this relationship",
+    "noRelationships": "No relationships yet.",
+    "relationshipsHeading": "Relationships"
+  },
+  "fields": {
+    "namePlaceholder": "field name",
+    "showOnCard": "on card",
+    "showOnCardTitle": "Show this field on the graph card",
+    "removeTitle": "Remove this field",
+    "tagsPlaceholder": "comma, separated, tags",
+    "attachmentReference": "(attachment reference)",
+    "typeText": "Text",
+    "typeRichText": "Rich text",
+    "typeNumber": "Number",
+    "typeTags": "Tags"
+  },
+  "attachments": {
+    "heading": "Attachments"
+  },
+  "icon": {
+    "saveFirst": "Save the entity first to set an icon.",
+    "noIcon": "no icon"
+  },
+  "richText": {
+    "insertImage": "Insert image",
+    "saveFirstForImage": "Save the entity first to insert images",
+    "imageButton": "Image",
+    "bulletList": "• List",
+    "orderedList": "1. List"
+  },
+  "entityLink": {
+    "unknown": "unknown",
+    "brokenTitle": "Linked entity no longer exists",
+    "goTo": "Go to {{label}}",
+    "noMatches": "No matches"
+  },
+  "projectSettings": {
+    "heading": "Project settings",
+    "nameLabel": "Name",
+    "descriptionLabel": "Description",
+    "instructionsLabel": "Instructions for the assistant",
+    "instructionsPlaceholder": "E.g. \"Write NPC descriptions in the second person\", \"Always add a 'plot hook' field\", \"Keep a dark, gothic tone\".",
+    "instructionsHint": "Free-form notes on style, tone and format — blended into the assistant's and lore-generation system prompts for this project.",
+    "saveButton": "Save",
+    "saving": "Saving…",
+    "saved": "Saved."
+  },
+  "knowledge": {
+    "heading": "Project knowledge base",
+    "hint": "Upload reference documents (rulebooks, player's handbook, a setting overview — PDF, .txt, .md, .json, .csv, .yaml and other text formats). The assistant uses them when generating lore and can search them in chat, but they never become world canon.",
+    "uploadButton": "+ Upload document",
+    "uploading": "Uploading…",
+    "noDocuments": "No documents yet.",
+    "statusPending": "⏳ Queued",
+    "statusProcessing": "⏳ Processing",
+    "statusReady": "✅ Ready",
+    "statusFailed": "❌ Failed",
+    "chunksCount": "{{count}} chunks",
+    "deleteButton": "Delete"
+  },
+  "assistant": {
+    "stage": {
+      "assistant": "💭 Thinking…",
+      "tools": "📚 Reading lore…",
+      "begin_proposal": "🚧 Preparing draft…",
+      "retrieve_context": "🔎 Searching related lore…",
+      "check_duplicates_request": "🧭 Checking against existing lore…",
+      "generate_lore": "✍️ Writing world draft…",
+      "check_duplicates_draft": "🧭 Checking for duplicates…",
+      "verify_grounding": "✔️ Verifying facts…",
+      "commit": "💾 Writing to the world…",
+      "fallback": "⚙️ {{node}}…"
+    },
+    "status": {
+      "idle": "Chat",
+      "running": "Running…",
+      "awaiting_review": "Awaiting review",
+      "committed": "Committed",
+      "rejected": "Rejected",
+      "failed": "Failed"
+    },
+    "onboarding": {
+      "restartHeading": "Backend needs a restart",
+      "restartBody": "The running backend doesn't expose the AI Assistant API yet (the config endpoint returned 404). Restart it to pick up the new code:",
+      "setupHeading": "Set up the AI Assistant",
+      "setupBody1": "The assistant runs on your own LLM API key (BYOK) — your lore never leaves this machine except for the calls you make to your chosen provider. Current provider: {{provider}}.",
+      "setupBody2": "Create backend/.env with one of:",
+      "setupBody3": "Then restart the backend. The key is masked in all logs and errors."
+    },
+    "historyPlaceholder": "— conversation history —",
+    "newConversation": "New conversation",
+    "newConversationButton": "+ New",
+    "emptyInviteEmptyWorld": "Your world is empty. Describe it in a couple of sentences — the assistant will propose starting lore: locations, factions, characters and their connections. Nothing becomes canon without your approval. You can also just ask questions.",
+    "emptyInviteHasWorld": "Ask about the world, ask it to expand a part of it, or add new lore — the assistant answers grounded in existing canon and proposes drafts for review.",
+    "removeFileTitle": "Remove file",
+    "inputPlaceholderBlocked": "Finish reviewing the draft above first (approve / request changes / reject)",
+    "inputPlaceholderDefault": "Ask about the world or request new lore… (Enter to send)",
+    "anchorWholeWorld": "whole world",
+    "anchorTitle": "Context: which entity to build around",
+    "attachTitle": "Attach a file to this message (image, PDF, text)",
+    "sendButton": "Send",
+    "sending": "…",
+    "hintIsolatedText": "«{{title}}» is isolated — weave it in?",
+    "hintIsolatedInstruction": "Weave «{{title}}» into the world: figure out who and what connects to it, and add the missing entities and relationships.",
+    "review": {
+      "includeInCommitTitle": "Include in commit",
+      "newBadgeTitle": "Entirely new — not based on existing lore",
+      "tokensSuffix": "~{{count}} tokens for this draft",
+      "feedbackPlaceholder": "What should change? E.g. \"make the guild sinister, give it a secret leader\"",
+      "sendRevision": "Send for revision",
+      "approve_one": "Approve {{count}}",
+      "approve_other": "Approve {{count}}",
+      "requestChanges": "✏️ Request changes",
+      "reject": "Reject"
+    }
+  },
+  "warnings": {
+    "budget_exhausted": "Token budget for this run is exhausted — generation stopped early.",
+    "mentions_existing": "The request mentions existing entity «{{title}}» ({{type}}) — the draft should connect to it, not duplicate it.",
+    "duplicate_of_existing": "«{{title}}» duplicates existing entity «{{existing_title}}».",
+    "duplicate_in_batch": "The draft contains two near-identical titles: «{{title_a}}» and «{{title_b}}».",
+    "dropped_unknown_source": "Dropped a relationship from an unknown source ({{ref}}).",
+    "dropped_unknown_target": "Dropped a relationship to an unknown target ({{ref}}) — not a draft entity or retrieved lore.",
+    "uncited_lore_id": "The draft cites lore id {{id}} that was never retrieved — treat the related claim as unverified.",
+    "relationship_failed": "Relationship {{source}} → {{target}} failed: {{detail}}"
+  },
+  "events": {
+    "budget_exhausted_reply": "Token budget for this conversation is exhausted — start a new session to continue.",
+    "batch_committed": "Done — added {{count}} entities to the world ({{titles}}) and {{edges}} relationships.",
+    "batch_rejected": "Draft rejected — nothing was written to the world.",
+    "draft_failed": "Couldn't produce a draft:"
+  },
+  "errors": {
+    "project_not_found": "Project not found.",
+    "entity_not_found": "Entity not found.",
+    "edge_not_found": "Relationship not found.",
+    "attachment_not_found": "Attachment not found.",
+    "agent_session_not_found": "Conversation not found.",
+    "knowledge_source_not_found": "Document not found.",
+    "invalid_edge_reference": "That relationship points at an entity that no longer exists.",
+    "cross_project_edge": "Can't link entities that belong to different projects.",
+    "unsupported_export_format": "This export file's format isn't supported by this version.",
+    "invalid_icon_reference": "That attachment doesn't belong to this entity.",
+    "unsupported_attachment_type": "That file type isn't supported.",
+    "chat_attachment_limit_exceeded": "Too many or too large attachments for one message.",
+    "configuration": "The AI assistant isn't configured yet — set an API key in backend/.env and restart.",
+    "generation": "The AI model didn't return a usable result — try again.",
+    "awaiting_review_conflict": "A draft is awaiting review — approve, reject or request changes before sending new messages.",
+    "not_awaiting_review": "This conversation isn't waiting on a review decision.",
+    "timeout": "The assistant took too long to respond — try again."
+  }
+}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useEntities } from "../../hooks/useEntities";
 import { useCreateEdge } from "../../hooks/useEdgesForEntity";
@@ -6,6 +7,7 @@ import { useCreateEdge } from "../../hooks/useEdgesForEntity";
 const SUGGESTED_EDGE_TYPES = ["contains", "ally_of", "family_of", "enemy_of"];
 
 export function EdgeForm({ projectId, entityId }: { projectId: string; entityId: string }) {
+  const { t } = useTranslation();
   const { data: entities } = useEntities(projectId);
   const createEdge = useCreateEdge(projectId);
 
@@ -37,7 +39,7 @@ export function EdgeForm({ projectId, entityId }: { projectId: string; entityId:
   return (
     <div className="edge-form">
       <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-        <option value="">— link to entity —</option>
+        <option value="">{t("edges.linkToEntity")}</option>
         {otherEntities.map((e) => (
           <option key={e.id} value={e.id}>
             {e.title} ({e.type})
@@ -47,24 +49,24 @@ export function EdgeForm({ projectId, entityId }: { projectId: string; entityId:
 
       <input
         list="edge-type-suggestions"
-        placeholder="edge type (e.g. ally_of)"
+        placeholder={t("edges.edgeTypePlaceholder")}
         value={edgeType}
         onChange={(e) => setEdgeType(e.target.value)}
       />
       <datalist id="edge-type-suggestions">
-        {SUGGESTED_EDGE_TYPES.map((t) => (
-          <option key={t} value={t} />
+        {SUGGESTED_EDGE_TYPES.map((suggestion) => (
+          <option key={suggestion} value={suggestion} />
         ))}
       </datalist>
 
       <input
-        placeholder="reason / label (optional)"
+        placeholder={t("edges.reasonPlaceholder")}
         value={label}
         onChange={(e) => setLabel(e.target.value)}
       />
 
       <button type="button" onClick={handleSubmit} disabled={createEdge.isPending}>
-        Add relationship
+        {t("edges.addRelationship")}
       </button>
     </div>
   );

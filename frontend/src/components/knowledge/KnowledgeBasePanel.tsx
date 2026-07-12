@@ -1,5 +1,6 @@
 import type { ChangeEvent } from "react";
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { KnowledgeSource, KnowledgeSourceStatus } from "../../api/types";
 import {
@@ -7,13 +8,7 @@ import {
   useKnowledgeSources,
   useUploadKnowledgeSource,
 } from "../../hooks/useKnowledge";
-
-const STATUS_LABELS: Record<KnowledgeSourceStatus, string> = {
-  pending: "⏳ В очереди",
-  processing: "⏳ Обрабатывается",
-  ready: "✅ Готово",
-  failed: "❌ Ошибка",
-};
+import { translateApiError } from "../../i18n/eventText";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -26,6 +21,7 @@ function formatSize(bytes: number): string {
  * search_knowledge_base chat tool. Separate from the world-canon entity
  * graph on purpose — see services/knowledge_index.py. */
 export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const { data: sources, isLoading } = useKnowledgeSources(projectId);
   const upload = useUploadKnowledgeSource(projectId);
   const remove = useDeleteKnowledgeSource(projectId);
@@ -39,20 +35,15 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
 
   return (
     <div className="knowledge-base-panel">
-      <h2>База знаний проекта</h2>
-      <p className="field-hint">
-        Загрузи справочные документы (правила, книга игрока, краткое описание
-        вселенной — PDF, .txt, .md, .json, .csv, .yaml и другие текстовые
-        форматы). Ассистент использует их при генерации лора и может искать
-        по ним в чате, но они не становятся каноном мира.
-      </p>
+      <h2>{t("knowledge.heading")}</h2>
+      <p className="field-hint">{t("knowledge.hint")}</p>
 
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={upload.isPending}
       >
-        {upload.isPending ? "Загружаю…" : "+ Загрузить документ"}
+        {upload.isPending ? t("knowledge.uploading") : t("knowledge.uploadButton")}
       </button>
       <input
         ref={fileInputRef}
@@ -62,13 +53,11 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
         style={{ display: "none" }}
       />
       {upload.isError && (
-        <p className="error-text">{(upload.error as Error).message}</p>
+        <p className="error-text">{translateApiError(upload.error, t)}</p>
       )}
 
-      {isLoading && <p>Loading...</p>}
-      {sources?.length === 0 && (
-        <p className="field-hint">Документов пока нет.</p>
-      )}
+      {isLoading && <p>{t("common.loading")}</p>}
+      {sources?.length === 0 && <p className="field-hint">{t("knowledge.noDocuments")}</p>}
 
       <ul className="knowledge-source-list">
         {sources?.map((source) => (
@@ -90,15 +79,23 @@ function KnowledgeSourceRow({
   source: KnowledgeSource;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation();
+  const statusLabels: Record<KnowledgeSourceStatus, string> = {
+    pending: t("knowledge.statusPending"),
+    processing: t("knowledge.statusProcessing"),
+    ready: t("knowledge.statusReady"),
+    failed: t("knowledge.statusFailed"),
+  };
+
   return (
     <li className="knowledge-source-row">
       <span className="knowledge-source-name">{source.original_filename}</span>
-      <span className="knowledge-source-status">
-        {STATUS_LABELS[source.status]}
-      </span>
+      <span className="knowledge-source-status">{statusLabels[source.status]}</span>
       <span className="field-hint">{formatSize(source.size_bytes)}</span>
       {source.status === "ready" && (
-        <span className="field-hint">{source.chunk_count} чанков</span>
+        <span className="field-hint">
+          {t("knowledge.chunksCount", { count: source.chunk_count })}
+        </span>
       )}
       {source.status === "failed" && source.error && (
         <span className="error-text" title={source.error}>
@@ -106,7 +103,7 @@ function KnowledgeSourceRow({
         </span>
       )}
       <button type="button" className="button-danger" onClick={onRemove}>
-        Удалить
+        {t("knowledge.deleteButton")}
       </button>
     </li>
   );

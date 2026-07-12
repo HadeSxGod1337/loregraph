@@ -12,6 +12,7 @@ import StarterKit from "@tiptap/starter-kit";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 import { useQuery } from "@tanstack/react-query";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMatch } from "react-router-dom";
 
 import { entitiesApi } from "../../api/entities";
@@ -30,6 +31,7 @@ interface EntityLinkAttrs {
  * label goes stale the moment the target is renamed); the stored label is
  * only the fallback for deleted targets, rendered as a broken link. */
 function EntityLinkChip({ node }: NodeViewProps) {
+  const { t } = useTranslation();
   const match = useMatch("/projects/:projectId/*");
   const projectId = match?.params.projectId;
   const navigateToEntity = useEntityNavigation();
@@ -43,7 +45,7 @@ function EntityLinkChip({ node }: NodeViewProps) {
 
   const entity = entities?.find((e) => e.id === attrs.entityId);
   const broken = entities !== undefined && entity === undefined;
-  const label = entity?.title ?? attrs.label ?? "unknown";
+  const label = entity?.title ?? attrs.label ?? t("entityLink.unknown");
 
   return (
     <NodeViewWrapper as="span" className="entity-link-wrapper">
@@ -51,7 +53,7 @@ function EntityLinkChip({ node }: NodeViewProps) {
         type="button"
         className={broken ? "entity-link-chip broken" : "entity-link-chip"}
         disabled={broken}
-        title={broken ? "Linked entity no longer exists" : `Go to ${label}`}
+        title={broken ? t("entityLink.brokenTitle") : t("entityLink.goTo", { label })}
         onClick={() => navigateToEntity(attrs.entityId)}
       >
         {label}
@@ -103,6 +105,7 @@ interface SuggestionListProps {
 
 const SuggestionList = forwardRef<SuggestionListHandle, SuggestionListProps>(
   function SuggestionList({ items, command }, ref) {
+    const { t } = useTranslation();
     const [selectedIndex, setSelectedIndex] = useState(0);
 
     useEffect(() => setSelectedIndex(0), [items]);
@@ -134,7 +137,7 @@ const SuggestionList = forwardRef<SuggestionListHandle, SuggestionListProps>(
     }));
 
     if (items.length === 0) {
-      return <div className="entity-link-suggestions-empty">No matches</div>;
+      return <div className="entity-link-suggestions-empty">{t("entityLink.noMatches")}</div>;
     }
     return (
       <ul className="entity-link-suggestions-list">

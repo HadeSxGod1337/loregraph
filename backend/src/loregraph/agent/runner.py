@@ -10,7 +10,7 @@ from langgraph.types import Command
 
 from loregraph.agent.multimodal import build_message_content
 from loregraph.agent.state import AgentState
-from loregraph.exceptions import AgentSessionNotFoundError
+from loregraph.exceptions import AgentSessionNotFoundError, error_code
 from loregraph.schemas.agent import (
     AgentMessageOut,
     AgentResumeRequest,
@@ -68,7 +68,18 @@ def transcript(state: AgentState) -> list[AgentMessageOut]:
         elif isinstance(message, AIMessage):
             text = _message_text(message)
             if text.strip():
-                out.append(AgentMessageOut(role="assistant", text=text))
+                # Deterministic, backend-composed messages (see
+                # agent/events.py) carry an event marker the UI prefers over
+                # the literal English `text` for rendering.
+                event = message.additional_kwargs.get("event")
+                out.append(
+                    AgentMessageOut(
+                        role="assistant",
+                        text=text,
+                        event_code=event.get("code") if event else None,
+                        event_params=event.get("params", {}) if event else {},
+                    )
+                )
     return out
 
 
@@ -96,8 +107,12 @@ class AgentRunner:
         if session.status == "awaiting_review":
             # A plain dict input on an interrupted thread would just re-fire
             # the interrupt and swallow the message — refuse loudly instead.
+            # Defense in depth: the router's _message_guard dependency
+            # already blocks this before the stream even opens; this only
+            # fires on a race between that check and this one.
             yield {
                 "type": "error",
+                "code": "awaiting_review_conflict",
                 "detail": "A draft is awaiting review — approve, reject or "
                 "request changes before sending new messages.",
             }
@@ -129,7 +144,13 @@ class AgentRunner:
     ) -> AsyncIterator[AgentEvent]:
         session = await self._require(project_id, thread_id)
         if session.status != "awaiting_review":
-            yield {"type": "error", "detail": "Session is not awaiting review."}
+            # Defense in depth: the router's _review_guard dependency already
+            # blocks this; see the matching comment in stream_message.
+            yield {
+                "type": "error",
+                "code": "not_awaiting_review",
+                "detail": "Session is not awaiting review.",
+            }
             return
         command: Command[Any] = Command(resume=decision.model_dump(mode="json"))
         async for event in self._stream_turn(thread_id, command):
@@ -181,13 +202,14 @@ class AgentRunner:
             await self._sessions.update(thread_id, status="failed")
             yield {
                 "type": "error",
+                "code": "timeout",
                 "detail": f"Agent run timed out after {AGENT_RUN_TIMEOUT_SECONDS}s",
             }
             return
         except Exception as exc:
             await self._sessions.update(thread_id, status="failed")
             logger.error("Agent turn failed", exc_info=True)
-            yield {"type": "error", "detail": str(exc)}
+            yield {"type": "error", "code": error_code(exc), "detail": str(exc)}
             return
 
         session = await self._finalize(thread_id)

@@ -1,4 +1,5 @@
 import type { ChangeEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 import { API_URL } from "../../api/client";
 import {
@@ -8,6 +9,7 @@ import {
 } from "../../hooks/useAttachments";
 
 export function AttachmentUploader({ entityId }: { entityId: string }) {
+  const { t } = useTranslation();
   const { data: attachments } = useAttachments(entityId);
   const upload = useUploadAttachment(entityId);
   const remove = useDeleteAttachment(entityId);
@@ -22,9 +24,9 @@ export function AttachmentUploader({ entityId }: { entityId: string }) {
 
   return (
     <div className="attachment-uploader">
-      <h3>Attachments</h3>
+      <h3>{t("attachments.heading")}</h3>
       <input type="file" accept="image/*" onChange={handleFileChange} />
-      {upload.isPending && <p>Uploading...</p>}
+      {upload.isPending && <p>{t("common.uploading")}</p>}
 
       <div className="attachment-gallery">
         {attachments?.map((attachment) => (
@@ -35,7 +37,7 @@ export function AttachmentUploader({ entityId }: { entityId: string }) {
               className="button-danger"
               onClick={() => remove.mutate(attachment.id)}
             >
-              Remove
+              {t("common.remove")}
             </button>
           </div>
         ))}

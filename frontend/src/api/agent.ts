@@ -29,9 +29,18 @@ export interface LoreDraft {
   relationships: DraftRelationship[];
 }
 
+/** Mirrors backend schemas/agent.py AgentWarning — a structured,
+ * machine-translatable warning. `code === "llm_text"` is the one exception:
+ * free text from an LLM judge, already in the conversation's language,
+ * carried in `params.text` and rendered as-is (see i18n/eventText.ts). */
+export interface AgentWarning {
+  code: string;
+  params: Record<string, string>;
+}
+
 export interface AgentReviewPayload {
   draft: LoreDraft | null;
-  warnings: string[];
+  warnings: AgentWarning[];
   input_tokens: number;
   output_tokens: number;
 }
@@ -61,6 +70,10 @@ export interface AgentChatMessage {
   role: "user" | "assistant";
   text: string;
   attachments: string[];
+  // Set only for deterministic, backend-composed messages (commit acks,
+  // budget notices) — see i18n/eventText.ts for how these render.
+  event_code?: string | null;
+  event_params?: Record<string, string>;
 }
 
 /** One file attached to a single chat turn — NOT the project's knowledge
@@ -93,7 +106,7 @@ export type AgentEvent =
   | { type: "token"; text: string }
   | { type: "review"; payload: AgentReviewPayload }
   | { type: "done"; session: AgentSession }
-  | { type: "error"; detail: string };
+  | { type: "error"; code?: string; detail: string };
 
 /** POST an SSE endpoint and feed parsed events to the callback. EventSource
  * can't POST, so this reads the fetch body stream directly. */
@@ -109,15 +122,18 @@ export async function streamAgentTurn(
   });
   if (!response.ok || !response.body) {
     let detail = response.statusText;
+    let code: string | undefined;
     try {
-      const errorBody = (await response.json()) as { detail?: string };
+      const errorBody = (await response.json()) as { detail?: string; code?: string };
       detail = errorBody.detail ?? detail;
+      code = errorBody.code;
     } catch {
       // no JSON body
     }
     throw new ApiError(
       response.status,
       `${detail} (POST ${path} → HTTP ${response.status})`,
+      code,
     );
   }
   const reader = response.body.getReader();

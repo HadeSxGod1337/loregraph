@@ -3,7 +3,7 @@ from typing import Any
 from loregraph.agent.state import NO_LORE_SENTINEL, AgentState
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.prompts import render
-from loregraph.schemas.agent import GroundingReport, LoreDraft
+from loregraph.schemas.agent import AgentWarning, GroundingReport, LoreDraft
 
 
 async def verify_grounding(
@@ -16,7 +16,7 @@ async def verify_grounding(
     check against and budget left. Warnings never block — the DM sees them."""
     if state.draft is None:
         return {}
-    warnings: list[str] = []
+    warnings: list[AgentWarning] = []
     draft = state.draft
 
     # -- Deterministic: relationship endpoints.
@@ -26,14 +26,17 @@ async def verify_grounding(
     for relationship in draft.relationships:
         if relationship.source_ref not in refs:
             warnings.append(
-                f"Dropped relationship from unknown ref "
-                f"{relationship.source_ref!r} — sources must be draft entities."
+                AgentWarning(
+                    code="dropped_unknown_source",
+                    params={"ref": relationship.source_ref},
+                )
             )
         elif relationship.target_ref not in allowed_targets:
             warnings.append(
-                f"Dropped relationship to unknown target "
-                f"{relationship.target_ref!r} — the model must only link to "
-                f"draft entities or retrieved lore."
+                AgentWarning(
+                    code="dropped_unknown_target",
+                    params={"ref": relationship.target_ref},
+                )
             )
         else:
             kept.append(relationship)
@@ -48,14 +51,14 @@ async def verify_grounding(
     for relationship in draft.relationships:
         claimed.update(relationship.grounded_in)
     warnings.extend(
-        f"Draft cites lore id {bad_id!r} that was never retrieved — "
-        f"treat the related claims as unverified."
+        AgentWarning(code="uncited_lore_id", params={"id": bad_id})
         for bad_id in sorted(claimed - allowed_citations)
     )
 
     update: dict[str, Any] = {"draft": draft}
 
-    # -- LLM-as-judge, narrowly scoped to grounding.
+    # -- LLM-as-judge, narrowly scoped to grounding. Free text in the lore's
+    # language — not backend UI copy, wrapped as-is (code="llm_text").
     if state.existing_lore != NO_LORE_SENTINEL and not state.over_budget(token_budget):
         result = await extraction.generate(
             GroundingReport,
@@ -66,7 +69,10 @@ async def verify_grounding(
                 draft=draft.model_dump_json(indent=2),
             ),
         )
-        warnings.extend(result.value.warnings)
+        warnings.extend(
+            AgentWarning(code="llm_text", params={"text": text})
+            for text in result.value.warnings
+        )
         update["input_tokens"] = state.input_tokens + result.input_tokens
         update["output_tokens"] = state.output_tokens + result.output_tokens
 

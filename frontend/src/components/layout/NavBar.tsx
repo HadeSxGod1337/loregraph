@@ -1,9 +1,12 @@
+import { useTranslation } from "react-i18next";
 import { Link, NavLink, useMatch } from "react-router-dom";
 
 import { useProject } from "../../hooks/useProjects";
+import { LanguagePicker } from "./LanguagePicker";
 import { ThemePicker } from "./ThemePicker";
 
 export function NavBar() {
+  const { t } = useTranslation();
   const match = useMatch("/projects/:projectId/*");
   const projectId = match?.params.projectId;
   const { data: project } = useProject(projectId);
@@ -16,20 +19,27 @@ export function NavBar() {
       {projectId && (
         <>
           <Link to="/" className="navbar-project-back">
-            ← All projects
+            {t("nav.allProjects")}
           </Link>
           {project && <span className="navbar-project-name">{project.name}</span>}
           <div className="navbar-links">
             <NavLink to={`/projects/${projectId}/entities`} end>
-              Entities
+              {t("nav.entities")}
             </NavLink>
-            <NavLink to={`/projects/${projectId}/graph`}>Graph</NavLink>
-            <NavLink to={`/projects/${projectId}/assistant`}>AI Assistant</NavLink>
-            <NavLink to={`/projects/${projectId}/settings`}>⚙ Настройки</NavLink>
+            <NavLink to={`/projects/${projectId}/graph`}>{t("nav.graph")}</NavLink>
+            <NavLink to={`/projects/${projectId}/assistant`}>
+              {t("nav.assistant")}
+            </NavLink>
+            <NavLink to={`/projects/${projectId}/settings`}>
+              {t("nav.settings")}
+            </NavLink>
           </div>
         </>
       )}
-      <ThemePicker />
+      <div className="navbar-controls">
+        <LanguagePicker />
+        <ThemePicker />
+      </div>
     </nav>
   );
 }

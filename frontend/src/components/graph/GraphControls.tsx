@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import type { Entity } from "../../api/types";
 
 interface GraphControlsProps {
@@ -19,12 +21,13 @@ export function GraphControls({
   onDepthChange,
   onEdgeTypesInputChange,
 }: GraphControlsProps) {
+  const { t } = useTranslation();
   return (
     <div className="graph-controls">
       <label>
-        Root entity
+        {t("graph.rootEntity")}
         <select value={rootId} onChange={(e) => onRootChange(e.target.value)}>
-          <option value="">— select —</option>
+          <option value="">{t("graph.selectPlaceholder")}</option>
           {entities.map((e) => (
             <option key={e.id} value={e.id}>
               {e.title} ({e.type})
@@ -34,7 +37,7 @@ export function GraphControls({
       </label>
 
       <label>
-        Depth
+        {t("graph.depth")}
         <input
           type="number"
           min={0}
@@ -45,9 +48,9 @@ export function GraphControls({
       </label>
 
       <label>
-        Edge types (comma-separated, empty = all)
+        {t("graph.edgeTypesLabel")}
         <input
-          placeholder="ally_of, family_of"
+          placeholder={t("graph.edgeTypesPlaceholder")}
           value={edgeTypesInput}
           onChange={(e) => onEdgeTypesInputChange(e.target.value)}
         />

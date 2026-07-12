@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { API_URL } from "../../api/client";
@@ -24,6 +25,7 @@ export function EntityDetailPanel({
   onClose,
   onNavigate,
 }: EntityDetailPanelProps) {
+  const { t } = useTranslation();
   const { data: entity } = useEntity(projectId, entityId ?? undefined);
   const { data: edges } = useEdgesForEntity(projectId, entityId ?? undefined);
   const { data: entities } = useEntities(projectId);
@@ -58,6 +60,19 @@ export function EntityDetailPanel({
     setMode("view");
   }
 
+  function renderFieldPreview(field: EntityField): string {
+    switch (field.field_type) {
+      case "tag":
+        return (field.value as string[]).join(", ") || t("entityDetail.emptyValue");
+      case "attachment":
+        return t("entityDetail.attachmentPreview");
+      case "rich_text":
+        return ""; // rendered via RichTextView instead, see the field-line branch above
+      default:
+        return String(field.value);
+    }
+  }
+
   return (
       <div className="panel open">
         <div className="panel-head">
@@ -78,8 +93,10 @@ export function EntityDetailPanel({
           {mode === "view" ? (
             <>
               <div className="panel-section">
-                <h3>Fields</h3>
-                {fields.length === 0 && <p className="field-line">No fields yet.</p>}
+                <h3>{t("entityDetail.fields")}</h3>
+                {fields.length === 0 && (
+                  <p className="field-line">{t("entityDetail.noFields")}</p>
+                )}
                 {fields.map((f) => (
                   <div className="field-line" key={f.key}>
                     <span className="k">{f.key}</span>
@@ -95,8 +112,10 @@ export function EntityDetailPanel({
               </div>
 
               <div className="panel-section">
-                <h3>Relationships</h3>
-                {edges?.length === 0 && <p className="field-line">No relationships yet.</p>}
+                <h3>{t("entityDetail.relationships")}</h3>
+                {edges?.length === 0 && (
+                  <p className="field-line">{t("entityDetail.noRelationships")}</p>
+                )}
                 {edges?.map((edge) => {
                   const isOutgoing = edge.source_entity_id === entityId;
                   const otherId = isOutgoing ? edge.target_entity_id : edge.source_entity_id;
@@ -118,16 +137,16 @@ export function EntityDetailPanel({
           ) : (
             <>
               <div className="panel-section">
-                <h3>Icon</h3>
+                <h3>{t("entityDetail.icon")}</h3>
                 <IconPicker projectId={projectId} entityId={entityId} icon={entity.icon} />
               </div>
               <div className="panel-section">
-                <h3>Title &amp; type</h3>
+                <h3>{t("entityDetail.titleAndType")}</h3>
                 <input value={title} onChange={(e) => setTitle(e.target.value)} />
                 <input value={type} onChange={(e) => setType(e.target.value)} />
               </div>
               <div className="panel-section">
-                <h3>Fields</h3>
+                <h3>{t("entityDetail.fields")}</h3>
                 <FieldEditor fields={fields} entityId={entityId} onChange={setFields} />
               </div>
               <div className="panel-section">
@@ -140,28 +159,17 @@ export function EntityDetailPanel({
         <div className="panel-actions">
           {mode === "view" ? (
             <button type="button" onClick={() => setMode("edit")}>
-              Edit
+              {t("common.edit")}
             </button>
           ) : (
             <button type="button" onClick={handleSave} disabled={!title}>
-              Save
+              {t("common.save")}
             </button>
           )}
-          <Link to={`/projects/${projectId}/entities/${entityId}`}>Open full editor →</Link>
+          <Link to={`/projects/${projectId}/entities/${entityId}`}>
+            {t("entityDetail.openFullEditor")}
+          </Link>
         </div>
       </div>
   );
-}
-
-function renderFieldPreview(field: EntityField): string {
-  switch (field.field_type) {
-    case "tag":
-      return (field.value as string[]).join(", ") || "—";
-    case "attachment":
-      return "(attachment)";
-    case "rich_text":
-      return ""; // rendered via RichTextView instead, see the field-line branch above
-    default:
-      return String(field.value);
-  }
 }

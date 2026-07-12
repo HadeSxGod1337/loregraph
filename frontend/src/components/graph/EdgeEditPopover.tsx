@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { Edge } from "../../api/types";
 import { useDeleteEdge, useUpdateEdge } from "../../hooks/useEdgesForEntity";
@@ -12,6 +13,7 @@ interface EdgeEditPopoverProps {
 }
 
 export function EdgeEditPopover({ projectId, edge, onDone }: EdgeEditPopoverProps) {
+  const { t } = useTranslation();
   const updateEdge = useUpdateEdge(projectId);
   const deleteEdge = useDeleteEdge(projectId);
   const [edgeType, setEdgeType] = useState(edge.type);
@@ -31,7 +33,7 @@ export function EdgeEditPopover({ projectId, edge, onDone }: EdgeEditPopoverProp
 
   return (
     <div className="edge-popover">
-      <h3>Edit relationship</h3>
+      <h3>{t("edges.editRelationship")}</h3>
       <input
         list="edge-type-suggestions"
         value={edgeType}
@@ -39,24 +41,24 @@ export function EdgeEditPopover({ projectId, edge, onDone }: EdgeEditPopoverProp
         autoFocus
       />
       <datalist id="edge-type-suggestions">
-        {SUGGESTED_EDGE_TYPES.map((t) => (
-          <option key={t} value={t} />
+        {SUGGESTED_EDGE_TYPES.map((suggestion) => (
+          <option key={suggestion} value={suggestion} />
         ))}
       </datalist>
       <input
-        placeholder="reason / label (optional)"
+        placeholder={t("edges.reasonPlaceholder")}
         value={label}
         onChange={(e) => setLabel(e.target.value)}
       />
       <div className="edge-popover-actions">
         <button type="button" onClick={handleSave} disabled={!edgeType || updateEdge.isPending}>
-          Save
+          {t("common.save")}
         </button>
         <button type="button" className="button-danger" onClick={handleDelete} disabled={deleteEdge.isPending}>
-          Delete
+          {t("common.delete")}
         </button>
         <button type="button" onClick={onDone}>
-          Cancel
+          {t("common.cancel")}
         </button>
       </div>
     </div>

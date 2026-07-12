@@ -1,5 +1,6 @@
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
 import { useMemo, useRef, type ChangeEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { useMatch } from "react-router-dom";
 
 import { API_URL } from "../../api/client";
@@ -33,6 +34,7 @@ function ToolbarButton({ label, isActive, onClick }: ToolbarButtonProps) {
 }
 
 export function RichTextField({ value, onChange, entityId }: RichTextFieldProps) {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadAttachment(entityId ?? "");
   const match = useMatch("/projects/:projectId/*");
@@ -80,12 +82,12 @@ export function RichTextField({ value, onChange, entityId }: RichTextFieldProps)
         />
         <span className="rich-text-toolbar-divider" />
         <ToolbarButton
-          label="• List"
+          label={t("richText.bulletList")}
           isActive={editor.isActive("bulletList")}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         />
         <ToolbarButton
-          label="1. List"
+          label={t("richText.orderedList")}
           isActive={editor.isActive("orderedList")}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         />
@@ -95,9 +97,9 @@ export function RichTextField({ value, onChange, entityId }: RichTextFieldProps)
           className="rich-text-toolbar-btn"
           disabled={!entityId || upload.isPending}
           onClick={() => fileInputRef.current?.click()}
-          title={entityId ? "Insert image" : "Save the entity first to insert images"}
+          title={entityId ? t("richText.insertImage") : t("richText.saveFirstForImage")}
         >
-          Image
+          {t("richText.imageButton")}
         </button>
         <input
           ref={fileInputRef}

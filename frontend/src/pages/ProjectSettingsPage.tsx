@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import { KnowledgeBasePanel } from "../components/knowledge/KnowledgeBasePanel";
 import { useProject, useUpdateProject } from "../hooks/useProjects";
+import { translateApiError } from "../i18n/eventText";
 
 /** Project-level agent setup: DM style/format preferences that get blended
  * into every system prompt (assistant chat + lore generation). The project's
  * knowledge base (uploaded reference documents) lives on this same page. */
 export function ProjectSettingsPage() {
+  const { t } = useTranslation();
   const { projectId } = useParams<{ projectId: string }>();
   const { data: project, isLoading } = useProject(projectId);
   const updateProject = useUpdateProject(projectId!);
@@ -33,19 +36,19 @@ export function ProjectSettingsPage() {
     });
   }
 
-  if (isLoading || !project) return <p>Loading...</p>;
+  if (isLoading || !project) return <p>{t("common.loading")}</p>;
 
   return (
     <div className="project-settings-page">
-      <h1>Настройки проекта</h1>
+      <h1>{t("projectSettings.heading")}</h1>
 
       <label>
-        Название
+        {t("projectSettings.nameLabel")}
         <input value={name} onChange={(e) => setName(e.target.value)} />
       </label>
 
       <label>
-        Описание
+        {t("projectSettings.descriptionLabel")}
         <input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -53,28 +56,26 @@ export function ProjectSettingsPage() {
       </label>
 
       <label>
-        Инструкции для ассистента
+        {t("projectSettings.instructionsLabel")}
         <textarea
           rows={6}
-          placeholder={
-            'Например: «Пиши описания NPC от второго лица», «Всегда добавляй ' +
-            'поле "крючок сюжета"», «Придерживайся мрачного, готического тона».'
-          }
+          placeholder={t("projectSettings.instructionsPlaceholder")}
           value={agentInstructions}
           onChange={(e) => setAgentInstructions(e.target.value)}
         />
-        <span className="field-hint">
-          Свободный текст о стиле, тоне и формате — подмешивается в системный
-          промпт ассистента и генерации лора для этого проекта.
-        </span>
+        <span className="field-hint">{t("projectSettings.instructionsHint")}</span>
       </label>
 
       <button type="button" disabled={!name.trim()} onClick={handleSave}>
-        {updateProject.isPending ? "Сохраняю…" : "Сохранить"}
+        {updateProject.isPending
+          ? t("projectSettings.saving")
+          : t("projectSettings.saveButton")}
       </button>
-      {updateProject.isSuccess && <span className="field-hint">Сохранено.</span>}
+      {updateProject.isSuccess && (
+        <span className="field-hint">{t("projectSettings.saved")}</span>
+      )}
       {updateProject.isError && (
-        <p className="error-text">{(updateProject.error as Error).message}</p>
+        <p className="error-text">{translateApiError(updateProject.error, t)}</p>
       )}
 
       <KnowledgeBasePanel projectId={projectId!} />

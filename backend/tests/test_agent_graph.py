@@ -253,7 +253,10 @@ async def test_reject_commits_nothing_and_acks(db_session: AsyncSession) -> None
     assert await SqliteEntityStore(db_session).list_entities(project.id) == []
     state = await state_of(graph)
     assert state.committed_entity_ids == []
-    assert "отклон" in str(state.messages[-1].content).lower()
+    last_message = state.messages[-1]
+    assert (
+        last_message.additional_kwargs.get("event", {}).get("code") == "batch_rejected"
+    )
 
 
 @pytest.mark.asyncio
@@ -290,7 +293,7 @@ async def test_budget_exhaustion_mid_retry_reaches_review(
     assert any(task.interrupts for task in snapshot.tasks)  # reached review
     state = await state_of(graph)
     assert state.retry_feedback == ""
-    assert any("budget" in warning.lower() for warning in state.warnings)
+    assert any(warning.code == "budget_exhausted" for warning in state.warnings)
 
 
 @pytest.mark.asyncio

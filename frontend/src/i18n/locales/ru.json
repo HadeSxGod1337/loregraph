@@ -1,0 +1,238 @@
+{
+  "common": {
+    "loading": "Загрузка...",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "remove": "Удалить",
+    "create": "Создать",
+    "edit": "Изменить",
+    "replace": "Заменить",
+    "upload": "Загрузить",
+    "uploading": "Загрузка..."
+  },
+  "nav": {
+    "allProjects": "← Все проекты",
+    "entities": "Сущности",
+    "graph": "Граф",
+    "assistant": "AI-ассистент",
+    "settings": "⚙ Настройки"
+  },
+  "theme": {
+    "light": "Светлая",
+    "dark": "Тёмная",
+    "system": "Системная"
+  },
+  "projects": {
+    "title": "Проекты",
+    "importProject": "Импортировать проект",
+    "noProjects": "Пока нет проектов. Создайте первый.",
+    "newProjectHeading": "+ Новый проект",
+    "namePlaceholder": "Название",
+    "descriptionPlaceholder": "Описание (необязательно)",
+    "createButton": "Создать",
+    "exportButton": "Экспорт",
+    "deleteConfirmPlaceholder": "Введите «{{name}}» для подтверждения",
+    "confirmDeleteButton": "Подтвердить удаление",
+    "deleteButton": "Удалить"
+  },
+  "entities": {
+    "title": "Сущности",
+    "newEntity": "+ Новая сущность",
+    "filterPlaceholder": "Фильтр по типу (например, npc)",
+    "noEntities": "Пока нет сущностей. Создайте первую."
+  },
+  "entityEdit": {
+    "newTitle": "Новая сущность",
+    "editTitle": "Редактирование сущности",
+    "typeLabel": "Тип",
+    "titleLabel": "Название",
+    "iconLabel": "Иконка",
+    "otherFiles": "Прочие файлы"
+  },
+  "entityDetail": {
+    "fields": "Поля",
+    "noFields": "Полей пока нет.",
+    "relationships": "Связи",
+    "noRelationships": "Связей пока нет.",
+    "icon": "Иконка",
+    "titleAndType": "Название и тип",
+    "openFullEditor": "Открыть в редакторе →",
+    "attachmentPreview": "(вложение)",
+    "emptyValue": "—"
+  },
+  "graph": {
+    "pickRoot": "Выберите корневую сущность, чтобы увидеть её окружение.",
+    "emptyWorld": "Ваш мир пуст — опишите его в панели ассистента и просмотрите предложенный стартовый лор.",
+    "rootEntity": "Корневая сущность",
+    "selectPlaceholder": "— выбрать —",
+    "depth": "Глубина",
+    "edgeTypesLabel": "Типы связей (через запятую, пусто = все)",
+    "edgeTypesPlaceholder": "ally_of, family_of",
+    "closeAssistant": "Закрыть ассистента",
+    "openAssistant": "✨ AI-ассистент"
+  },
+  "edges": {
+    "linkToEntity": "— связать с сущностью —",
+    "edgeTypePlaceholder": "тип связи (например, ally_of)",
+    "reasonPlaceholder": "причина / подпись (необязательно)",
+    "addRelationship": "Добавить связь",
+    "newRelationship": "Новая связь",
+    "editRelationship": "Редактирование связи",
+    "removeTitle": "Удалить эту связь",
+    "noRelationships": "Связей пока нет.",
+    "relationshipsHeading": "Связи"
+  },
+  "fields": {
+    "namePlaceholder": "название поля",
+    "showOnCard": "на карточке",
+    "showOnCardTitle": "Показывать это поле на карточке графа",
+    "removeTitle": "Удалить это поле",
+    "tagsPlaceholder": "теги, через запятую",
+    "attachmentReference": "(ссылка на вложение)",
+    "typeText": "Текст",
+    "typeRichText": "Форматированный текст",
+    "typeNumber": "Число",
+    "typeTags": "Теги"
+  },
+  "attachments": {
+    "heading": "Вложения"
+  },
+  "icon": {
+    "saveFirst": "Сначала сохраните сущность, чтобы задать иконку.",
+    "noIcon": "нет иконки"
+  },
+  "richText": {
+    "insertImage": "Вставить изображение",
+    "saveFirstForImage": "Сначала сохраните сущность, чтобы вставлять изображения",
+    "imageButton": "Изображение",
+    "bulletList": "• Список",
+    "orderedList": "1. Список"
+  },
+  "entityLink": {
+    "unknown": "неизвестно",
+    "brokenTitle": "Связанная сущность больше не существует",
+    "goTo": "Перейти к «{{label}}»",
+    "noMatches": "Совпадений нет"
+  },
+  "projectSettings": {
+    "heading": "Настройки проекта",
+    "nameLabel": "Название",
+    "descriptionLabel": "Описание",
+    "instructionsLabel": "Инструкции для ассистента",
+    "instructionsPlaceholder": "Например: «Пиши описания NPC от второго лица», «Всегда добавляй поле „крючок сюжета“», «Придерживайся мрачного, готического тона».",
+    "instructionsHint": "Свободный текст о стиле, тоне и формате — подмешивается в системный промпт ассистента и генерации лора для этого проекта.",
+    "saveButton": "Сохранить",
+    "saving": "Сохраняю…",
+    "saved": "Сохранено."
+  },
+  "knowledge": {
+    "heading": "База знаний проекта",
+    "hint": "Загрузите справочные документы (правила, книга игрока, краткое описание вселенной — PDF, .txt, .md, .json, .csv, .yaml и другие текстовые форматы). Ассистент использует их при генерации лора и может искать по ним в чате, но они не становятся каноном мира.",
+    "uploadButton": "+ Загрузить документ",
+    "uploading": "Загружаю…",
+    "noDocuments": "Документов пока нет.",
+    "statusPending": "⏳ В очереди",
+    "statusProcessing": "⏳ Обрабатывается",
+    "statusReady": "✅ Готово",
+    "statusFailed": "❌ Ошибка",
+    "chunksCount_one": "{{count}} чанк",
+    "chunksCount_few": "{{count}} чанка",
+    "chunksCount_many": "{{count}} чанков",
+    "chunksCount_other": "{{count}} чанка",
+    "deleteButton": "Удалить"
+  },
+  "assistant": {
+    "stage": {
+      "assistant": "💭 Думаю…",
+      "tools": "📚 Читаю лор…",
+      "begin_proposal": "🚧 Готовлю черновик…",
+      "retrieve_context": "🔎 Ищу связанный лор…",
+      "check_duplicates_request": "🧭 Сверяю с существующим…",
+      "generate_lore": "✍️ Пишу черновик мира…",
+      "check_duplicates_draft": "🧭 Проверяю дубликаты…",
+      "verify_grounding": "✔️ Проверяю факты…",
+      "commit": "💾 Записываю в мир…",
+      "fallback": "⚙️ {{node}}…"
+    },
+    "status": {
+      "idle": "Чат",
+      "running": "Выполняется…",
+      "awaiting_review": "Ждёт ревью",
+      "committed": "Принято",
+      "rejected": "Отклонено",
+      "failed": "Ошибка"
+    },
+    "onboarding": {
+      "restartHeading": "Нужно перезапустить бэкенд",
+      "restartBody": "Запущенный бэкенд ещё не отдаёт API AI-ассистента (эндпоинт конфигурации вернул 404). Перезапустите его, чтобы подхватить новый код:",
+      "setupHeading": "Настройка AI-ассистента",
+      "setupBody1": "Ассистент работает на вашем собственном API-ключе LLM (BYOK) — ваш лор не покидает эту машину, кроме вызовов к выбранному провайдеру. Текущий провайдер: {{provider}}.",
+      "setupBody2": "Создайте backend/.env с одним из вариантов:",
+      "setupBody3": "Затем перезапустите бэкенд. Ключ маскируется во всех логах и ошибках."
+    },
+    "historyPlaceholder": "— история разговоров —",
+    "newConversation": "Новый разговор",
+    "newConversationButton": "+ Новый",
+    "emptyInviteEmptyWorld": "Мир пуст. Опиши его парой предложений — ассистент предложит стартовый лор: локации, фракции, персонажей и связи. Ничего не попадёт в канон без твоего подтверждения. Можно и просто задавать вопросы.",
+    "emptyInviteHasWorld": "Спроси о мире, попроси развить его часть или добавить новый лор — ассистент отвечает по существующему канону и предлагает черновики на ревью.",
+    "removeFileTitle": "Убрать файл",
+    "inputPlaceholderBlocked": "Сначала заверши ревью черновика выше (принять / изменить / отклонить)",
+    "inputPlaceholderDefault": "Спроси о мире или попроси новый лор… (Enter — отправить)",
+    "anchorWholeWorld": "весь мир",
+    "anchorTitle": "Контекст: вокруг какой сущности строить",
+    "attachTitle": "Прикрепить файл к этому сообщению (картинка, PDF, текст)",
+    "sendButton": "Отправить",
+    "sending": "…",
+    "hintIsolatedText": "«{{title}}» вне паутины — вплести?",
+    "hintIsolatedInstruction": "Вплети «{{title}}» в мир: придумай, кто и что с ним связано, добавь недостающие сущности и связи.",
+    "review": {
+      "includeInCommitTitle": "Включить в коммит",
+      "newBadgeTitle": "Полностью новое — не основано на существующем лоре",
+      "tokensSuffix": "~{{count}} токенов за черновик",
+      "feedbackPlaceholder": "Что изменить? Например: «сделай гильдию зловещей, добавь ей тайного лидера»",
+      "sendRevision": "Отправить на доработку",
+      "approve_one": "Принять {{count}}",
+      "approve_few": "Принять {{count}}",
+      "approve_many": "Принять {{count}}",
+      "approve_other": "Принять {{count}}",
+      "requestChanges": "✏️ Просить изменения",
+      "reject": "Отклонить"
+    }
+  },
+  "warnings": {
+    "budget_exhausted": "Бюджет токенов на этот прогон исчерпан — генерация остановлена раньше времени.",
+    "mentions_existing": "Запрос упоминает существующую сущность «{{title}}» ({{type}}) — черновик должен связаться с ней, а не дублировать.",
+    "duplicate_of_existing": "«{{title}}» дублирует существующую сущность «{{existing_title}}».",
+    "duplicate_in_batch": "В черновике два почти одинаковых названия: «{{title_a}}» и «{{title_b}}».",
+    "dropped_unknown_source": "Удалена связь с неизвестным источником ({{ref}}).",
+    "dropped_unknown_target": "Удалена связь с неизвестной целью ({{ref}}) — это не сущность черновика и не найденный лор.",
+    "uncited_lore_id": "Черновик ссылается на id лора {{id}}, который не был найден при поиске — считайте связанное утверждение непроверенным.",
+    "relationship_failed": "Связь {{source}} → {{target}} не создана: {{detail}}"
+  },
+  "events": {
+    "budget_exhausted_reply": "Бюджет токенов на этот разговор исчерпан — начните новую сессию, чтобы продолжить.",
+    "batch_committed": "Готово — добавлено в мир сущностей: {{count}} ({{titles}}), связей: {{edges}}.",
+    "batch_rejected": "Черновик отклонён — в мир ничего не записано.",
+    "draft_failed": "Не удалось подготовить черновик:"
+  },
+  "errors": {
+    "project_not_found": "Проект не найден.",
+    "entity_not_found": "Сущность не найдена.",
+    "edge_not_found": "Связь не найдена.",
+    "attachment_not_found": "Вложение не найдено.",
+    "agent_session_not_found": "Разговор не найден.",
+    "knowledge_source_not_found": "Документ не найден.",
+    "invalid_edge_reference": "Эта связь ссылается на несуществующую сущность.",
+    "cross_project_edge": "Нельзя связать сущности из разных проектов.",
+    "unsupported_export_format": "Формат этого файла экспорта не поддерживается текущей версией.",
+    "invalid_icon_reference": "Это вложение не принадлежит данной сущности.",
+    "unsupported_attachment_type": "Этот тип файла не поддерживается.",
+    "chat_attachment_limit_exceeded": "Слишком много или слишком большие вложения для одного сообщения.",
+    "configuration": "AI-ассистент ещё не настроен — задайте API-ключ в backend/.env и перезапустите бэкенд.",
+    "generation": "Модель не вернула пригодный результат — попробуйте ещё раз.",
+    "awaiting_review_conflict": "Черновик ждёт ревью — примите, отклоните или запросите изменения, прежде чем писать новое сообщение.",
+    "not_awaiting_review": "Этот разговор сейчас не ждёт решения по ревью.",
+    "timeout": "Ассистент отвечал слишком долго — попробуйте ещё раз."
+  }
+}

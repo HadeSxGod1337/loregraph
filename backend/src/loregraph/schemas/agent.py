@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 type AgentSessionStatus = Literal[
     "idle", "running", "awaiting_review", "committed", "rejected", "failed"
@@ -54,16 +54,48 @@ class LoreDraft(BaseModel):
 
 
 class GroundingReport(BaseModel):
+    """LLM-as-judge output — free text in the lore's language, not a UI
+    string. Wrapped into AgentWarning(code="llm_text") before it reaches the
+    review payload; see agent/nodes/verify_grounding.py."""
+
     warnings: list[str] = Field(default_factory=list)
+
+
+class AgentWarning(BaseModel):
+    """A structured, machine-translatable warning.
+
+    The backend never composes UI copy (see docs/agent_architecture.md,
+    "Языки") — nodes emit a `code` + `params`, and the frontend's i18n
+    catalog (warnings.<code>) owns the sentence. `code == "llm_text"` is the
+    one exception: it carries free text from an LLM judge in `params.text`,
+    already in the conversation's own language, rendered as-is."""
+
+    code: str
+    params: dict[str, str] = Field(default_factory=dict)
 
 
 class AgentReviewPayload(BaseModel):
     """Everything the DM sees at the human_review gate."""
 
     draft: LoreDraft | None
-    warnings: list[str] = Field(default_factory=list)
+    warnings: list[AgentWarning] = Field(default_factory=list)
     input_tokens: int = 0
     output_tokens: int = 0
+
+    @field_validator("warnings", mode="before")
+    @classmethod
+    def _coerce_legacy_string_warnings(cls, value: object) -> object:
+        """Sessions committed before warnings became structured persisted
+        plain strings in the registry's review_json column — coerce them on
+        read instead of failing to load old rows."""
+        if isinstance(value, list):
+            return [
+                {"code": "llm_text", "params": {"text": item}}
+                if isinstance(item, str)
+                else item
+                for item in value
+            ]
+        return value
 
 
 class ChatAttachment(BaseModel):
@@ -104,6 +136,14 @@ class AgentMessageOut(BaseModel):
     # Filenames only (never the file bytes) — round-tripped through the
     # HumanMessage's additional_kwargs, see agent/runner.py::transcript.
     attachments: list[str] = Field(default_factory=list)
+    # Set only for deterministic, backend-composed messages (commit acks,
+    # budget-exhausted notices — see agent/events.py). `text` is still the
+    # canonical English content the model reads back on later turns; when
+    # `event_code` is set, the frontend renders the localized version
+    # instead. None for the model's own natural-language replies, which
+    # already follow the conversation's language per the system prompt.
+    event_code: str | None = None
+    event_params: dict[str, str] = Field(default_factory=dict)
 
 
 class AgentSessionOut(BaseModel):

@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -37,6 +37,7 @@ from loregraph.exceptions import (
     ProjectNotFoundError,
     UnsupportedAttachmentTypeError,
     UnsupportedExportFormatError,
+    error_code,
 )
 from loregraph.llm.embeddings import EmbeddingProvider, get_embedding_provider
 from loregraph.schemas.project_transfer import ProjectExport
@@ -203,94 +204,48 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     return app
 
 
+def _error_response(status_code: int, exc: Exception) -> JSONResponse:
+    # `code` is the single machine-readable field the frontend's i18n catalog
+    # keys off; `detail` is an English diagnostic string, never translated
+    # Deriving `code` from the exception class name (error_code) means
+    # a new CampaignError subclass gets a working code with zero boilerplate
+    # here — only status codes that aren't the 400 default need a handler.
+    return JSONResponse(
+        status_code=status_code, content={"code": error_code(exc), "detail": str(exc)}
+    )
+
+
 def _register_exception_handlers(app: FastAPI) -> None:
-    @app.exception_handler(ProjectNotFoundError)
-    async def _project_not_found(
-        _request: Request, exc: ProjectNotFoundError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=404, content={"detail": str(exc)})
+    _not_found = (
+        ProjectNotFoundError,
+        EntityNotFoundError,
+        EdgeNotFoundError,
+        AttachmentNotFoundError,
+        AgentSessionNotFoundError,
+        KnowledgeSourceNotFoundError,
+    )
+    for exc_type in _not_found:
+        app.add_exception_handler(exc_type, lambda _r, e: _error_response(404, e))
 
-    @app.exception_handler(EntityNotFoundError)
-    async def _entity_not_found(
-        _request: Request, exc: EntityNotFoundError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=404, content={"detail": str(exc)})
+    _unprocessable = (
+        InvalidEdgeReferenceError,
+        CrossProjectEdgeError,
+        UnsupportedExportFormatError,
+        InvalidIconReferenceError,
+        UnsupportedAttachmentTypeError,
+        ChatAttachmentLimitExceededError,
+    )
+    for unprocessable_type in _unprocessable:
+        app.add_exception_handler(
+            unprocessable_type, lambda _r, e: _error_response(422, e)
+        )
 
-    @app.exception_handler(EdgeNotFoundError)
-    async def _edge_not_found(
-        _request: Request, exc: EdgeNotFoundError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-    @app.exception_handler(AttachmentNotFoundError)
-    async def _attachment_not_found(
-        _request: Request, exc: AttachmentNotFoundError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-    @app.exception_handler(InvalidEdgeReferenceError)
-    async def _invalid_edge_reference(
-        _request: Request, exc: InvalidEdgeReferenceError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-    @app.exception_handler(CrossProjectEdgeError)
-    async def _cross_project_edge(
-        _request: Request, exc: CrossProjectEdgeError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-    @app.exception_handler(UnsupportedExportFormatError)
-    async def _unsupported_export_format(
-        _request: Request, exc: UnsupportedExportFormatError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-    @app.exception_handler(InvalidIconReferenceError)
-    async def _invalid_icon_reference(
-        _request: Request, exc: InvalidIconReferenceError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-    @app.exception_handler(ConfigurationError)
-    async def _configuration_error(
-        _request: Request, exc: ConfigurationError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-    @app.exception_handler(AgentSessionNotFoundError)
-    async def _agent_session_not_found(
-        _request: Request, exc: AgentSessionNotFoundError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-    @app.exception_handler(KnowledgeSourceNotFoundError)
-    async def _knowledge_source_not_found(
-        _request: Request, exc: KnowledgeSourceNotFoundError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-    @app.exception_handler(UnsupportedAttachmentTypeError)
-    async def _unsupported_attachment_type(
-        _request: Request, exc: UnsupportedAttachmentTypeError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-    @app.exception_handler(ChatAttachmentLimitExceededError)
-    async def _chat_attachment_limit_exceeded(
-        _request: Request, exc: ChatAttachmentLimitExceededError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-    @app.exception_handler(GenerationError)
-    async def _generation_error(
-        _request: Request, exc: GenerationError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=502, content={"detail": str(exc)})
-
-    @app.exception_handler(CampaignError)
-    async def _campaign_error(_request: Request, exc: CampaignError) -> JSONResponse:
-        return JSONResponse(status_code=400, content={"detail": str(exc)})
+    app.add_exception_handler(ConfigurationError, lambda _r, e: _error_response(409, e))
+    app.add_exception_handler(GenerationError, lambda _r, e: _error_response(502, e))
+    # Fallback for every other CampaignError subclass (including the
+    # HITL/session-state guards in api/routers/agent.py) — 400, code still
+    # derived automatically from the concrete class.
+    app.add_exception_handler(CampaignError, lambda _r, e: _error_response(400, e))
 
 
 app = create_app()

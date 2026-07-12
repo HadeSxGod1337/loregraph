@@ -1,23 +1,26 @@
+import { useTranslation } from "react-i18next";
+
 import type { FieldType } from "../../api/types";
 
-const ADDABLE_TYPES: { value: FieldType; label: string }[] = [
-  { value: "text", label: "Text" },
-  { value: "rich_text", label: "Rich text" },
-  { value: "number", label: "Number" },
-  { value: "tag", label: "Tags" },
+const ADDABLE_TYPES: { value: FieldType; labelKey: string }[] = [
+  { value: "text", labelKey: "fields.typeText" },
+  { value: "rich_text", labelKey: "fields.typeRichText" },
+  { value: "number", labelKey: "fields.typeNumber" },
+  { value: "tag", labelKey: "fields.typeTags" },
 ];
 
 export function FieldTypePicker({ onAdd }: { onAdd: (fieldType: FieldType) => void }) {
+  const { t } = useTranslation();
   return (
     <div className="field-type-picker">
-      {ADDABLE_TYPES.map((t) => (
+      {ADDABLE_TYPES.map((entry) => (
         <button
-          key={t.value}
+          key={entry.value}
           type="button"
           className="field-type-picker-button"
-          onClick={() => onAdd(t.value)}
+          onClick={() => onAdd(entry.value)}
         >
-          + {t.label}
+          + {t(entry.labelKey)}
         </button>
       ))}
     </div>

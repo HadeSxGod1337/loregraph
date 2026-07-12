@@ -1,4 +1,5 @@
 import { useRef, type ChangeEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 import { API_URL } from "../../api/client";
 import type { AttachmentRef } from "../../api/types";
@@ -12,6 +13,7 @@ interface IconPickerProps {
 }
 
 export function IconPicker({ projectId, entityId, icon }: IconPickerProps) {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadAttachment(entityId ?? "");
   const setIcon = useSetEntityIcon(projectId, entityId ?? "");
@@ -26,13 +28,13 @@ export function IconPicker({ projectId, entityId, icon }: IconPickerProps) {
   }
 
   if (!entityId) {
-    return <p className="icon-picker-placeholder">Save the entity first to set an icon.</p>;
+    return <p className="icon-picker-placeholder">{t("icon.saveFirst")}</p>;
   }
 
   return (
     <div className="icon-picker">
       <div className="icon-picker-preview">
-        {icon ? <img src={API_URL + icon.url} alt="" /> : <span>no icon</span>}
+        {icon ? <img src={API_URL + icon.url} alt="" /> : <span>{t("icon.noIcon")}</span>}
       </div>
       <div className="icon-picker-actions">
         <button
@@ -40,7 +42,7 @@ export function IconPicker({ projectId, entityId, icon }: IconPickerProps) {
           onClick={() => fileInputRef.current?.click()}
           disabled={upload.isPending || setIcon.isPending}
         >
-          {icon ? "Replace" : "Upload"}
+          {icon ? t("common.replace") : t("common.upload")}
         </button>
         {icon && (
           <button
@@ -49,7 +51,7 @@ export function IconPicker({ projectId, entityId, icon }: IconPickerProps) {
             onClick={() => clearIcon.mutate()}
             disabled={clearIcon.isPending}
           >
-            Remove
+            {t("common.remove")}
           </button>
         )}
       </div>

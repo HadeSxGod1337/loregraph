@@ -17,8 +17,9 @@ from loregraph.api.deps import (
 )
 from loregraph.exceptions import (
     AgentSessionNotFoundError,
-    CampaignError,
+    AwaitingReviewConflictError,
     ChatAttachmentLimitExceededError,
+    NotAwaitingReviewError,
 )
 from loregraph.llm.factory import is_llm_configured
 from loregraph.schemas.agent import (
@@ -95,14 +96,9 @@ async def _validate_session(
         # Same rule as entities: don't confirm existence across projects.
         raise AgentSessionNotFoundError(thread_id)
     if required_status is not None and session.status != required_status:
-        raise CampaignError(
-            f"Session is not awaiting review (status: {session.status})."
-        )
+        raise NotAwaitingReviewError(session.status)
     if forbidden_status is not None and session.status == forbidden_status:
-        raise CampaignError(
-            "A draft is awaiting review — approve, reject or request changes "
-            "before sending new messages."
-        )
+        raise AwaitingReviewConflictError()
 
 
 async def _session_exists_guard(

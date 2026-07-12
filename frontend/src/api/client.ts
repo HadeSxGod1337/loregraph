@@ -2,11 +2,17 @@ export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {
   status: number;
+  /** Machine-readable code from the backend's error body (see
+   * loregraph.exceptions.error_code) — undefined for errors FastAPI itself
+   * raises (e.g. request validation) before reaching our handlers. Use
+   * translateApiError (src/i18n/eventText.ts) to render this for a user. */
+  code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -47,9 +53,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (!response.ok) {
     let detail = response.statusText;
+    let code: string | undefined;
     try {
-      const errorBody = (await response.json()) as { detail?: string };
+      const errorBody = (await response.json()) as { detail?: string; code?: string };
       detail = errorBody.detail ?? detail;
+      code = errorBody.code;
     } catch {
       // response had no JSON body; fall back to statusText
     }
@@ -57,6 +65,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     throw new ApiError(
       response.status,
       `${detail} (${method} ${path} → HTTP ${response.status})`,
+      code,
     );
   }
 

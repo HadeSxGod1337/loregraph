@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import { apiClient } from "../api/client";
@@ -20,6 +21,7 @@ interface PendingConnection {
 }
 
 export function GraphViewPage() {
+  const { t } = useTranslation();
   const { projectId } = useParams<{ projectId: string }>();
   const { data: entities } = useEntities(projectId!);
   const [rootId, setRootId] = useState("");
@@ -119,15 +121,12 @@ export function GraphViewPage() {
         />
 
         {!rootId && !isEmptyWorld && (
-          <p className="graph-empty-state">Pick a root entity to view its neighborhood.</p>
+          <p className="graph-empty-state">{t("graph.pickRoot")}</p>
         )}
         {isEmptyWorld && (
-          <p className="graph-empty-state">
-            Your world is empty — describe it in the AI panel and review the
-            generated starting lore.
-          </p>
+          <p className="graph-empty-state">{t("graph.emptyWorld")}</p>
         )}
-        {rootId && isLoading && <p className="graph-empty-state">Loading...</p>}
+        {rootId && isLoading && <p className="graph-empty-state">{t("common.loading")}</p>}
 
         {!assistantVisible && (
           <button
@@ -135,17 +134,17 @@ export function GraphViewPage() {
             className="assistant-drawer-toggle"
             onClick={() => setAssistantOpen(true)}
           >
-            ✨ AI Assistant
+            {t("graph.openAssistant")}
           </button>
         )}
         {assistantVisible && (
           <aside className="assistant-drawer">
             <div className="assistant-drawer-header">
-              <span>✨ AI Assistant</span>
+              <span>{t("graph.openAssistant")}</span>
               <button
                 type="button"
                 className="assistant-drawer-close"
-                aria-label="Close assistant"
+                aria-label={t("graph.closeAssistant")}
                 onClick={() => setAssistantOpen(false)}
               >
                 ✕

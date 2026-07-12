@@ -2,36 +2,16 @@ import asyncio
 import logging
 from typing import Any
 
-from langchain_core.messages import AIMessage, HumanMessage
-
+from loregraph.agent.events import event_message
 from loregraph.agent.state import AgentState
 from loregraph.exceptions import CampaignError
+from loregraph.schemas.agent import AgentWarning
 from loregraph.schemas.edge import EdgeCreate
 from loregraph.schemas.entity import EntityCreate, EntityFieldIn, FieldType
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
 
 logger = logging.getLogger(__name__)
-
-# Deterministic chat acks — zero extra LLM tokens. Language follows the
-# conversation (crude but honest heuristic: Cyrillic in the last user
-# message → Russian), so the one hardcoded message in the system doesn't
-# break the "reply in the GM's language" contract for non-Russian users.
-ACK_COMMIT_RU = "Готово — добавил в мир {n} сущностей ({titles}) и {edges} связей."
-ACK_COMMIT_EN = (
-    "Done — added {n} entities to the world ({titles}) and {edges} relationships."
-)
-ACK_REJECT_RU = "Черновик отклонён — в мир ничего не записано."
-ACK_REJECT_EN = "Draft rejected — nothing was written to the world."
-ACK_NO_DRAFT_RU = "Не удалось подготовить черновик: {reasons}"
-ACK_NO_DRAFT_EN = "Couldn't produce a draft: {reasons}"
-
-
-def _is_russian(state: AgentState) -> bool:
-    for message in reversed(state.messages):
-        if isinstance(message, HumanMessage) and isinstance(message.content, str):
-            return any("а" <= ch <= "я" or ch == "ё" for ch in message.content.lower())
-    return False
 
 
 async def _rollback_created(
@@ -61,26 +41,43 @@ async def commit(
     node receives the services as an argument). Creates the whole approved
     batch: entities first (building the ref → real id map), then the
     relationship web. All-or-nothing per proposal: a mid-batch failure rolls
-    back the entities created so far, so a retry can't duplicate them."""
+    back the entities created so far, so a retry can't duplicate them.
+
+    Acknowledgements are deterministic events (see agent/events.py) — zero
+    extra LLM tokens, and language-agnostic: the UI translates the code, the
+    English text is only for the model's own conversation history."""
     if state.draft_committed:
         return {}
-    russian = _is_russian(state)
     if state.decision_action != "approve" or state.draft is None:
         if state.draft is None and state.decision_action is None:
             # The pipeline produced no draft (e.g. token budget exhausted) —
             # tell the DM why instead of a misleading "rejected".
-            template = ACK_NO_DRAFT_RU if russian else ACK_NO_DRAFT_EN
-            ack = template.format(reasons="; ".join(state.warnings) or "unknown")
-        else:
-            ack = ACK_REJECT_RU if russian else ACK_REJECT_EN
+            reason_codes = ",".join(w.code for w in state.warnings)
+            return {
+                "messages": [
+                    event_message(
+                        "Couldn't produce a draft.",
+                        "draft_failed",
+                        reason_codes=reason_codes,
+                    )
+                ],
+                "draft": None,
+                "warnings": [],
+                "pending_brief": "",
+            }
         return {
-            "messages": [AIMessage(ack)],
+            "messages": [
+                event_message(
+                    "Draft rejected — nothing was written to the world.",
+                    "batch_rejected",
+                )
+            ],
             "draft": None,
             "warnings": [],
             "pending_brief": "",
         }
 
-    warnings: list[str] = []
+    warnings: list[AgentWarning] = []
     ref_to_id: dict[str, str] = {}
     titles: list[str] = []
     edge_count = 0
@@ -130,8 +127,14 @@ async def commit(
                 # One bad edge must not lose the approved entities/edges.
                 logger.warning("Skipping approved relationship: %s", exc)
                 warnings.append(
-                    f"Relationship {relationship.source_ref} → "
-                    f"{relationship.target_ref} failed: {exc}"
+                    AgentWarning(
+                        code="relationship_failed",
+                        params={
+                            "source": relationship.source_ref,
+                            "target": relationship.target_ref,
+                            "detail": str(exc),
+                        },
+                    )
                 )
     except asyncio.CancelledError:
         await _rollback_created(
@@ -144,13 +147,15 @@ async def commit(
         )
         raise
 
-    ack_template = ACK_COMMIT_RU if russian else ACK_COMMIT_EN
     return {
         "messages": [
-            AIMessage(
-                ack_template.format(
-                    n=len(titles), titles=", ".join(titles), edges=edge_count
-                )
+            event_message(
+                f"Committed {len(titles)} entities ({', '.join(titles)}) "
+                f"and {edge_count} relationships.",
+                "batch_committed",
+                count=str(len(titles)),
+                titles=", ".join(titles),
+                edges=str(edge_count),
             )
         ],
         "committed_entity_ids": [*state.committed_entity_ids, *ref_to_id.values()],

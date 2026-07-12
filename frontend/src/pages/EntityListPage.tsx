@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
 import { API_URL } from "../api/client";
 import { useEntities } from "../hooks/useEntities";
+import { translateApiError } from "../i18n/eventText";
 
 export function EntityListPage() {
+  const { t } = useTranslation();
   const { projectId } = useParams<{ projectId: string }>();
   const [typeFilter, setTypeFilter] = useState("");
   const { data: entities, isLoading, error } = useEntities(projectId!, typeFilter || undefined);
@@ -12,21 +15,21 @@ export function EntityListPage() {
   return (
     <div className="entity-list-page">
       <div className="entity-list-header">
-        <h1>Entities</h1>
+        <h1>{t("entities.title")}</h1>
         <Link to={`/projects/${projectId}/entities/new`} className="button-primary">
-          + New Entity
+          {t("entities.newEntity")}
         </Link>
       </div>
 
       <input
-        placeholder="Filter by type (e.g. npc)"
+        placeholder={t("entities.filterPlaceholder")}
         value={typeFilter}
         onChange={(e) => setTypeFilter(e.target.value)}
         className="entity-list-filter"
       />
 
-      {isLoading && <p>Loading...</p>}
-      {error && <p className="error-text">{(error as Error).message}</p>}
+      {isLoading && <p>{t("common.loading")}</p>}
+      {error && <p className="error-text">{translateApiError(error, t)}</p>}
 
       <ul className="entity-list">
         {entities?.map((entity) => (
@@ -44,7 +47,7 @@ export function EntityListPage() {
         ))}
       </ul>
 
-      {entities?.length === 0 && <p>No entities yet. Create one to get started.</p>}
+      {entities?.length === 0 && <p>{t("entities.noEntities")}</p>}
     </div>
   );
 }

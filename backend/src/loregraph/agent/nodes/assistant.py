@@ -4,6 +4,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, SystemMessage, ToolMessage
 from pydantic import BaseModel, Field
 
+from loregraph.agent.events import event_message
 from loregraph.agent.state import AgentState
 from loregraph.prompts import project_instructions_block, render
 from loregraph.storage.protocols import ProjectStore
@@ -77,7 +78,11 @@ async def assistant(
     questions, and calls propose_lore to draft content. Deliberately has no
     write access — creation always routes through the review pipeline."""
     if state.over_budget(token_budget):
-        return {"messages": [AIMessage(BUDGET_EXHAUSTED_REPLY)]}
+        return {
+            "messages": [
+                event_message(BUDGET_EXHAUSTED_REPLY, "budget_exhausted_reply")
+            ]
+        }
 
     # Fetched fresh each turn (not cached in AgentState) so edits to the
     # project's instructions take effect on the very next message, and so

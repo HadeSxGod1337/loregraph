@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   type AgentChatMessage,
@@ -9,6 +10,7 @@ import {
   agentApi,
   fileToChatAttachment,
 } from "../api/agent";
+import { translateApiError } from "../i18n/eventText";
 
 export function useAgentConfig() {
   return useQuery({ queryKey: ["agent-config"], queryFn: agentApi.config });
@@ -50,6 +52,7 @@ export function useAgentChat(
   projectId: string,
   onCommitted?: (entityIds: string[]) => void,
 ): AgentChat {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [threadId, setThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<StreamedMessage[]>([]);
@@ -91,7 +94,11 @@ export function useAgentChat(
           setPendingReview(event.payload);
           break;
         case "error":
-          setError(event.detail);
+          setError(
+            event.code
+              ? t(`errors.${event.code}`, { defaultValue: event.detail })
+              : event.detail,
+          );
           break;
         case "done": {
           const session = event.session;
@@ -108,7 +115,7 @@ export function useAgentChat(
         }
       }
     },
-    [onCommitted, projectId, queryClient],
+    [onCommitted, projectId, queryClient, t],
   );
 
   const runTurn = useCallback(
@@ -124,13 +131,13 @@ export function useAgentChat(
           setMessages(detail.messages);
         }
       } catch (err) {
-        setError((err as Error).message);
+        setError(translateApiError(err, t));
       } finally {
         setStatusNode(null);
         setBusy(false);
       }
     },
-    [projectId],
+    [projectId, t],
   );
 
   const send = useCallback(

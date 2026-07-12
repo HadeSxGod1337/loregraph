@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
 import type { EntityField } from "../api/types";
@@ -12,6 +13,7 @@ import { useCreateEntity } from "../hooks/useEntities";
 import { useDeleteEntity, useEntity, useUpdateEntity } from "../hooks/useEntity";
 
 export function EntityEditPage() {
+  const { t } = useTranslation();
   const { projectId, id } = useParams<{ projectId: string; id: string }>();
   const isNew = id === undefined;
   const navigate = useNavigate();
@@ -49,43 +51,43 @@ export function EntityEditPage() {
     deleteEntity.mutate(id, { onSuccess: () => navigate(`/projects/${projectId}/entities`) });
   }
 
-  if (!isNew && isLoading) return <p>Loading...</p>;
+  if (!isNew && isLoading) return <p>{t("common.loading")}</p>;
 
   return (
     <div className="entity-edit-page">
-      <h1>{isNew ? "New Entity" : "Edit Entity"}</h1>
+      <h1>{isNew ? t("entityEdit.newTitle") : t("entityEdit.editTitle")}</h1>
 
       <label>
-        Type
+        {t("entityEdit.typeLabel")}
         <input
           list="entity-type-suggestions"
           value={type}
           onChange={(e) => setType(e.target.value)}
         />
         <datalist id="entity-type-suggestions">
-          {DEFAULT_ENTITY_TYPES.map((t) => (
-            <option key={t} value={t} />
+          {DEFAULT_ENTITY_TYPES.map((entityType) => (
+            <option key={entityType} value={entityType} />
           ))}
         </datalist>
       </label>
 
       <label>
-        Title
+        {t("entityEdit.titleLabel")}
         <input value={title} onChange={(e) => setTitle(e.target.value)} />
       </label>
 
-      <label>Icon</label>
+      <label>{t("entityEdit.iconLabel")}</label>
       <IconPicker projectId={projectId!} entityId={id} icon={entity?.icon ?? null} />
 
       <FieldEditor fields={fields} entityId={id} onChange={setFields} />
 
       <div className="entity-edit-actions">
         <button type="button" onClick={handleSave} disabled={!title}>
-          Save
+          {t("common.save")}
         </button>
         {!isNew && (
           <button type="button" className="button-danger" onClick={handleDelete}>
-            Delete
+            {t("common.delete")}
           </button>
         )}
       </div>
@@ -95,7 +97,7 @@ export function EntityEditPage() {
           <EdgeList projectId={projectId!} entityId={id} />
           <EdgeForm projectId={projectId!} entityId={id} />
           <details className="attachments-details">
-            <summary>Other files</summary>
+            <summary>{t("entityEdit.otherFiles")}</summary>
             <AttachmentUploader entityId={id} />
           </details>
         </>

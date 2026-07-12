@@ -3,12 +3,10 @@ from typing import Any
 from loregraph.agent.state import AgentState
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.prompts import project_instructions_block, render
-from loregraph.schemas.agent import LoreDraft
+from loregraph.schemas.agent import AgentWarning, LoreDraft
 from loregraph.storage.protocols import ProjectStore
 
-BUDGET_EXHAUSTED_WARNING = (
-    "Token budget for this run is exhausted — generation stopped early."
-)
+BUDGET_EXHAUSTED_WARNING = AgentWarning(code="budget_exhausted")
 
 
 def _revision_block(state: AgentState) -> str:
@@ -37,7 +35,7 @@ async def generate_lore(
     relationship web between them and to existing lore."""
     if state.over_budget(token_budget):
         # Never silently burn the user's key past the ceiling: surface the
-        # stop at review instead (docs/agent_architecture.md, section 9).
+        # stop at review instead.
         # retry_feedback is cleared AND attempts advanced: check_duplicates_
         # draft re-arms retry_feedback for the unchanged draft, so without
         # the attempts bump the generate↔check cycle would loop forever.
