@@ -14,8 +14,14 @@ import pypdf
 
 from loregraph.exceptions import DocumentParsingError, UnsupportedDocumentTypeError
 
-_PDF_SUFFIX = ".pdf"
-_PLAIN_TEXT_SUFFIXES = {".txt", ".md"}
+PDF_SUFFIX = ".pdf"
+# Any format that's just UTF-8 text underneath, regardless of structure —
+# decoding it doesn't care whether it's prose, JSON, or a CSV table. Shared
+# with agent/multimodal.py (chat attachments) so "what counts as text" has
+# one definition, not two allowlists that can drift apart.
+TEXT_LIKE_SUFFIXES = frozenset(
+    {".txt", ".md", ".markdown", ".json", ".csv", ".tsv", ".yaml", ".yml", ".log"}
+)
 
 # Chunk target size / overlap for the knowledge base's vector index — plain
 # named constants, not literals inline (CLAUDE.md, "Без магии").
@@ -24,17 +30,18 @@ KB_CHUNK_OVERLAP = 200
 
 
 def extract_text(content: bytes, content_type: str, filename: str) -> str:
-    """Dispatches on the file extension: .pdf via pypdf, .txt/.md as UTF-8.
+    """Dispatches on the file extension: .pdf via pypdf, TEXT_LIKE_SUFFIXES
+    (.txt/.md/.json/.csv/.yaml/...) as UTF-8.
 
     `content_type` is accepted (per the storage layer's upload contract) but
     the extension is authoritative — browsers/clients send unreliable MIME
-    types for plain text and Markdown.
+    types for plain text, Markdown, YAML, etc.
     """
     del content_type  # extension-driven dispatch; kept for signature parity
     suffix = Path(filename).suffix.lower()
-    if suffix == _PDF_SUFFIX:
+    if suffix == PDF_SUFFIX:
         return _extract_pdf_text(content, filename)
-    if suffix in _PLAIN_TEXT_SUFFIXES:
+    if suffix in TEXT_LIKE_SUFFIXES:
         try:
             return content.decode("utf-8")
         except UnicodeDecodeError as e:

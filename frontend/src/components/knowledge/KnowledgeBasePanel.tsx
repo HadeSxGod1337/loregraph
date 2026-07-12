@@ -42,8 +42,9 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
       <h2>База знаний проекта</h2>
       <p className="field-hint">
         Загрузи справочные документы (правила, книга игрока, краткое описание
-        вселенной — PDF, .txt, .md). Ассистент использует их при генерации
-        лора и может искать по ним в чате, но они не становятся каноном мира.
+        вселенной — PDF, .txt, .md, .json, .csv, .yaml и другие текстовые
+        форматы). Ассистент использует их при генерации лора и может искать
+        по ним в чате, но они не становятся каноном мира.
       </p>
 
       <button
@@ -56,7 +57,7 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
+        accept=".pdf,.txt,.md,.markdown,.json,.csv,.tsv,.yaml,.yml,.log"
         onChange={handleFileChange}
         style={{ display: "none" }}
       />

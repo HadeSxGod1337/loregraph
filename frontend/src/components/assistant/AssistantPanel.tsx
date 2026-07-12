@@ -279,7 +279,7 @@ function ChatInput({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*,application/pdf,text/plain,text/markdown"
+          accept="image/jpeg,image/png,image/gif,image/webp,.pdf,.txt,.md,.markdown,.json,.csv,.tsv,.yaml,.yml,.log"
           onChange={handleFilesPicked}
           style={{ display: "none" }}
         />

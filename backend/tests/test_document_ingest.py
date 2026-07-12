@@ -58,6 +58,28 @@ def test_extract_text_from_markdown() -> None:
     assert text == "# Title\n\nBody."
 
 
+def test_extract_text_from_json() -> None:
+    text = extract_text(b'{"faction": "Order of the Gauntlet"}', "", "setting.json")
+    assert "Order of the Gauntlet" in text
+
+
+def test_extract_text_from_csv() -> None:
+    text = extract_text(b"name,role\nMira,smith", "", "npcs.csv")
+    assert "Mira,smith" in text
+
+
+def test_extract_text_from_yaml() -> None:
+    text = extract_text(b"faction: Order of the Gauntlet", "", "notes.yaml")
+    assert "Order of the Gauntlet" in text
+
+
+def test_extract_text_content_type_is_ignored_for_dispatch() -> None:
+    """The extension is authoritative — browsers send unreliable MIME types
+    for .json/.yaml/etc (often application/octet-stream)."""
+    text = extract_text(b"a: b", "application/octet-stream", "notes.yml")
+    assert text == "a: b"
+
+
 def test_extract_text_unsupported_extension_raises() -> None:
     with pytest.raises(UnsupportedDocumentTypeError):
         extract_text(b"binary", "image/png", "art.png")

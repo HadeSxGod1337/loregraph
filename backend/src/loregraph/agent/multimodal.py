@@ -14,13 +14,20 @@ the rest of the conversation, never chunked or embedded.
 
 import base64
 import binascii
+from pathlib import Path
 from typing import Any
 
 from loregraph.exceptions import UnsupportedAttachmentTypeError
 from loregraph.schemas.agent import ChatAttachment
+from loregraph.services.document_ingest import PDF_SUFFIX, TEXT_LIKE_SUFFIXES
 
-_PLAIN_TEXT_CONTENT_TYPES = {"text/plain", "text/markdown"}
 _PDF_CONTENT_TYPE = "application/pdf"
+# What Claude and GPT-4/5 vision actually decode — not "image/*". Anything
+# else (bmp, tiff, svg, heic...) would otherwise pass our check and only
+# fail once it reaches the provider, as a much uglier error.
+_SUPPORTED_IMAGE_MIME_TYPES = frozenset(
+    {"image/jpeg", "image/png", "image/gif", "image/webp"}
+)
 
 
 def build_message_content(
@@ -48,19 +55,31 @@ def _attachment_block(attachment: ChatAttachment) -> dict[str, Any]:
             attachment.filename, "invalid base64 data"
         ) from e
 
-    if attachment.content_type.startswith("image/"):
+    # Images are only reliably identifiable by content_type (browsers sniff
+    # these correctly); text-like files and PDFs go by extension, same
+    # extension-is-authoritative reasoning as document_ingest.extract_text —
+    # browsers routinely mislabel .json/.yaml/.md as application/octet-stream.
+    if attachment.content_type in _SUPPORTED_IMAGE_MIME_TYPES:
         return {
             "type": "image",
             "mime_type": attachment.content_type,
             "base64": attachment.data_base64,
         }
-    if attachment.content_type == _PDF_CONTENT_TYPE:
+    if attachment.content_type.startswith("image/"):
+        raise UnsupportedAttachmentTypeError(
+            attachment.filename,
+            f"image type {attachment.content_type!r} isn't supported by the "
+            "configured LLM provider (jpeg, png, gif, webp only)",
+        )
+
+    suffix = Path(attachment.filename).suffix.lower()
+    if suffix == PDF_SUFFIX or attachment.content_type == _PDF_CONTENT_TYPE:
         return {
             "type": "file",
-            "mime_type": attachment.content_type,
+            "mime_type": _PDF_CONTENT_TYPE,
             "base64": attachment.data_base64,
         }
-    if attachment.content_type in _PLAIN_TEXT_CONTENT_TYPES:
+    if suffix in TEXT_LIKE_SUFFIXES:
         try:
             decoded = raw.decode("utf-8")
         except UnicodeDecodeError as e:

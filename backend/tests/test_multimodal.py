@@ -92,6 +92,60 @@ def test_markdown_attachment_becomes_text_plain_block() -> None:
     assert block["text"] == "# Title"
 
 
+def test_json_attachment_becomes_text_plain_block() -> None:
+    content = build_message_content(
+        "What's in this?",
+        [
+            ChatAttachment(
+                filename="party.json",
+                content_type="application/json",
+                data_base64=_b64(b'{"name": "Mira"}'),
+            )
+        ],
+    )
+    assert isinstance(content, list)
+    block = content[1]
+    assert isinstance(block, dict)
+    assert block["type"] == "text-plain"
+    assert block["text"] == '{"name": "Mira"}'
+
+
+def test_pdf_detected_by_extension_even_with_generic_content_type() -> None:
+    """Browsers sometimes report application/octet-stream for a .pdf pick —
+    the extension must still resolve it to a file block."""
+    content = build_message_content(
+        "Summarize",
+        [
+            ChatAttachment(
+                filename="rules.pdf",
+                content_type="application/octet-stream",
+                data_base64=_b64(b"pdf-bytes"),
+            )
+        ],
+    )
+    assert isinstance(content, list)
+    block = content[1]
+    assert isinstance(block, dict)
+    assert block["type"] == "file"
+    assert block["mime_type"] == "application/pdf"
+
+
+def test_unsupported_image_mime_type_raises() -> None:
+    """jpeg/png/gif/webp only — anything else would otherwise pass this
+    check and only fail once it reaches the LLM provider."""
+    with pytest.raises(UnsupportedAttachmentTypeError):
+        build_message_content(
+            "x",
+            [
+                ChatAttachment(
+                    filename="scan.bmp",
+                    content_type="image/bmp",
+                    data_base64=_b64(b"x"),
+                )
+            ],
+        )
+
+
 def test_multiple_attachments_produce_multiple_blocks() -> None:
     content = build_message_content(
         "Two files",
