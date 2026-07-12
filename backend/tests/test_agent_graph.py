@@ -255,6 +255,88 @@ async def test_reject_commits_nothing_and_acks(db_session: AsyncSession) -> None
 
 
 @pytest.mark.asyncio
+async def test_budget_exhaustion_mid_retry_reaches_review(
+    db_session: AsyncSession,
+) -> None:
+    """Regression: budget running out between dedup retries must break the
+    retry loop and surface the draft at review — not spin into
+    GraphRecursionError (retry_feedback used to survive the early return)."""
+    project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
+    entity_store = SqliteEntityStore(db_session)
+    await entity_store.create(
+        EntityCreate(type="npc", title="Мира Кузнец", fields=[]), project.id
+    )
+    edge_store = SqliteEdgeStore(db_session)
+    graph: Any = build_agent_graph(
+        chat_model=ScriptedChatModel(script=deque([propose_call("лор")])),
+        # First (and only) generation collides with the existing title; the
+        # FakeGenerator charges 150 tokens > the 100-token budget below.
+        creative=FakeGenerator([starter_lore()]),
+        extraction=FakeGenerator([]),
+        vector_index=None,
+        entity_store=entity_store,
+        edge_store=edge_store,
+        entity_service=EntityService(entity_store),
+        edge_service=EdgeService(edge_store, entity_store),
+        token_budget=100,
+        checkpointer=MemorySaver(),
+    )
+    await graph.ainvoke(turn(project.id, "Создай лор"), CONFIG)
+    snapshot = await graph.aget_state(CONFIG)
+    assert any(task.interrupts for task in snapshot.tasks)  # reached review
+    state = await state_of(graph)
+    assert state.retry_feedback == ""
+    assert any("budget" in warning.lower() for warning in state.warnings)
+
+
+@pytest.mark.asyncio
+async def test_mid_batch_failure_rolls_back_created_entities(
+    db_session: AsyncSession,
+) -> None:
+    """Regression: a failure on entity #2 must not leave entity #1 orphaned
+    in the world (per-create autocommit has no surrounding transaction)."""
+    project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
+    entity_store = SqliteEntityStore(db_session)
+    edge_store = SqliteEdgeStore(db_session)
+
+    class FailingEntityService(EntityService):
+        calls = 0
+
+        async def create(self, data: EntityCreate, project_id: str) -> Any:
+            FailingEntityService.calls += 1
+            if FailingEntityService.calls >= 2:
+                raise RuntimeError("boom on second entity")
+            return await super().create(data, project_id)
+
+    graph: Any = build_agent_graph(
+        chat_model=ScriptedChatModel(script=deque([propose_call("лор")])),
+        creative=FakeGenerator([starter_lore()]),
+        extraction=FakeGenerator([]),
+        vector_index=None,
+        entity_store=entity_store,
+        edge_store=edge_store,
+        entity_service=FailingEntityService(entity_store),
+        edge_service=EdgeService(edge_store, entity_store),
+        token_budget=100_000,
+        checkpointer=MemorySaver(),
+    )
+    await graph.ainvoke(turn(project.id, "Создай лор"), CONFIG)
+    with pytest.raises(RuntimeError, match="boom"):
+        await graph.ainvoke(Command(resume={"action": "approve"}), CONFIG)
+    # The first (successfully created) entity was compensated away.
+    assert await entity_store.list_entities(project.id) == []
+
+
+def test_mentions_uses_word_boundaries() -> None:
+    from loregraph.agent.nodes.check_duplicates import _mentions
+
+    assert _mentions("расскажи про Миру и «Мира» тоже", "Мира")
+    assert not _mentions("создай 1230 стражников", "123")  # no bare substring
+    assert not _mentions("мирами правят боги", "Мира")  # inside a longer word
+    assert not _mentions("любой текст с al внутри", "Al")  # too short
+
+
+@pytest.mark.asyncio
 async def test_dm_edits_win_at_approve(db_session: AsyncSession) -> None:
     project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
     graph = make_graph(

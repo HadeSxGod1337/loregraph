@@ -65,6 +65,7 @@ class AgentSessionStore(Protocol):
         output_tokens: int | None = None,
         committed_entity_ids: list[str] | None = None,
         review: AgentReviewPayload | None = None,
+        clear_review: bool = False,
     ) -> AgentSessionOut: ...
 
 

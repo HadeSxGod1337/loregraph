@@ -1,3 +1,4 @@
+import re
 from difflib import SequenceMatcher
 from typing import Any
 
@@ -9,6 +10,18 @@ DUPLICATE_TITLE_RATIO = 0.85
 # How many times generation may retry over duplicate titles before the
 # conflict is surfaced to the DM instead (never an endless loop).
 MAX_GENERATION_ATTEMPTS = 2
+# Titles shorter than this are too collision-prone for mention detection
+# («Al» matches half the dictionary).
+MIN_MENTION_TITLE_LENGTH = 3
+
+
+def _mentions(brief: str, title: str) -> bool:
+    """Word-boundary match, not bare substring: «Мира» must not fire on
+    «мирами», «123» must not fire on «1230»."""
+    if len(title) < MIN_MENTION_TITLE_LENGTH:
+        return False
+    pattern = r"(?<!\w)" + re.escape(title.casefold()) + r"(?!\w)"
+    return re.search(pattern, brief.casefold()) is not None
 
 
 async def check_duplicates_request(
@@ -17,13 +30,12 @@ async def check_duplicates_request(
     """Pre-generation check: if the instruction literally names an existing
     entity, the DM probably wants to build around it, not clone it."""
     entities = await entity_store.list_entities(state.project_id)
-    brief = state.pending_brief.casefold()
     mentioned = [
         f"The request mentions existing entity «{entity.title}» "
         f"(id {entity.id}, {entity.type}) — the draft should connect to it, "
         f"not duplicate it."
         for entity in entities
-        if entity.title and entity.title.casefold() in brief
+        if entity.title and _mentions(state.pending_brief, entity.title)
     ]
     if mentioned:
         return {"warnings": [*state.warnings, *mentioned]}

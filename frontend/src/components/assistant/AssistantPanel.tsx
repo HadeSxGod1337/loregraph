@@ -174,9 +174,14 @@ function ChatInput({
   const [text, setText] = useState("");
   const [anchorId, setAnchorId] = useState("");
 
+  // While a draft awaits review, new messages are rejected by the backend —
+  // block them in the UI too, with an explanation.
+  const reviewPending = chat.pendingReview !== null;
+  const blocked = chat.busy || reviewPending;
+
   function submit() {
     const trimmed = text.trim();
-    if (!trimmed || chat.busy) return;
+    if (!trimmed || blocked) return;
     setText("");
     void chat.send(trimmed, anchorId || null);
   }
@@ -193,9 +198,13 @@ function ChatInput({
       />
       <textarea
         rows={2}
-        placeholder="Спроси о мире или попроси новый лор… (Enter — отправить)"
+        placeholder={
+          reviewPending
+            ? "Сначала заверши ревью черновика выше (принять / изменить / отклонить)"
+            : "Спроси о мире или попроси новый лор… (Enter — отправить)"
+        }
         value={text}
-        disabled={chat.busy}
+        disabled={blocked}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
@@ -219,7 +228,7 @@ function ChatInput({
             ))}
           </select>
         )}
-        <button type="button" disabled={!text.trim() || chat.busy} onClick={submit}>
+        <button type="button" disabled={!text.trim() || blocked} onClick={submit}>
           {chat.busy ? "…" : "Отправить"}
         </button>
       </div>

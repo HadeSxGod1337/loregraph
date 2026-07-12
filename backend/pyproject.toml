@@ -47,6 +47,9 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "UP", "B", "ASYNC", "RUF"]
+# RUF001-003 flag Cyrillic as "ambiguous with Latin"; user-facing strings in
+# this app are legitimately bilingual (RU/EN), so these are pure noise.
+ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 python_version = "3.12"

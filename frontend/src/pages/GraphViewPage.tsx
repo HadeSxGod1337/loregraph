@@ -42,6 +42,24 @@ export function GraphViewPage() {
   // Default root: last one viewed in this project, else the most connected
   // entity — the graph should show something on open, not an empty prompt.
   const autoRootApplied = useRef(false);
+
+  // The route reuses this component instance across projects (no key=):
+  // per-project state must reset on switch or project A's root leaks into B.
+  useEffect(() => {
+    autoRootApplied.current = false;
+    setRootId("");
+    setSelectedEntityId(null);
+    setSelectedEdgeId(null);
+  }, [projectId]);
+
+  // If the current root was deleted, fall back to auto-picking a new one.
+  useEffect(() => {
+    if (rootId && entities && !entities.some((entity) => entity.id === rootId)) {
+      autoRootApplied.current = false;
+      setRootId("");
+    }
+  }, [rootId, entities]);
+
   useEffect(() => {
     if (autoRootApplied.current || rootId || !entities?.length || !allEdges) return;
     autoRootApplied.current = true;

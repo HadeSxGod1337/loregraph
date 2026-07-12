@@ -56,12 +56,15 @@ class SqliteAgentSessionStore:
         output_tokens: int | None = None,
         committed_entity_ids: list[str] | None = None,
         review: AgentReviewPayload | None = None,
+        clear_review: bool = False,
     ) -> AgentSessionOut:
         row = await self._get_row(thread_id)
         if status is not None:
             row.status = status
         if title is not None:
             row.instruction = title
+        if clear_review:
+            row.review_json = None
         if input_tokens is not None:
             row.input_tokens = input_tokens
         if output_tokens is not None:

@@ -66,11 +66,12 @@ async def reindex_project(
     vector_index: VectorIndexDep,
 ) -> dict[str, int]:
     """Rebuild the project's vector collection from SQLite (source of truth)."""
+    # 404 first: an unknown project must not be masked by the config error.
+    await project_store.get(project_id)
     if vector_index is None:
         raise ConfigurationError(
             "Vector indexing is disabled (CAMPAIGN_EMBEDDING_PROVIDER=disabled)"
         )
-    await project_store.get(project_id)  # 404 for unknown projects
     indexed = await vector_index.reindex_project(entity_store, project_id)
     return {"indexed": indexed}
 

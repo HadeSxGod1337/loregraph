@@ -18,12 +18,13 @@ from mcp.server.fastmcp import FastMCP
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from loregraph.config import Settings
+from loregraph.llm.embeddings import get_embedding_provider
 from loregraph.schemas.edge import EdgeCreate
 from loregraph.schemas.entity import EntityCreate, EntityFieldIn, EntityOut, FieldType
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
 from loregraph.services.graph_query import get_subgraph
-from loregraph.services.vector_index import entity_to_text
+from loregraph.services.vector_index import VectorIndex, entity_to_text
 from loregraph.storage.sqlite.db import (
     create_engine_for,
     init_db,
@@ -32,22 +33,36 @@ from loregraph.storage.sqlite.db import (
 from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
+from loregraph.storage.vectorstore.chroma_store import ChromaVectorStore
 
 mcp = FastMCP("loregraph")
 
 _settings = Settings()
 _session_factory: async_sessionmaker[AsyncSession] | None = None
+_vector_index: VectorIndex | None = None
 _init_lock = asyncio.Lock()
 
 
 async def _get_session() -> AsyncSession:
-    global _session_factory
+    global _session_factory, _vector_index
     async with _init_lock:
         if _session_factory is None:
             engine = create_engine_for(_settings.db_path)
             await init_db(engine)
             _session_factory = make_session_factory(engine)
+            # Same vector wiring as the web app: MCP writes must index too,
+            # or the in-app agent can't retrieve MCP-created lore (the whole
+            # point of the shared service layer).
+            embedder = get_embedding_provider(_settings)
+            if embedder is not None:
+                _vector_index = VectorIndex(
+                    ChromaVectorStore(_settings.chroma_dir, embedder)
+                )
     return _session_factory()
+
+
+def _entity_service(session: AsyncSession) -> EntityService:
+    return EntityService(SqliteEntityStore(session), _vector_index)
 
 
 def _entity_brief(entity: EntityOut) -> dict[str, Any]:
@@ -81,7 +96,7 @@ async def list_entities(
 async def get_entity(project_id: str, entity_id: str) -> dict[str, Any]:
     """Get one entity with all its fields, as JSON."""
     async with await _get_session() as session:
-        service = EntityService(SqliteEntityStore(session))
+        service = _entity_service(session)
         entity = await service.get_in_project(project_id, entity_id)
         return entity.model_dump(mode="json")
 
@@ -142,7 +157,7 @@ async def create_entity(
         for key, value in (fields or {}).items()
     ]
     async with await _get_session() as session:
-        service = EntityService(SqliteEntityStore(session))
+        service = _entity_service(session)
         entity = await service.create(
             EntityCreate(type=entity_type, title=title, fields=field_models),
             project_id,

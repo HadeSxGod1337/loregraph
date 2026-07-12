@@ -74,12 +74,25 @@ class AgentRunner:
         self, project_id: str, thread_id: str, text: str, anchor_entity_id: str | None
     ) -> AsyncIterator[AgentEvent]:
         session = await self._require(project_id, thread_id)
+        if session.status == "awaiting_review":
+            # A plain dict input on an interrupted thread would just re-fire
+            # the interrupt and swallow the message — refuse loudly instead.
+            yield {
+                "type": "error",
+                "detail": "A draft is awaiting review — approve, reject or "
+                "request changes before sending new messages.",
+            }
+            return
         if not session.title:
             await self._sessions.update(thread_id, title=text[:SESSION_TITLE_LIMIT])
         graph_input: dict[str, Any] = {
             "project_id": project_id,
             "anchor_entity_id": anchor_entity_id,
             "messages": [HumanMessage(text)],
+            # Per-turn outcome fields reset so _finalize reports THIS turn's
+            # result, not a stale committed/rejected from an earlier proposal.
+            "decision_action": None,
+            "draft_committed": False,
         }
         async for event in self._stream_turn(thread_id, graph_input):
             yield event
@@ -174,13 +187,21 @@ class AgentRunner:
                     output_tokens=state.output_tokens,
                 ),
             )
-        status: AgentSessionStatus = "committed" if state.draft_committed else "idle"
+        if state.draft_committed:
+            status: AgentSessionStatus = "committed"
+        elif state.decision_action == "reject":
+            status = "rejected"
+        else:
+            status = "idle"
         return await self._sessions.update(
             thread_id,
             status=status,
             input_tokens=state.input_tokens,
             output_tokens=state.output_tokens,
             committed_entity_ids=state.committed_entity_ids,
+            # The pending-review snapshot is resolved — clear it so a
+            # committed/rejected session can't resurrect a stale draft.
+            clear_review=True,
         )
 
     async def _state(self, thread_id: str) -> AgentState | None:

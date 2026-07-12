@@ -19,6 +19,11 @@ async def human_review(state: AgentState) -> dict[str, Any]:
     """The mandatory HITL gate: the graph pauses here (checkpointed to disk)
     until the DM resumes with an explicit decision. Nothing reaches canon
     without passing through this node."""
+    if state.draft is None:
+        # Nothing to review (e.g. budget ran out before the first
+        # generation) — don't trap the session at an empty interrupt;
+        # commit's no-draft branch reports the warnings to the chat.
+        return {"decision_action": None}
     raw_decision = interrupt(build_review_payload(state).model_dump(mode="json"))
     decision = AgentResumeRequest.model_validate(raw_decision)
     update: dict[str, Any] = {"decision_action": decision.action}

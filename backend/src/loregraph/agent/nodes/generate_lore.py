@@ -33,7 +33,14 @@ async def generate_lore(
     if state.over_budget(token_budget):
         # Never silently burn the user's key past the ceiling: surface the
         # stop at review instead (docs/agent_architecture.md, section 9).
-        return {"warnings": [*state.warnings, BUDGET_EXHAUSTED_WARNING]}
+        # retry_feedback is cleared AND attempts advanced: check_duplicates_
+        # draft re-arms retry_feedback for the unchanged draft, so without
+        # the attempts bump the generate↔check cycle would loop forever.
+        return {
+            "warnings": [*state.warnings, BUDGET_EXHAUSTED_WARNING],
+            "retry_feedback": "",
+            "attempts": state.attempts + 1,
+        }
 
     retry_feedback = (
         f"\nIMPORTANT — previous attempt was rejected: {state.retry_feedback}"

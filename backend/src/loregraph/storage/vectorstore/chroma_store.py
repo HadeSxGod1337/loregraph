@@ -8,6 +8,7 @@ import chromadb
 from chromadb.api import ClientAPI
 from chromadb.api.models.Collection import Collection
 from chromadb.config import Settings as ChromaSettings
+from chromadb.errors import NotFoundError
 
 from loregraph.llm.embeddings import EmbeddingProvider
 from loregraph.storage.vectorstore.protocols import LoreChunk, RetrievedChunk
@@ -106,7 +107,10 @@ class ChromaVectorStore:
         def _drop() -> None:
             try:
                 self._client.delete_collection(f"p_{project_id}")
-            except Exception:
+            except NotFoundError:
+                # Only the benign case is swallowed; a real I/O/permission
+                # failure propagates to the caller (which treats drops as
+                # best-effort and logs it properly).
                 logger.debug("No vector collection to drop for %s", project_id)
 
         await asyncio.to_thread(_drop)

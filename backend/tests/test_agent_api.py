@@ -51,3 +51,27 @@ def test_session_is_project_scoped(client: TestClient, project_id: str) -> None:
 def test_get_unknown_session_is_404_or_409(client: TestClient, project_id: str) -> None:
     resp = client.get(f"/api/projects/{project_id}/agent/sessions/nope")
     assert resp.status_code in (404, 409)
+
+
+def test_message_to_unknown_session_is_404_not_broken_stream(
+    client: TestClient, project_id: str
+) -> None:
+    """Regression: session validation must happen before SSE headers go out —
+    an unknown thread used to produce an aborted 200 stream."""
+    resp = client.post(
+        f"/api/projects/{project_id}/agent/sessions/nope/messages",
+        json={"text": "привет"},
+    )
+    assert resp.status_code == 404
+
+
+def test_review_without_pending_draft_is_400(
+    client: TestClient, project_id: str
+) -> None:
+    created = client.post(f"/api/projects/{project_id}/agent/sessions").json()
+    resp = client.post(
+        f"/api/projects/{project_id}/agent/sessions/{created['thread_id']}/review",
+        json={"action": "approve"},
+    )
+    assert resp.status_code == 400
+    assert "not awaiting review" in resp.json()["detail"]
