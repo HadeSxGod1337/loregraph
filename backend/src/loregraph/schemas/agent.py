@@ -66,11 +66,24 @@ class AgentReviewPayload(BaseModel):
     output_tokens: int = 0
 
 
+class ChatAttachment(BaseModel):
+    """One file attached to a single chat turn — NOT the project's knowledge
+    base (services/knowledge_index.py). Lives only inside that turn's
+    HumanMessage content; persisted by the LangGraph checkpointer along with
+    the rest of the conversation, never chunked or embedded (see
+    agent/multimodal.py)."""
+
+    filename: str
+    content_type: str
+    data_base64: str
+
+
 class AgentMessageRequest(BaseModel):
     """One user turn in the conversation."""
 
     text: str
     anchor_entity_id: str | None = None
+    attachments: list[ChatAttachment] = Field(default_factory=list)
 
 
 class AgentResumeRequest(BaseModel):
@@ -88,6 +101,9 @@ class AgentMessageOut(BaseModel):
 
     role: Literal["user", "assistant"]
     text: str
+    # Filenames only (never the file bytes) — round-tripped through the
+    # HumanMessage's additional_kwargs, see agent/runner.py::transcript.
+    attachments: list[str] = Field(default_factory=list)
 
 
 class AgentSessionOut(BaseModel):

@@ -14,6 +14,10 @@ class ProjectRow(Base):
     id: Mapped[str] = mapped_column(primary_key=True)
     name: Mapped[str]
     description: Mapped[str | None] = mapped_column(default=None)
+    # DM's free-text style/format preferences, blended into agent system prompts
+    # (see prompts.project_instructions_block) — added post-launch, so init_db's
+    # migration step must backfill this column on existing databases.
+    agent_instructions: Mapped[str | None] = mapped_column(default=None)
     created_at: Mapped[datetime]
     updated_at: Mapped[datetime]
 
@@ -96,3 +100,26 @@ class AttachmentRow(Base):
     content_type: Mapped[str]
     size_bytes: Mapped[int]
     created_at: Mapped[datetime]
+
+
+class KnowledgeSourceRow(Base):
+    """A reference document (rulebook, setting bible) uploaded to a project's
+    knowledge base — grounding material for the agent, kept out of the
+    world-canon entity graph on purpose (see services/knowledge_index.py)."""
+
+    __tablename__ = "knowledge_sources"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    original_filename: Mapped[str]
+    stored_filename: Mapped[str] = mapped_column(unique=True)
+    content_type: Mapped[str]
+    size_bytes: Mapped[int]
+    # pending -> processing -> ready|failed (see services/knowledge_ingest.py)
+    status: Mapped[str] = mapped_column(index=True)
+    error: Mapped[str | None] = mapped_column(default=None)
+    chunk_count: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]

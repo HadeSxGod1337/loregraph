@@ -34,6 +34,23 @@ def test_get_unknown_project_404(client: TestClient) -> None:
     assert client.get("/api/projects/missing").status_code == 404
 
 
+def test_project_agent_instructions_round_trip(client: TestClient) -> None:
+    created = client.post(
+        "/api/projects",
+        json={"name": "Styled", "agent_instructions": "Write NPCs in second person."},
+    ).json()
+    assert created["agent_instructions"] == "Write NPCs in second person."
+
+    fetched = client.get(f"/api/projects/{created['id']}").json()
+    assert fetched["agent_instructions"] == "Write NPCs in second person."
+
+    updated = client.put(
+        f"/api/projects/{created['id']}",
+        json={"name": "Styled", "description": None, "agent_instructions": "Be terse."},
+    ).json()
+    assert updated["agent_instructions"] == "Be terse."
+
+
 def test_delete_project_cascades_entities(client: TestClient, project_id: str) -> None:
     entity_id = client.post(
         f"/api/projects/{project_id}/entities", json={"type": "npc", "title": "Mira"}

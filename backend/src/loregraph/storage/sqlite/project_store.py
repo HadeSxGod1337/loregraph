@@ -23,6 +23,7 @@ class SqliteProjectStore:
             id=uuid.uuid4().hex,
             name=data.name,
             description=data.description,
+            agent_instructions=data.agent_instructions,
             created_at=now,
             updated_at=now,
         )
@@ -42,6 +43,7 @@ class SqliteProjectStore:
             raise ProjectNotFoundError(project_id)
         row.name = data.name
         row.description = data.description
+        row.agent_instructions = data.agent_instructions
         row.updated_at = datetime.now(UTC)
         await self._session.commit()
         return _row_to_out(row)
@@ -62,6 +64,7 @@ def _row_to_out(row: ProjectRow) -> ProjectOut:
         id=row.id,
         name=row.name,
         description=row.description,
+        agent_instructions=row.agent_instructions,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )

@@ -25,6 +25,7 @@ export function NavBar() {
             </NavLink>
             <NavLink to={`/projects/${projectId}/graph`}>Graph</NavLink>
             <NavLink to={`/projects/${projectId}/assistant`}>AI Assistant</NavLink>
+            <NavLink to={`/projects/${projectId}/settings`}>⚙ Настройки</NavLink>
           </div>
         </>
       )}

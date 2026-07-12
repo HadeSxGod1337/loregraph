@@ -32,6 +32,12 @@ class AgentState(BaseModel):
     pending_brief: str = ""
     revision_feedback: str = ""
     existing_lore: str = ""
+    # Reference material from the project's knowledge base (uploaded docs) —
+    # additive field with a default, safe for pre-existing checkpoints
+    # (STATE_VERSION unchanged, unlike breaking renames). Deliberately kept
+    # separate from existing_lore/context_entity_ids: it is never a valid
+    # grounded_in target (see prompts/generate_lore.system.md).
+    knowledge_context: str = ""
     context_entity_ids: list[str] = Field(default_factory=list)
     known_entity_types: list[str] = Field(default_factory=list)
     draft: LoreDraft | None = None

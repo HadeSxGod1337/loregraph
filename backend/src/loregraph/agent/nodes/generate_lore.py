@@ -2,8 +2,9 @@ from typing import Any
 
 from loregraph.agent.state import AgentState
 from loregraph.llm.structured import StructuredGenerator
-from loregraph.prompts import render
+from loregraph.prompts import project_instructions_block, render
 from loregraph.schemas.agent import LoreDraft
+from loregraph.storage.protocols import ProjectStore
 
 BUDGET_EXHAUSTED_WARNING = (
     "Token budget for this run is exhausted — generation stopped early."
@@ -25,7 +26,11 @@ def _revision_block(state: AgentState) -> str:
 
 
 async def generate_lore(
-    state: AgentState, *, creative: StructuredGenerator, token_budget: int
+    state: AgentState,
+    *,
+    creative: StructuredGenerator,
+    token_budget: int,
+    project_store: ProjectStore,
 ) -> dict[str, Any]:
     """One creative call produces a coherent batch: entities (types chosen by
     the model, steered toward the project's existing taxonomy) plus the
@@ -47,12 +52,19 @@ async def generate_lore(
         if state.retry_feedback
         else ""
     )
+    project = await project_store.get(state.project_id)
     result = await creative.generate(
         LoreDraft,
-        system=render("generate_lore.system.md"),
+        system=render(
+            "generate_lore.system.md",
+            project_instructions_block=project_instructions_block(
+                project.agent_instructions
+            ),
+        ),
         user=render(
             "generate_lore.user.md",
             existing_lore=state.existing_lore,
+            knowledge_context=state.knowledge_context,
             known_types=", ".join(state.known_entity_types) or "(none yet)",
             instruction=state.pending_brief,
             revision_block=_revision_block(state),

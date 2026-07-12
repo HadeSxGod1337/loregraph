@@ -25,8 +25,9 @@ from loregraph.agent.state import AgentState
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
+from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.vector_index import VectorIndex
-from loregraph.storage.protocols import EdgeStore, EntityStore
+from loregraph.storage.protocols import EdgeStore, EntityStore, ProjectStore
 
 
 def build_agent_graph(
@@ -35,8 +36,10 @@ def build_agent_graph(
     creative: StructuredGenerator,
     extraction: StructuredGenerator,
     vector_index: VectorIndex | None,
+    knowledge_index: KnowledgeIndex | None,
     entity_store: EntityStore,
     edge_store: EdgeStore,
+    project_store: ProjectStore,
     entity_service: EntityService,
     edge_service: EdgeService,
     token_budget: int,
@@ -55,11 +58,21 @@ def build_agent_graph(
     # --- Conversation loop
     builder.add_node(
         "assistant",
-        partial(assistant, chat_model=chat_model, token_budget=token_budget),
+        partial(
+            assistant,
+            chat_model=chat_model,
+            token_budget=token_budget,
+            project_store=project_store,
+        ),
     )
     builder.add_node(
         "tools",
-        partial(run_tools, vector_index=vector_index, entity_store=entity_store),
+        partial(
+            run_tools,
+            vector_index=vector_index,
+            knowledge_index=knowledge_index,
+            entity_store=entity_store,
+        ),
     )
     builder.add_node("begin_proposal", begin_proposal)
 
@@ -69,6 +82,7 @@ def build_agent_graph(
         partial(
             retrieve_context,
             vector_index=vector_index,
+            knowledge_index=knowledge_index,
             entity_store=entity_store,
             edge_store=edge_store,
         ),
@@ -79,7 +93,12 @@ def build_agent_graph(
     )
     builder.add_node(
         "generate_lore",
-        partial(generate_lore, creative=creative, token_budget=token_budget),
+        partial(
+            generate_lore,
+            creative=creative,
+            token_budget=token_budget,
+            project_store=project_store,
+        ),
     )
     builder.add_node(
         "check_duplicates_draft",

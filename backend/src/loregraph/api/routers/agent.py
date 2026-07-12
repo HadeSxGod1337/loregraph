@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
+from loregraph.agent.multimodal import build_message_content
 from loregraph.agent.runner import AgentEvent
 from loregraph.api.deps import (
     AgentRunnerDep,
@@ -14,7 +15,11 @@ from loregraph.api.deps import (
     SettingsDep,
     VectorIndexDep,
 )
-from loregraph.exceptions import AgentSessionNotFoundError, CampaignError
+from loregraph.exceptions import (
+    AgentSessionNotFoundError,
+    CampaignError,
+    ChatAttachmentLimitExceededError,
+)
 from loregraph.llm.factory import is_llm_configured
 from loregraph.schemas.agent import (
     AgentConfigOut,
@@ -23,10 +28,50 @@ from loregraph.schemas.agent import (
     AgentSessionDetail,
     AgentSessionOut,
     AgentSessionStatus,
+    ChatAttachment,
 )
 from loregraph.storage.protocols import AgentSessionStore
 
 router = APIRouter(tags=["agent"])
+
+# Local self-hosted tool, no upload proxy in front — cap chat attachments here
+# so one oversized/over-numerous payload can't blow up the checkpointed
+# conversation or a single LLM call's cost.
+MAX_CHAT_ATTACHMENT_BYTES = 15 * 1024 * 1024
+MAX_CHAT_ATTACHMENTS_PER_TURN = 4
+
+
+def _validate_attachments(attachments: list[ChatAttachment]) -> None:
+    if len(attachments) > MAX_CHAT_ATTACHMENTS_PER_TURN:
+        raise ChatAttachmentLimitExceededError(
+            f"at most {MAX_CHAT_ATTACHMENTS_PER_TURN} files per message "
+            f"(got {len(attachments)})"
+        )
+    for attachment in attachments:
+        # base64 is ~4/3 the size of the decoded bytes — a cheap pre-check
+        # that avoids decoding an oversized payload just to reject it.
+        approx_bytes = len(attachment.data_base64) * 3 // 4
+        if approx_bytes > MAX_CHAT_ATTACHMENT_BYTES:
+            raise ChatAttachmentLimitExceededError(
+                f"{attachment.filename!r} exceeds the "
+                f"{MAX_CHAT_ATTACHMENT_BYTES // (1024 * 1024)}MB per-file limit"
+            )
+    # Eagerly builds the content blocks to surface UnsupportedAttachmentTypeError
+    # as a clean 422 now: stream_message is an async generator, so an
+    # exception raised from inside it could only abort an already-started SSE
+    # stream (see the guard-ordering note above).
+    build_message_content("", attachments)
+
+
+async def _attachment_guard(data: AgentMessageRequest) -> None:
+    # A Depends(), not a plain call inside the endpoint body: like the
+    # session guards below, this must run BEFORE AgentRunnerDep's
+    # dependency resolution (which raises ConfigurationError/409 with no LLM
+    # key configured) — a malformed/oversized attachment is a 422 regardless
+    # of whether an LLM is configured, and Depends() parameters all resolve
+    # before the endpoint function body runs, so ordering can only be
+    # controlled via Depends() placement, not code position in the body.
+    _validate_attachments(data.attachments)
 
 
 # Session checks are DEPENDENCIES declared before AgentRunnerDep in the
@@ -151,11 +196,18 @@ async def send_agent_message(
     thread_id: str,
     data: AgentMessageRequest,
     _guard: Annotated[None, Depends(_message_guard)],
+    _attachment_guard_dep: Annotated[None, Depends(_attachment_guard)],
     runner: AgentRunnerDep,
 ) -> StreamingResponse:
     """One conversation turn, streamed as SSE: status/token/review/done."""
     return _sse_response(
-        runner.stream_message(project_id, thread_id, data.text, data.anchor_entity_id)
+        runner.stream_message(
+            project_id,
+            thread_id,
+            data.text,
+            data.anchor_entity_id,
+            data.attachments,
+        )
     )
 
 

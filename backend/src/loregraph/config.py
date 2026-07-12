@@ -54,5 +54,9 @@ class Settings(BaseSettings):
         return self.data_dir / "chroma"
 
     @property
+    def knowledge_dir(self) -> Path:
+        return self.data_dir / "knowledge"
+
+    @property
     def agent_checkpoint_db_path(self) -> Path:
         return self.data_dir / "agent_checkpoints.sqlite3"

@@ -138,6 +138,15 @@ function Transcript({
           key={`${index}-${message.role}`}
           className={`assistant-bubble assistant-bubble-${message.role}`}
         >
+          {message.attachments.length > 0 && (
+            <div className="assistant-attachment-chips">
+              {message.attachments.map((filename) => (
+                <span key={filename} className="assistant-attachment-chip">
+                  📎 {filename}
+                </span>
+              ))}
+            </div>
+          )}
           {message.text}
         </div>
       ))}
@@ -173,6 +182,8 @@ function ChatInput({
 }) {
   const [text, setText] = useState("");
   const [anchorId, setAnchorId] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // While a draft awaits review, new messages are rejected by the backend —
   // block them in the UI too, with an explanation.
@@ -183,7 +194,18 @@ function ChatInput({
     const trimmed = text.trim();
     if (!trimmed || blocked) return;
     setText("");
-    void chat.send(trimmed, anchorId || null);
+    setFiles([]);
+    void chat.send(trimmed, anchorId || null, files);
+  }
+
+  function handleFilesPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (picked.length > 0) setFiles((prev) => [...prev, ...picked]);
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
   return (
@@ -196,6 +218,23 @@ function ChatInput({
           setAnchorId(hint.anchorId ?? "");
         }}
       />
+      {files.length > 0 && (
+        <div className="assistant-attachment-chips">
+          {files.map((file, index) => (
+            <span key={`${file.name}-${index}`} className="assistant-attachment-chip">
+              📎 {file.name}
+              <button
+                type="button"
+                className="assistant-attachment-remove"
+                onClick={() => removeFile(index)}
+                title="Убрать файл"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
       <textarea
         rows={2}
         placeholder={
@@ -228,6 +267,22 @@ function ChatInput({
             ))}
           </select>
         )}
+        <button
+          type="button"
+          disabled={blocked}
+          title="Прикрепить файл к этому сообщению (картинка, PDF, текст)"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          📎
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,application/pdf,text/plain,text/markdown"
+          onChange={handleFilesPicked}
+          style={{ display: "none" }}
+        />
         <button type="button" disabled={!text.trim() || blocked} onClick={submit}>
           {chat.busy ? "…" : "Отправить"}
         </button>

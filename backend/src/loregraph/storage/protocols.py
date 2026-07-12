@@ -9,6 +9,7 @@ from loregraph.schemas.agent import (
 from loregraph.schemas.attachment import AttachmentOut
 from loregraph.schemas.edge import EdgeCreate, EdgeOut, EdgeUpdate
 from loregraph.schemas.entity import EntityCreate, EntityOut, EntityUpdate
+from loregraph.schemas.knowledge import KnowledgeSourceOut
 from loregraph.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
 
 
@@ -80,3 +81,25 @@ class AttachmentStore(Protocol):
     ) -> AttachmentOut: ...
     async def list_for_entity(self, entity_id: str) -> list[AttachmentOut]: ...
     async def delete(self, attachment_id: str) -> None: ...
+
+
+@runtime_checkable
+class KnowledgeSourceStore(Protocol):
+    async def create(
+        self,
+        project_id: str,
+        original_filename: str,
+        content_type: str,
+        content: bytes,
+    ) -> KnowledgeSourceOut: ...
+    async def list_for_project(self, project_id: str) -> list[KnowledgeSourceOut]: ...
+    async def get(self, source_id: str) -> KnowledgeSourceOut: ...
+    async def update_status(
+        self,
+        source_id: str,
+        *,
+        status: str,
+        error: str | None = None,
+        chunk_count: int | None = None,
+    ) -> KnowledgeSourceOut: ...
+    async def delete(self, source_id: str) -> None: ...

@@ -11,12 +11,21 @@ from fastapi.staticfiles import StaticFiles
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from loregraph.api.routers import agent, attachments, edges, entities, graph, projects
+from loregraph.api.routers import (
+    agent,
+    attachments,
+    edges,
+    entities,
+    graph,
+    knowledge,
+    projects,
+)
 from loregraph.config import Settings
 from loregraph.exceptions import (
     AgentSessionNotFoundError,
     AttachmentNotFoundError,
     CampaignError,
+    ChatAttachmentLimitExceededError,
     ConfigurationError,
     CrossProjectEdgeError,
     EdgeNotFoundError,
@@ -24,11 +33,14 @@ from loregraph.exceptions import (
     GenerationError,
     InvalidEdgeReferenceError,
     InvalidIconReferenceError,
+    KnowledgeSourceNotFoundError,
     ProjectNotFoundError,
+    UnsupportedAttachmentTypeError,
     UnsupportedExportFormatError,
 )
 from loregraph.llm.embeddings import EmbeddingProvider, get_embedding_provider
 from loregraph.schemas.project_transfer import ProjectExport
+from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.project_transfer import import_project
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.composition import StoreFactories
@@ -41,6 +53,7 @@ from loregraph.storage.sqlite.db import (
 )
 from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
+from loregraph.storage.sqlite.knowledge_source_store import SqliteKnowledgeSourceStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
 from loregraph.storage.vectorstore.chroma_store import ChromaVectorStore
 
@@ -94,6 +107,7 @@ async def _seed_demo_project_if_empty(
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
     settings.attachments_dir.mkdir(parents=True, exist_ok=True)
+    settings.knowledge_dir.mkdir(parents=True, exist_ok=True)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -113,14 +127,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 session, settings.attachments_dir
             ),
             agent_session=SqliteAgentSessionStore,
+            knowledge_source=lambda session: SqliteKnowledgeSourceStore(
+                session, settings.knowledge_dir
+            ),
         )
         # Vector layer is optional derived data: None when embeddings are
         # disabled, and the manual editor must keep working either way.
+        # knowledge_index reuses the SAME ChromaVectorStore instance as
+        # vector_index (different collection namespace, see
+        # services/knowledge_index.py) — not a second Chroma client.
         embedder = get_embedding_provider(settings)
-        app.state.vector_index = (
-            VectorIndex(ChromaVectorStore(settings.chroma_dir, embedder))
+        chroma_store = (
+            ChromaVectorStore(settings.chroma_dir, embedder)
             if embedder is not None
             else None
+        )
+        app.state.vector_index = (
+            VectorIndex(chroma_store) if chroma_store is not None else None
+        )
+        app.state.knowledge_index = (
+            KnowledgeIndex(chroma_store) if chroma_store is not None else None
         )
         # Off the critical path: startup stays instant, but by the time the
         # user first hits "Generate lore" the model is (usually) loaded.
@@ -166,6 +192,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(graph.router, prefix="/api")
     app.include_router(attachments.router, prefix="/api")
     app.include_router(agent.router, prefix="/api")
+    app.include_router(knowledge.router, prefix="/api")
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
@@ -236,6 +263,24 @@ def _register_exception_handlers(app: FastAPI) -> None:
         _request: Request, exc: AgentSessionNotFoundError
     ) -> JSONResponse:
         return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(KnowledgeSourceNotFoundError)
+    async def _knowledge_source_not_found(
+        _request: Request, exc: KnowledgeSourceNotFoundError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(UnsupportedAttachmentTypeError)
+    async def _unsupported_attachment_type(
+        _request: Request, exc: UnsupportedAttachmentTypeError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    @app.exception_handler(ChatAttachmentLimitExceededError)
+    async def _chat_attachment_limit_exceeded(
+        _request: Request, exc: ChatAttachmentLimitExceededError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
 
     @app.exception_handler(GenerationError)
     async def _generation_error(

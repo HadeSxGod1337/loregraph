@@ -12,6 +12,7 @@ from loregraph.llm.factory import get_chat_model
 from loregraph.llm.structured import LangChainStructuredGenerator
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
+from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.composition import StoreFactories
 from loregraph.storage.protocols import (
@@ -19,6 +20,7 @@ from loregraph.storage.protocols import (
     AttachmentStore,
     EdgeStore,
     EntityStore,
+    KnowledgeSourceStore,
     ProjectStore,
 )
 
@@ -65,10 +67,19 @@ async def get_attachment_store(
     return _factories(request).attachment(session)
 
 
+async def get_knowledge_source_store(
+    request: Request, session: SessionDep
+) -> KnowledgeSourceStore:
+    return _factories(request).knowledge_source(session)
+
+
 ProjectStoreDep = Annotated[ProjectStore, Depends(get_project_store)]
 EntityStoreDep = Annotated[EntityStore, Depends(get_entity_store)]
 EdgeStoreDep = Annotated[EdgeStore, Depends(get_edge_store)]
 AttachmentStoreDep = Annotated[AttachmentStore, Depends(get_attachment_store)]
+KnowledgeSourceStoreDep = Annotated[
+    KnowledgeSourceStore, Depends(get_knowledge_source_store)
+]
 
 
 def get_vector_index(request: Request) -> VectorIndex | None:
@@ -78,6 +89,15 @@ def get_vector_index(request: Request) -> VectorIndex | None:
 
 
 VectorIndexDep = Annotated[VectorIndex | None, Depends(get_vector_index)]
+
+
+def get_knowledge_index(request: Request) -> KnowledgeIndex | None:
+    # Same optionality contract as get_vector_index: None when embeddings are
+    # disabled, every consumer degrades (see services/knowledge_ingest.py).
+    return cast(KnowledgeIndex | None, request.app.state.knowledge_index)
+
+
+KnowledgeIndexDep = Annotated[KnowledgeIndex | None, Depends(get_knowledge_index)]
 
 
 # Services are concrete classes composed from Protocol stores — no factory
@@ -112,9 +132,11 @@ async def get_agent_runner(
     settings: SettingsDep,
     entity_store: EntityStoreDep,
     edge_store: EdgeStoreDep,
+    project_store: ProjectStoreDep,
     entity_service: EntityServiceDep,
     edge_service: EdgeServiceDep,
     vector_index: VectorIndexDep,
+    knowledge_index: KnowledgeIndexDep,
     agent_sessions: AgentSessionStoreDep,
 ) -> AgentRunner:
     """Builds the per-request agent graph: services are session-scoped, so
@@ -130,8 +152,10 @@ async def get_agent_runner(
             get_chat_model(settings, tier="extraction")
         ),
         vector_index=vector_index,
+        knowledge_index=knowledge_index,
         entity_store=entity_store,
         edge_store=edge_store,
+        project_store=project_store,
         entity_service=entity_service,
         edge_service=edge_service,
         token_budget=settings.agent_run_token_budget,

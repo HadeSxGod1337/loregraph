@@ -8,6 +8,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 
+from loregraph.agent.multimodal import build_message_content
 from loregraph.agent.state import AgentState
 from loregraph.exceptions import AgentSessionNotFoundError
 from loregraph.schemas.agent import (
@@ -17,6 +18,7 @@ from loregraph.schemas.agent import (
     AgentSessionDetail,
     AgentSessionOut,
     AgentSessionStatus,
+    ChatAttachment,
 )
 from loregraph.storage.protocols import AgentSessionStore
 
@@ -50,7 +52,19 @@ def transcript(state: AgentState) -> list[AgentMessageOut]:
     out: list[AgentMessageOut] = []
     for message in state.messages:
         if isinstance(message, HumanMessage):
-            out.append(AgentMessageOut(role="user", text=_message_text(message)))
+            out.append(
+                AgentMessageOut(
+                    role="user",
+                    text=_message_text(message),
+                    # Filenames only — never the file bytes — round-tripped
+                    # through additional_kwargs (see agent/multimodal.py's
+                    # module docstring for why this doesn't touch the
+                    # provider-facing content blocks).
+                    attachments=list(
+                        message.additional_kwargs.get("attachment_filenames", [])
+                    ),
+                )
+            )
         elif isinstance(message, AIMessage):
             text = _message_text(message)
             if text.strip():
@@ -71,7 +85,12 @@ class AgentRunner:
         self._sessions = sessions
 
     async def stream_message(
-        self, project_id: str, thread_id: str, text: str, anchor_entity_id: str | None
+        self,
+        project_id: str,
+        thread_id: str,
+        text: str,
+        anchor_entity_id: str | None,
+        attachments: list[ChatAttachment],
     ) -> AsyncIterator[AgentEvent]:
         session = await self._require(project_id, thread_id)
         if session.status == "awaiting_review":
@@ -85,10 +104,18 @@ class AgentRunner:
             return
         if not session.title:
             await self._sessions.update(thread_id, title=text[:SESSION_TITLE_LIMIT])
+        message = HumanMessage(
+            build_message_content(text, attachments),
+            additional_kwargs=(
+                {"attachment_filenames": [a.filename for a in attachments]}
+                if attachments
+                else {}
+            ),
+        )
         graph_input: dict[str, Any] = {
             "project_id": project_id,
             "anchor_entity_id": anchor_entity_id,
-            "messages": [HumanMessage(text)],
+            "messages": [message],
             # Per-turn outcome fields reset so _finalize reports THIS turn's
             # result, not a stale committed/rejected from an earlier proposal.
             "decision_action": None,

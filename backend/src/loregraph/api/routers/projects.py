@@ -6,6 +6,7 @@ from loregraph.api.deps import (
     AttachmentStoreDep,
     EdgeStoreDep,
     EntityStoreDep,
+    KnowledgeIndexDep,
     ProjectStoreDep,
     SettingsDep,
     VectorIndexDep,
@@ -44,7 +45,10 @@ async def update_project(
 
 @router.delete("/{project_id}", status_code=204)
 async def delete_project(
-    project_id: str, store: ProjectStoreDep, vector_index: VectorIndexDep
+    project_id: str,
+    store: ProjectStoreDep,
+    vector_index: VectorIndexDep,
+    knowledge_index: KnowledgeIndexDep,
 ) -> None:
     await store.delete(project_id)
     if vector_index is not None:
@@ -53,6 +57,15 @@ async def delete_project(
         except Exception:
             logger.warning(
                 "Failed to drop vector collection for deleted project %s",
+                project_id,
+                exc_info=True,
+            )
+    if knowledge_index is not None:
+        try:
+            await knowledge_index.drop_project(project_id)
+        except Exception:
+            logger.warning(
+                "Failed to drop knowledge base collection for deleted project %s",
                 project_id,
                 exc_info=True,
             )

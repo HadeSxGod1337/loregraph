@@ -3,6 +3,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, ToolMessage
 
 from loregraph.agent.state import AgentState
+from loregraph.services.knowledge_index import KB_RETRIEVAL_K, KnowledgeIndex
 from loregraph.services.vector_index import VectorIndex, entity_to_text
 from loregraph.storage.protocols import EntityStore
 
@@ -10,12 +11,14 @@ SEARCH_K = 5
 # Tool outputs are prompt input on the next assistant call — keep them tight.
 DETAIL_TEXT_LIMIT = 800
 SEARCH_TEXT_LIMIT = 200
+KB_SEARCH_TEXT_LIMIT = 400
 
 
 async def run_tools(
     state: AgentState,
     *,
     vector_index: VectorIndex | None,
+    knowledge_index: KnowledgeIndex | None,
     entity_store: EntityStore,
 ) -> dict[str, Any]:
     """Executes the assistant's read tools against the project's stores.
@@ -39,6 +42,12 @@ async def run_tools(
                     entity_store,
                     state.project_id,
                     str(call["args"].get("entity_id", "")),
+                )
+            case "search_knowledge_base":
+                content = await _search_knowledge_base(
+                    knowledge_index,
+                    state.project_id,
+                    str(call["args"].get("query", "")),
                 )
             case unknown:
                 content = f"Unknown tool: {unknown}"
@@ -85,3 +94,17 @@ async def _entity_details(
     if not entities or entities[0].project_id != project_id:
         return f"Entity not found: {entity_id}"
     return entity_to_text(entities[0])[:DETAIL_TEXT_LIMIT]
+
+
+async def _search_knowledge_base(
+    knowledge_index: KnowledgeIndex | None, project_id: str, query: str
+) -> str:
+    if knowledge_index is None:
+        return (
+            "Knowledge base search is unavailable (embeddings are disabled "
+            "for this deployment)."
+        )
+    chunks = await knowledge_index.query(project_id, query, k=KB_RETRIEVAL_K)
+    if not chunks:
+        return "No knowledge base documents matched this query."
+    return "\n".join(chunk.text[:KB_SEARCH_TEXT_LIMIT] for chunk in chunks)

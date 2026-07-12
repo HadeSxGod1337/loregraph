@@ -60,6 +60,16 @@ export interface AgentSession {
 export interface AgentChatMessage {
   role: "user" | "assistant";
   text: string;
+  attachments: string[];
+}
+
+/** One file attached to a single chat turn — NOT the project's knowledge
+ * base (see components/knowledge/KnowledgeBasePanel.tsx). Lives only inside
+ * that turn's message; never becomes a persistent, searchable document. */
+export interface ChatAttachment {
+  filename: string;
+  content_type: string;
+  data_base64: string;
 }
 
 export interface AgentSessionDetail extends AgentSession {
@@ -129,6 +139,22 @@ export async function streamAgentTurn(
   }
 }
 
+/** Encodes a browser File into the base64 payload the backend expects for
+ * chat attachments (see agent/multimodal.py). */
+export async function fileToChatAttachment(file: File): Promise<ChatAttachment> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error as DOMException);
+    reader.readAsDataURL(file);
+  });
+  return {
+    filename: file.name,
+    content_type: file.type || "application/octet-stream",
+    data_base64: dataUrl.slice(dataUrl.indexOf(",") + 1),
+  };
+}
+
 export const agentApi = {
   config: () => apiClient.get<AgentConfig>("/api/agent/config"),
   createSession: (projectId: string) =>
@@ -144,11 +170,12 @@ export const agentApi = {
     threadId: string,
     text: string,
     anchorEntityId: string | null,
+    attachments: ChatAttachment[],
     onEvent: (event: AgentEvent) => void,
   ) =>
     streamAgentTurn(
       `/api/projects/${projectId}/agent/sessions/${threadId}/messages`,
-      { text, anchor_entity_id: anchorEntityId },
+      { text, anchor_entity_id: anchorEntityId, attachments },
       onEvent,
     ),
   streamReview: (

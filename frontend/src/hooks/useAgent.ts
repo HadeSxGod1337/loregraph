@@ -7,6 +7,7 @@ import {
   type AgentResumeRequest,
   type AgentReviewPayload,
   agentApi,
+  fileToChatAttachment,
 } from "../api/agent";
 
 export function useAgentConfig() {
@@ -33,7 +34,11 @@ export interface AgentChat {
   pendingReview: AgentReviewPayload | null;
   busy: boolean;
   error: string | null;
-  send: (text: string, anchorEntityId?: string | null) => Promise<void>;
+  send: (
+    text: string,
+    anchorEntityId?: string | null,
+    attachments?: File[],
+  ) => Promise<void>;
   review: (decision: AgentResumeRequest) => Promise<void>;
   openSession: (threadId: string) => Promise<void>;
   reset: () => void;
@@ -71,7 +76,15 @@ export function useAgentChat(
                 { ...last, text: last.text + event.text },
               ];
             }
-            return [...prev, { role: "assistant", text: event.text, streaming: true }];
+            return [
+              ...prev,
+              {
+                role: "assistant",
+                text: event.text,
+                attachments: [],
+                streaming: true,
+              },
+            ];
           });
           break;
         case "review":
@@ -121,7 +134,11 @@ export function useAgentChat(
   );
 
   const send = useCallback(
-    async (text: string, anchorEntityId: string | null = null) => {
+    async (
+      text: string,
+      anchorEntityId: string | null = null,
+      files: File[] = [],
+    ) => {
       let tid = threadIdRef.current;
       if (!tid) {
         const session = await agentApi.createSession(projectId);
@@ -129,9 +146,20 @@ export function useAgentChat(
         setThreadId(tid);
         threadIdRef.current = tid;
       }
-      setMessages((prev) => [...prev, { role: "user", text }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", text, attachments: files.map((f) => f.name) },
+      ]);
+      const attachments = await Promise.all(files.map(fileToChatAttachment));
       await runTurn(() =>
-        agentApi.streamMessage(projectId, tid, text, anchorEntityId, handleEvent),
+        agentApi.streamMessage(
+          projectId,
+          tid,
+          text,
+          anchorEntityId,
+          attachments,
+          handleEvent,
+        ),
       );
     },
     [projectId, runTurn, handleEvent],

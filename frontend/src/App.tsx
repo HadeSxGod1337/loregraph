@@ -7,6 +7,7 @@ import { EntityEditPage } from "./pages/EntityEditPage";
 import { EntityListPage } from "./pages/EntityListPage";
 import { GraphViewPage } from "./pages/GraphViewPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
+import { ProjectSettingsPage } from "./pages/ProjectSettingsPage";
 
 function App() {
   return (
@@ -18,6 +19,10 @@ function App() {
         <Route path="/projects/:projectId/entities/:id" element={<EntityEditPage />} />
         <Route path="/projects/:projectId/graph" element={<GraphViewPage />} />
         <Route path="/projects/:projectId/assistant" element={<AssistantPage />} />
+        <Route
+          path="/projects/:projectId/settings"
+          element={<ProjectSettingsPage />}
+        />
       </Routes>
     </Layout>
   );

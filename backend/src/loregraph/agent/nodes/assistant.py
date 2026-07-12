@@ -5,7 +5,8 @@ from langchain_core.messages import AIMessage, AnyMessage, SystemMessage, ToolMe
 from pydantic import BaseModel, Field
 
 from loregraph.agent.state import AgentState
-from loregraph.prompts import render
+from loregraph.prompts import project_instructions_block, render
+from loregraph.storage.protocols import ProjectStore
 
 # Conversation window sent to the LLM: enough for coherent chat, small enough
 # to keep per-turn token cost flat as the conversation grows.
@@ -29,6 +30,15 @@ class get_entity_details(BaseModel):
     entity_id: str
 
 
+class search_knowledge_base(BaseModel):
+    """Semantic search over the project's uploaded reference documents
+    (rulebooks, setting bibles) — NOT world canon. Use it when the game
+    master's question is about rules or reference material rather than the
+    world's own established facts (that's search_lore)."""
+
+    query: str = Field(description="What to look for, in the document's language.")
+
+
 class propose_lore(BaseModel):
     """Draft new world content (entities + relationships) for the game
     master's review. The only way to create anything."""
@@ -39,7 +49,12 @@ class propose_lore(BaseModel):
     )
 
 
-ASSISTANT_TOOLS: list[type[BaseModel]] = [search_lore, get_entity_details, propose_lore]
+ASSISTANT_TOOLS: list[type[BaseModel]] = [
+    search_lore,
+    get_entity_details,
+    search_knowledge_base,
+    propose_lore,
+]
 
 
 def chat_window(messages: list[AnyMessage]) -> list[AnyMessage]:
@@ -52,7 +67,11 @@ def chat_window(messages: list[AnyMessage]) -> list[AnyMessage]:
 
 
 async def assistant(
-    state: AgentState, *, chat_model: BaseChatModel, token_budget: int
+    state: AgentState,
+    *,
+    chat_model: BaseChatModel,
+    token_budget: int,
+    project_store: ProjectStore,
 ) -> dict[str, Any]:
     """The conversational brain: answers from retrieved lore, asks clarifying
     questions, and calls propose_lore to draft content. Deliberately has no
@@ -60,10 +79,21 @@ async def assistant(
     if state.over_budget(token_budget):
         return {"messages": [AIMessage(BUDGET_EXHAUSTED_REPLY)]}
 
+    # Fetched fresh each turn (not cached in AgentState) so edits to the
+    # project's instructions take effect on the very next message, and so
+    # the persisted checkpoint schema never has to carry project settings.
+    project = await project_store.get(state.project_id)
     model = chat_model.bind_tools(ASSISTANT_TOOLS)
     response = await model.ainvoke(
         [
-            SystemMessage(render("assistant.system.md")),
+            SystemMessage(
+                render(
+                    "assistant.system.md",
+                    project_instructions_block=project_instructions_block(
+                        project.agent_instructions
+                    ),
+                )
+            ),
             *chat_window(state.messages),
         ]
     )

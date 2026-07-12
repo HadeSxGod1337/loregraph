@@ -78,6 +78,7 @@ export interface Project {
   id: string;
   name: string;
   description: string | null;
+  agent_instructions: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -85,6 +86,7 @@ export interface Project {
 export interface ProjectCreate {
   name: string;
   description?: string | null;
+  agent_instructions?: string | null;
 }
 
 export type ProjectUpdate = ProjectCreate;
@@ -126,4 +128,19 @@ export interface Attachment {
   content_type: string;
   size_bytes: number;
   created_at: string;
+}
+
+export type KnowledgeSourceStatus = "pending" | "processing" | "ready" | "failed";
+
+export interface KnowledgeSource {
+  id: string;
+  project_id: string;
+  original_filename: string;
+  content_type: string;
+  size_bytes: number;
+  status: KnowledgeSourceStatus;
+  error: string | null;
+  chunk_count: number;
+  created_at: string;
+  updated_at: string;
 }

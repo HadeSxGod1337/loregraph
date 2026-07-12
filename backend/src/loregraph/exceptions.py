@@ -82,3 +82,35 @@ class DuplicateEntityError(CampaignError):
         )
         self.title = title
         self.existing_entity_id = existing_entity_id
+
+
+class KnowledgeSourceNotFoundError(CampaignError):
+    def __init__(self, source_id: str) -> None:
+        super().__init__(f"Knowledge source not found: {source_id}")
+        self.source_id = source_id
+
+
+class UnsupportedDocumentTypeError(CampaignError):
+    def __init__(self, filename: str) -> None:
+        super().__init__(f"Unsupported document type for knowledge base: {filename}")
+        self.filename = filename
+
+
+class DocumentParsingError(CampaignError):
+    def __init__(self, filename: str, reason: str) -> None:
+        super().__init__(f"Failed to parse document {filename!r}: {reason}")
+        self.filename = filename
+        self.reason = reason
+
+
+class UnsupportedAttachmentTypeError(CampaignError):
+    def __init__(self, filename: str, reason: str) -> None:
+        super().__init__(f"Unsupported chat attachment {filename!r}: {reason}")
+        self.filename = filename
+        self.reason = reason
+
+
+class ChatAttachmentLimitExceededError(CampaignError):
+    def __init__(self, reason: str) -> None:
+        super().__init__(f"Chat attachment limit exceeded: {reason}")
+        self.reason = reason

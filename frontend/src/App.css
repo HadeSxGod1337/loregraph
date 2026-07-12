@@ -269,6 +269,79 @@
   color: var(--text);
 }
 
+/* project settings */
+
+.project-settings-page {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.project-settings-page label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.project-settings-page input,
+.project-settings-page textarea {
+  color: var(--text);
+  font-family: inherit;
+}
+
+.project-settings-page button {
+  align-self: flex-start;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* knowledge base */
+
+.knowledge-base-panel {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 16px;
+}
+
+.knowledge-source-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.knowledge-source-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.knowledge-source-name {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-source-status {
+  flex-shrink: 0;
+}
+
 .icon-picker {
   display: flex;
   align-items: center;
@@ -1625,6 +1698,39 @@
   align-self: flex-start;
   background: var(--bg-subtle);
   border-bottom-left-radius: 4px;
+}
+
+.assistant-attachment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.assistant-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-subtle);
+  font-size: 0.82em;
+  color: var(--text);
+}
+
+.assistant-attachment-remove {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1em;
+  line-height: 1;
+  padding: 0 0 0 2px;
+}
+
+.assistant-attachment-remove:hover {
+  color: var(--accent);
 }
 
 .assistant-status-line {
