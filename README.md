@@ -55,13 +55,17 @@ lore never leaves your machine except for the LLM calls you configure.
 
 ## Running locally
 
-### Quick start (Windows, no dev tools required)
+### Quick start (no dev tools required)
 
-Double-click `start.bat` in the repo root. The script installs missing tools
-(`uv`, Node.js), pulls the latest updates from git, installs dependencies, asks
-for an Anthropic API key on first run (optional — press Enter to skip), starts
-both servers and opens the app in your browser. Close the console window to
-stop everything. While running, it periodically checks for new commits and
+- **Windows**: double-click `start.bat` in the repo root.
+- **macOS / Linux**: run `./start.sh` (or `bash start.sh`) in the repo root.
+
+Either script installs missing tools (`uv`, Node.js), pulls the latest updates
+from git, installs dependencies, lets you pick an LLM provider (Anthropic,
+OpenAI, or local Ollama) and embedding source on first run — or press Enter to
+skip and configure the AI assistant later — then starts both servers and opens
+the app in your browser. Close the console window (or Ctrl+C on macOS/Linux)
+to stop everything. While running, it periodically checks for new commits and
 tells you when a restart would pick up an update.
 
 ### Backend
