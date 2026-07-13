@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useBlocker, useNavigate, useParams } from "react-router-dom";
 
 import type { EntityField } from "../api/types";
 import { DEFAULT_ENTITY_TYPES } from "../api/types";
@@ -52,8 +52,7 @@ export function EntityEditPage() {
   );
   const isDirty = JSON.stringify({ type, title, fields }) !== savedSnapshot;
 
-  // Warn on closing the tab with unsaved edits (in-app navigation is not
-  // blocked — BrowserRouter has no data-router blocker).
+  // Warn on closing the tab with unsaved edits.
   useEffect(() => {
     if (!isDirty) return;
     function onBeforeUnload(e: BeforeUnloadEvent) {
@@ -63,12 +62,23 @@ export function EntityEditPage() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [isDirty]);
 
+  // In-app navigation guard. Programmatic redirects after create/delete set
+  // the skip flag — those flows already resolved the data's fate.
+  const skipBlockerRef = useRef(false);
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty &&
+      !skipBlockerRef.current &&
+      currentLocation.pathname !== nextLocation.pathname,
+  );
+
   function handleSave() {
     const data = { type, title, fields };
     if (isNew) {
       createEntity.mutate(data, {
         onSuccess: (created) => {
           toast(t("entityEdit.createdToast"));
+          skipBlockerRef.current = true;
           navigate(`/projects/${projectId}/entities/${created.id}`);
         },
       });
@@ -84,6 +94,7 @@ export function EntityEditPage() {
     deleteEntity.mutate(id, {
       onSuccess: () => {
         toast(t("entityEdit.deletedToast"));
+        skipBlockerRef.current = true;
         navigate(`/projects/${projectId}/entities`);
       },
     });
@@ -168,6 +179,16 @@ export function EntityEditPage() {
           busy={deleteEntity.isPending}
           onConfirm={handleDeleteConfirmed}
           onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
+
+      {blocker.state === "blocked" && (
+        <ConfirmDialog
+          title={t("common.leaveTitle")}
+          body={t("common.leaveBody")}
+          confirmLabel={t("common.leaveButton")}
+          onConfirm={() => blocker.proceed()}
+          onCancel={() => blocker.reset()}
         />
       )}
     </div>

@@ -201,6 +201,11 @@ function ProjectCard({
       <Link to={`/projects/${project.id}/entities`} className="project-card-link">
         <h3>{project.name}</h3>
         {project.description && <p>{project.description}</p>}
+        <p className="project-card-stats">
+          {t("projects.entitiesCount", { count: project.entity_count })}
+          {" · "}
+          {t("projects.edgesCount", { count: project.edge_count })}
+        </p>
       </Link>
       <div className="project-card-actions">
         <KebabMenu

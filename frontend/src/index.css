@@ -270,6 +270,36 @@ body {
   outline-offset: 2px;
 }
 
+/* One scrollbar language for the whole app — thin and theme-aware
+   everywhere, not just in the assistant/panel. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+}
+
 h1 {
   font-size: 24px;
   margin: 0 0 16px;

@@ -10,7 +10,10 @@
     "replace": "Replace",
     "upload": "Upload",
     "uploading": "Uploading...",
-    "moreActions": "More actions"
+    "moreActions": "More actions",
+    "leaveTitle": "Leave without saving?",
+    "leaveBody": "Unsaved changes will be lost.",
+    "leaveButton": "Leave"
   },
   "nav": {
     "allProjects": "← All projects",
@@ -44,7 +47,11 @@
     "confirmDeleteButton": "Delete forever",
     "deletedToast": "Project deleted",
     "deleteButton": "Delete",
-    "menuLabel": "Project actions"
+    "menuLabel": "Project actions",
+    "entitiesCount_one": "{{count}} entity",
+    "entitiesCount_other": "{{count}} entities",
+    "edgesCount_one": "{{count}} relationship",
+    "edgesCount_other": "{{count}} relationships"
   },
   "entities": {
     "title": "Entities",
@@ -230,7 +237,13 @@
       "approve_one": "Approve {{count}}",
       "approve_other": "Approve {{count}}",
       "requestChanges": "Request changes",
-      "reject": "Reject"
+      "reject": "Reject",
+      "detailsTitle": "View draft details",
+      "previewBadge": "draft",
+      "previewBanner": "This is a preview — it enters the world only after you approve.",
+      "summaryHeading": "Summary",
+      "groundedIn_one": "Grounded in {{count}} fragment of existing lore",
+      "groundedIn_other": "Grounded in {{count}} fragments of existing lore"
     }
   },
   "warnings": {

@@ -10,7 +10,10 @@
     "replace": "Заменить",
     "upload": "Загрузить",
     "uploading": "Загрузка...",
-    "moreActions": "Ещё действия"
+    "moreActions": "Ещё действия",
+    "leaveTitle": "Уйти без сохранения?",
+    "leaveBody": "Несохранённые изменения будут потеряны.",
+    "leaveButton": "Уйти"
   },
   "nav": {
     "allProjects": "← Все проекты",
@@ -44,7 +47,15 @@
     "confirmDeleteButton": "Удалить навсегда",
     "deletedToast": "Проект удалён",
     "deleteButton": "Удалить",
-    "menuLabel": "Действия с проектом"
+    "menuLabel": "Действия с проектом",
+    "entitiesCount_one": "{{count}} сущность",
+    "entitiesCount_few": "{{count}} сущности",
+    "entitiesCount_many": "{{count}} сущностей",
+    "entitiesCount_other": "{{count}} сущности",
+    "edgesCount_one": "{{count}} связь",
+    "edgesCount_few": "{{count}} связи",
+    "edgesCount_many": "{{count}} связей",
+    "edgesCount_other": "{{count}} связи"
   },
   "entities": {
     "title": "Сущности",
@@ -238,7 +249,15 @@
       "approve_many": "Принять {{count}}",
       "approve_other": "Принять {{count}}",
       "requestChanges": "Запросить правки",
-      "reject": "Отклонить"
+      "reject": "Отклонить",
+      "detailsTitle": "Посмотреть детали черновика",
+      "previewBadge": "черновик",
+      "previewBanner": "Это предпросмотр — попадёт в мир только после «Принять».",
+      "summaryHeading": "Описание",
+      "groundedIn_one": "Основано на {{count}} фрагменте существующего лора",
+      "groundedIn_few": "Основано на {{count}} фрагментах существующего лора",
+      "groundedIn_many": "Основано на {{count}} фрагментах существующего лора",
+      "groundedIn_other": "Основано на {{count}} фрагментах существующего лора"
     }
   },
   "warnings": {

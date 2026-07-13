@@ -1,12 +1,13 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 
 from loregraph.exceptions import ProjectNotFoundError
 from loregraph.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
-from loregraph.storage.sqlite.models import ProjectRow
+from loregraph.storage.sqlite.models import EdgeRow, EntityRow, ProjectRow
 
 
 class SqliteProjectStore:
@@ -14,8 +15,25 @@ class SqliteProjectStore:
         self._session = session
 
     async def list_projects(self) -> list[ProjectOut]:
+        entity_counts = await self._counts_by_project(EntityRow.project_id)
+        edge_counts = await self._counts_by_project(EdgeRow.project_id)
         rows = (await self._session.execute(select(ProjectRow))).scalars().all()
-        return [_row_to_out(row) for row in rows]
+        return [
+            _row_to_out(
+                row,
+                entity_count=entity_counts.get(row.id, 0),
+                edge_count=edge_counts.get(row.id, 0),
+            )
+            for row in rows
+        ]
+
+    async def _counts_by_project(
+        self, project_id_column: InstrumentedAttribute[str]
+    ) -> dict[str, int]:
+        result = await self._session.execute(
+            select(project_id_column, func.count()).group_by(project_id_column)
+        )
+        return {project_id: count for project_id, count in result.all()}
 
     async def create(self, data: ProjectCreate) -> ProjectOut:
         now = datetime.now(UTC)
@@ -59,12 +77,16 @@ class SqliteProjectStore:
         return await self._session.get(ProjectRow, project_id) is not None
 
 
-def _row_to_out(row: ProjectRow) -> ProjectOut:
+def _row_to_out(
+    row: ProjectRow, entity_count: int = 0, edge_count: int = 0
+) -> ProjectOut:
     return ProjectOut(
         id=row.id,
         name=row.name,
         description=row.description,
         agent_instructions=row.agent_instructions,
+        entity_count=entity_count,
+        edge_count=edge_count,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )

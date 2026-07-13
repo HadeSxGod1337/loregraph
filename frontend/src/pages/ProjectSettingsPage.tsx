@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { useBlocker, useParams } from "react-router-dom";
 
 import { KnowledgeBasePanel } from "../components/knowledge/KnowledgeBasePanel";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { useToast } from "../components/ui/Toast";
 import { useProject, useReindexProject, useUpdateProject } from "../hooks/useProjects";
 import { translateApiError } from "../i18n/eventText";
@@ -35,6 +36,20 @@ export function ProjectSettingsPage() {
     (name !== project.name ||
       description !== (project.description ?? "") ||
       agentInstructions !== (project.agent_instructions ?? ""));
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  useEffect(() => {
+    if (!isDirty) return;
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
 
   function handleSave() {
     if (!name.trim()) return;
@@ -88,38 +103,16 @@ export function ProjectSettingsPage() {
               <p className="field-hint">{t("projectSettings.instructionsHint")}</p>
             </div>
 
-            <label>
-              {t("projectSettings.instructionsLabel")}
-              <textarea
-                rows={6}
-                placeholder={t("projectSettings.instructionsPlaceholder")}
-                value={agentInstructions}
-                onChange={(e) => setAgentInstructions(e.target.value)}
-              />
-            </label>
+            {/* The card heading is the label — repeating it above the
+                textarea just duplicated the text. */}
+            <textarea
+              rows={6}
+              aria-label={t("projectSettings.instructionsLabel")}
+              placeholder={t("projectSettings.instructionsPlaceholder")}
+              value={agentInstructions}
+              onChange={(e) => setAgentInstructions(e.target.value)}
+            />
           </section>
-
-          <div className="settings-save-row">
-            <button
-              type="button"
-              className="button-primary"
-              disabled={!name.trim() || !isDirty || updateProject.isPending}
-              onClick={handleSave}
-            >
-              {updateProject.isPending && <span className="spinner" aria-hidden="true" />}
-              {updateProject.isPending
-                ? t("projectSettings.saving")
-                : t("projectSettings.saveButton")}
-            </button>
-            {isDirty && (
-              <span className="dirty-hint">{t("projectSettings.unsavedChanges")}</span>
-            )}
-            {updateProject.isError && (
-              <span className="error-text">
-                {translateApiError(updateProject.error, t)}
-              </span>
-            )}
-          </div>
 
           <section className="settings-card">
             <div className="settings-card-head">
@@ -152,6 +145,40 @@ export function ProjectSettingsPage() {
           <KnowledgeBasePanel projectId={projectId!} />
         </div>
       </div>
+
+      {/* Save applies to the two general cards above — pinned to the bottom
+          so it's always reachable and clearly page-level. */}
+      <div className="settings-actions">
+        <button
+          type="button"
+          className="button-primary"
+          disabled={!name.trim() || !isDirty || updateProject.isPending}
+          onClick={handleSave}
+        >
+          {updateProject.isPending && <span className="spinner" aria-hidden="true" />}
+          {updateProject.isPending
+            ? t("projectSettings.saving")
+            : t("projectSettings.saveButton")}
+        </button>
+        {isDirty && (
+          <span className="dirty-hint">{t("projectSettings.unsavedChanges")}</span>
+        )}
+        {updateProject.isError && (
+          <span className="error-text">
+            {translateApiError(updateProject.error, t)}
+          </span>
+        )}
+      </div>
+
+      {blocker.state === "blocked" && (
+        <ConfirmDialog
+          title={t("common.leaveTitle")}
+          body={t("common.leaveBody")}
+          confirmLabel={t("common.leaveButton")}
+          onConfirm={() => blocker.proceed()}
+          onCancel={() => blocker.reset()}
+        />
+      )}
     </div>
   );
 }

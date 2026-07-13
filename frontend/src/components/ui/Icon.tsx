@@ -6,6 +6,7 @@ export type IconName =
   | "check"
   | "chevron-down"
   | "download"
+  | "expand"
   | "more"
   | "paperclip"
   | "plus"
@@ -39,6 +40,14 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <path d="m7 10 5 5 5-5" />
       <path d="M12 15V3" />
+    </>
+  ),
+  expand: (
+    <>
+      <path d="M15 3h6v6" />
+      <path d="m21 3-7 7" />
+      <path d="m3 21 7-7" />
+      <path d="M9 21H3v-6" />
     </>
   ),
   more: (

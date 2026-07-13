@@ -79,6 +79,9 @@ export interface Project {
   name: string;
   description: string | null;
   agent_instructions: string | null;
+  /** World size, populated by the list endpoint (0 on single-project reads). */
+  entity_count: number;
+  edge_count: number;
   created_at: string;
   updated_at: string;
 }

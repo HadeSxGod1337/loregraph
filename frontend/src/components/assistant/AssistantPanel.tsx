@@ -15,6 +15,7 @@ import { useEntities } from "../../hooks/useEntities";
 import { useFileDrop } from "../../hooks/useFileDrop";
 import { translateEvent, translateWarning } from "../../i18n/eventText";
 import { Icon } from "../ui/Icon";
+import { DraftPreviewDrawer } from "./DraftPreviewDrawer";
 
 interface AssistantPanelProps {
   projectId: string;
@@ -409,6 +410,7 @@ function ReviewCard({
   );
   const [feedback, setFeedback] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
+  const [previewRef, setPreviewRef] = useState<string | null>(null);
 
   // A revise replaces the payload — resync local editing state.
   useEffect(() => {
@@ -417,6 +419,7 @@ function ReviewCard({
     setRemovedRelationships(new Set());
     setFeedback("");
     setShowFeedback(false);
+    setPreviewRef(null);
   }, [review]);
 
   const existingTitleById = useMemo(
@@ -512,6 +515,15 @@ function ReviewCard({
                     <Icon name="sparkles" size={14} />
                   </span>
                 )}
+                <button
+                  type="button"
+                  className="icon-button icon-button-accent"
+                  title={t("assistant.review.detailsTitle")}
+                  aria-label={t("assistant.review.detailsTitle")}
+                  onClick={() => setPreviewRef(entity.ref)}
+                >
+                  <Icon name="expand" size={14} />
+                </button>
               </div>
               {!removed && (
                 <textarea
@@ -619,6 +631,20 @@ function ReviewCard({
           {t("assistant.review.reject")}
         </button>
       </div>
+
+      {previewRef !== null &&
+        (() => {
+          const previewEntity = draft.entities.find((e) => e.ref === previewRef);
+          if (!previewEntity) return null;
+          return (
+            <DraftPreviewDrawer
+              entity={previewEntity}
+              relationships={draft.relationships}
+              targetName={targetName}
+              onClose={() => setPreviewRef(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

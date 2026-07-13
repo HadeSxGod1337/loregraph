@@ -10,9 +10,10 @@ export function AssistantPage() {
   const { projectId } = useParams<{ projectId: string }>();
   return (
     <div className="assistant-page">
+      {/* No hint under the title — the panel's own empty-state invite says
+          the same thing, and showing both duplicated the text. */}
       <div className="assistant-header">
         <h1>{t("nav.assistant")}</h1>
-        <p className="assistant-hint">{t("assistant.emptyInviteHasWorld")}</p>
       </div>
       <AssistantPanel projectId={projectId!} />
     </div>
