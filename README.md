@@ -31,8 +31,7 @@ supports approve (with per-entity edits/exclusions), reject, and **request
 changes** — iterative revision of the same draft. The assistant lives as a
 drawer right in the graph view (an empty world opens it automatically) and
 on its own tab. Also: `[[wikilink]]` entity references in rich text, and a
-stdio MCP server (`loregraph-mcp`) for external MCP clients. Architecture:
-[docs/agent_architecture.md](docs/agent_architecture.md). Multi-step session
+stdio MCP server (`loregraph-mcp`) for external MCP clients. Multi-step session
 preparation (orchestrator + parallel workers) and Foundry/Markdown connectors
 are planned.
 
@@ -55,6 +54,15 @@ lore never leaves your machine except for the LLM calls you configure.
   store), Anthropic SDK as the primary LLM provider (BYOK).
 
 ## Running locally
+
+### Quick start (Windows, no dev tools required)
+
+Double-click `start.bat` in the repo root. The script installs missing tools
+(`uv`, Node.js), pulls the latest updates from git, installs dependencies, asks
+for an Anthropic API key on first run (optional — press Enter to skip), starts
+both servers and opens the app in your browser. Close the console window to
+stop everything. While running, it periodically checks for new commits and
+tells you when a restart would pick up an update.
 
 ### Backend
 
