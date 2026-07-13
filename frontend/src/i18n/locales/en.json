@@ -126,7 +126,12 @@
     "instructionsHint": "Free-form notes on style, tone and format — blended into the assistant's and lore-generation system prompts for this project.",
     "saveButton": "Save",
     "saving": "Saving…",
-    "saved": "Saved."
+    "saved": "Saved.",
+    "maintenanceHeading": "Maintenance",
+    "reindexHint": "The search index is rebuilt from your entities automatically, but if the assistant can't find something that clearly exists, rebuilding it here fixes that.",
+    "reindexButton": "Rebuild search index",
+    "reindexing": "Rebuilding…",
+    "reindexed": "Done — {{count}} entities indexed."
   },
   "knowledge": {
     "heading": "Project knowledge base",

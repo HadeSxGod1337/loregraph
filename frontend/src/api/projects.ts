@@ -11,4 +11,10 @@ export const projectsApi = {
   export: (id: string) => apiClient.get<ProjectExport>(`/api/projects/${id}/export`),
   import: (data: ProjectExport) =>
     apiClient.post<Project>("/api/projects/import", data),
+  // The vector index is derived data (rebuilt from SQLite, the source of
+  // truth) — self-serve recovery when search/the assistant can't find an
+  // entity that visibly exists, without needing shell access to curl the
+  // backend directly.
+  reindex: (id: string) =>
+    apiClient.post<{ indexed: number }>(`/api/projects/${id}/reindex`),
 };

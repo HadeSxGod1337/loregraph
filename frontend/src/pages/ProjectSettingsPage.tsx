@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import { KnowledgeBasePanel } from "../components/knowledge/KnowledgeBasePanel";
-import { useProject, useUpdateProject } from "../hooks/useProjects";
+import { useProject, useReindexProject, useUpdateProject } from "../hooks/useProjects";
 import { translateApiError } from "../i18n/eventText";
 
 /** Project-level agent setup: DM style/format preferences that get blended
@@ -14,6 +14,7 @@ export function ProjectSettingsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: project, isLoading } = useProject(projectId);
   const updateProject = useUpdateProject(projectId!);
+  const reindexProject = useReindexProject(projectId!);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -102,6 +103,36 @@ export function ProjectSettingsPage() {
               </span>
             )}
           </div>
+
+          <section className="settings-card">
+            <div className="settings-card-head">
+              <h2>{t("projectSettings.maintenanceHeading")}</h2>
+              <p className="field-hint">{t("projectSettings.reindexHint")}</p>
+            </div>
+            <div className="settings-save-row">
+              <button
+                type="button"
+                disabled={reindexProject.isPending}
+                onClick={() => reindexProject.mutate()}
+              >
+                {reindexProject.isPending
+                  ? t("projectSettings.reindexing")
+                  : t("projectSettings.reindexButton")}
+              </button>
+              {reindexProject.data !== undefined && (
+                <span className="settings-save-status">
+                  {t("projectSettings.reindexed", {
+                    count: reindexProject.data.indexed,
+                  })}
+                </span>
+              )}
+              {reindexProject.isError && (
+                <span className="error-text">
+                  {translateApiError(reindexProject.error, t)}
+                </span>
+              )}
+            </div>
+          </section>
         </div>
 
         <div className="project-settings-column">

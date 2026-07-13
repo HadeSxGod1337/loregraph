@@ -49,6 +49,12 @@ export function useDeleteProject() {
   });
 }
 
+export function useReindexProject(projectId: string) {
+  return useMutation({
+    mutationFn: () => projectsApi.reindex(projectId),
+  });
+}
+
 export function useImportProject() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -55,7 +55,14 @@ def transcript(state: AgentState) -> list[AgentMessageOut]:
             out.append(
                 AgentMessageOut(
                     role="user",
-                    text=_message_text(message),
+                    # Prefer the round-tripped original text over
+                    # _message_text: when there are attachments, the message
+                    # content also carries an inlined <attached_file> text
+                    # block for the model, which _message_text would
+                    # otherwise concatenate into what the DM sees.
+                    text=message.additional_kwargs.get(
+                        "user_text", _message_text(message)
+                    ),
                     # Filenames only — never the file bytes — round-tripped
                     # through additional_kwargs (see agent/multimodal.py's
                     # module docstring for why this doesn't touch the
@@ -122,7 +129,17 @@ class AgentRunner:
         message = HumanMessage(
             build_message_content(text, attachments),
             additional_kwargs=(
-                {"attachment_filenames": [a.filename for a in attachments]}
+                {
+                    "attachment_filenames": [a.filename for a in attachments],
+                    # Text-like attachments are inlined into the message
+                    # content as their own {"type": "text"} block (see
+                    # agent/multimodal.py) so the model reads them — but that
+                    # means _message_text(message) would concatenate the
+                    # user's own text with the raw file dump. Round-tripping
+                    # what the user actually typed separately keeps the
+                    # transcript showing just that, with the file as a chip.
+                    "user_text": text,
+                }
                 if attachments
                 else {}
             ),
