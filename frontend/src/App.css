@@ -35,6 +35,9 @@
 }
 
 .navbar-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   text-decoration: none;
   color: var(--text-muted);
   padding: 6px 10px;
@@ -67,13 +70,8 @@
 }
 
 .navbar-project-back {
-  text-decoration: none;
-  color: var(--text-muted);
   font-size: 13px;
-}
-
-.navbar-project-back:hover {
-  color: var(--text);
+  padding: 5px 10px;
 }
 
 .navbar-project-name {
@@ -133,18 +131,62 @@
   align-items: center;
 }
 
-.button-primary {
-  background: var(--accent);
-  color: var(--accent-text);
-  border-color: var(--accent);
-  text-decoration: none;
-  padding: 6px 12px;
-  border-radius: 4px;
+/* .button-primary / .button-danger / .button-ghost live in index.css */
+
+.entity-list-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
 }
 
 .entity-list-filter {
   width: 100%;
-  margin: 16px 0;
+}
+
+.type-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s, color 0.12s;
+}
+
+.type-chip:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.type-chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.type-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.type-chip-count {
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
 }
 
 .entity-list {
@@ -170,18 +212,8 @@
   border-color: var(--accent);
 }
 
-.entity-list-icon {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.entity-list-icon-empty {
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-}
+/* row internals (.entity-avatar, .entity-list-main) live with the other
+   entity-list rules near the end of this file */
 
 /* project list */
 
@@ -238,12 +270,25 @@
 }
 
 .project-create-form {
-  border-top: 1px solid var(--border);
-  padding-top: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 360px;
+  max-width: 420px;
+  margin-bottom: 16px;
+}
+
+.project-create-form h2 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.project-create-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .entity-type-badge,
@@ -451,20 +496,27 @@
   cursor: pointer;
 }
 
+/* Sticky action bar: save is always reachable, delete is pushed to the far
+   edge so the two are never adjacent click targets. */
 .entity-edit-actions {
+  position: sticky;
+  bottom: 0;
   display: flex;
-  gap: 8px;
-  margin: 16px 0;
+  align-items: center;
+  gap: 12px;
+  margin: 16px -24px 0;
+  padding: 12px 24px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
 }
 
-.button-danger {
-  color: var(--danger);
-  border-color: var(--danger);
+.entity-edit-actions .spacer {
+  flex: 1;
 }
 
-.button-danger:hover:not(:disabled) {
-  background: var(--danger);
-  color: #ffffff;
+.dirty-hint {
+  font-size: 12.5px;
+  color: var(--warning);
 }
 
 /* ---------- Icon buttons ----------
@@ -814,18 +866,16 @@
   color: var(--text-muted);
 }
 
+/* Lives inside .graph-overlay-left (see below) — no own positioning. */
 .graph-controls {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 5;
+  width: 100%;
   display: flex;
-  gap: 20px;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 10px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 14px;
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
   box-shadow: var(--shadow);
 }
 
@@ -902,7 +952,9 @@
   clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
   border: 1px solid var(--border-strong);
   background: var(--surface);
-  box-shadow: var(--shadow);
+  /* --type-color is set inline per node (see EntityNode.tsx) — a colored
+     spine that makes types readable at canvas zoom-out. */
+  box-shadow: inset 3px 0 0 var(--type-color, transparent), var(--shadow);
   cursor: pointer;
   width: 220px;
   transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
@@ -915,7 +967,8 @@
 
 .entity-node-root {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  box-shadow: inset 3px 0 0 var(--type-color, transparent), 0 0 0 1px var(--accent),
+    var(--shadow);
 }
 
 .entity-node-selected {
@@ -1636,13 +1689,9 @@
 
 /* ---------- Assistant drawer in the graph view ---------- */
 
-/* Toggle sits top-left, right below the graph controls — exactly where the
-   drawer opens, and never over the entity detail panel (right side). */
+/* Sits in .graph-overlay-left right below the graph controls — exactly where
+   the drawer opens, and never over the entity detail panel (right side). */
 .assistant-drawer-toggle {
-  position: absolute;
-  top: 104px;
-  left: 16px;
-  z-index: 30;
   padding: 8px 16px;
   border: 1px solid var(--border-strong);
   border-radius: 20px;
@@ -1669,12 +1718,9 @@
    transcript scrolls internally (thin scrollbar, and only on overflow) —
    header and input stay pinned. */
 .assistant-drawer {
-  position: absolute;
-  top: 104px;
-  left: 16px;
-  bottom: 16px;
-  width: min(420px, calc(100vw - 48px));
-  z-index: 25;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2073,8 +2119,525 @@
   align-self: flex-start;
   padding: 6px 12px;
   border: 1px solid var(--accent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--accent);
   cursor: pointer;
+}
+
+/* ---------- Confirm dialog ---------- */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 24px;
+}
+
+.dialog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
+  width: 400px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dialog h2 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.dialog p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.dialog input {
+  width: 100%;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ---------- Toasts ---------- */
+
+.toast-region {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow);
+  padding: 10px 16px;
+  font-size: 13.5px;
+  max-width: 380px;
+  pointer-events: auto;
+  animation: toast-in 0.16s ease-out;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
+
+.toast-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.toast-error .toast-mark {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+/* ---------- Skeletons ---------- */
+
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(100deg, var(--bg-subtle) 40%, var(--border) 50%, var(--bg-subtle) 60%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s infinite linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+@keyframes skeleton-shimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -80% 0; }
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 10px 14px;
+}
+
+.skeleton-row-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+/* ---------- Kebab menu ---------- */
+
+.kebab-menu {
+  position: relative;
+}
+
+.kebab-menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.kebab-menu-list button {
+  justify-content: flex-start;
+  border: none;
+  background: none;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 5px;
+  font-weight: 400;
+}
+
+.kebab-menu-list button:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border: none;
+}
+
+.kebab-menu-list button.danger {
+  color: var(--danger);
+}
+
+.kebab-menu-list button.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+/* ---------- Entity list rows ---------- */
+
+.entity-list-item {
+  gap: 12px;
+}
+
+.entity-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-control);
+  object-fit: cover;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.entity-list-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.entity-list-title {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entity-list-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Empty states ---------- */
+
+.empty-state {
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  padding: 36px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.empty-state p {
+  margin: 0;
+  max-width: 420px;
+}
+
+.empty-state-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* ---------- Graph left overlay column ----------
+   Controls, assistant toggle and drawer stack in one flex column, so
+   nothing needs to know anything's height (the old top:104px constant). */
+
+.graph-overlay-left {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  bottom: 16px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(420px, calc(100vw - 48px));
+  pointer-events: none;
+}
+
+.graph-overlay-left > * {
+  pointer-events: auto;
+}
+
+/* ---------- Graph controls widgets ---------- */
+
+.graph-controls-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.segmented button {
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.segmented button:last-child {
+  border-right: none;
+}
+
+.segmented button:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+}
+
+.segmented button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------- Combobox (searchable entity picker) ---------- */
+
+.combobox {
+  position: relative;
+  min-width: 0;
+}
+
+.combobox input {
+  width: 100%;
+}
+
+.combobox-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  margin: 0;
+  list-style: none;
+}
+
+.combobox-list button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  font-weight: 400;
+}
+
+.combobox-list button:hover:not(:disabled),
+.combobox-list button.highlighted {
+  background: var(--accent-soft);
+  border: none;
+}
+
+.combobox-option-type {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  flex-shrink: 0;
+}
+
+.combobox-empty {
+  padding: 8px 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ---------- Edge-type multiselect ---------- */
+
+.multiselect {
+  position: relative;
+}
+
+.multiselect-toggle {
+  width: 100%;
+  justify-content: space-between;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.multiselect-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.multiselect-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.multiselect-list label:hover {
+  background: var(--bg-subtle);
+}
+
+.multiselect-list input {
+  padding: 0;
+  width: auto;
+}
+
+/* ---------- Knowledge base status chips ---------- */
+
+.knowledge-status-chip {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.knowledge-status-pending,
+.knowledge-status-processing {
+  background: var(--warning-soft, color-mix(in srgb, var(--warning) 14%, transparent));
+  color: var(--warning);
+}
+
+.knowledge-status-ready {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.knowledge-status-failed {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+/* ---------- Assistant input context label ---------- */
+
+.assistant-context-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.assistant-context-label select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- Inline spinner ---------- */
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  animation: spinner-turn 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 1.6s; }
+}
+
+@keyframes spinner-turn {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Page headers with actions ---------- */
+
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breadcrumb {
+  margin-bottom: 12px;
+}
+
+.breadcrumb a {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  color: var(--accent);
 }

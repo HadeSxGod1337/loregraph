@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link, NavLink, useMatch } from "react-router-dom";
 
 import { useProject } from "../../hooks/useProjects";
+import { Icon } from "../ui/Icon";
 import { LanguagePicker } from "./LanguagePicker";
 import { ThemePicker } from "./ThemePicker";
 
@@ -18,7 +19,7 @@ export function NavBar() {
       </NavLink>
       {projectId && (
         <>
-          <Link to="/" className="navbar-project-back">
+          <Link to="/" className="navbar-project-back link-button">
             {t("nav.allProjects")}
           </Link>
           {project && <span className="navbar-project-name">{project.name}</span>}
@@ -31,7 +32,7 @@ export function NavBar() {
               {t("nav.assistant")}
             </NavLink>
             <NavLink to={`/projects/${projectId}/settings`}>
-              {t("nav.settings")}
+              <Icon name="settings" size={13} /> {t("nav.settings")}
             </NavLink>
           </div>
         </>

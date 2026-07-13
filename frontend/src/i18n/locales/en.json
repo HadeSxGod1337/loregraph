@@ -9,14 +9,15 @@
     "edit": "Edit",
     "replace": "Replace",
     "upload": "Upload",
-    "uploading": "Uploading..."
+    "uploading": "Uploading...",
+    "moreActions": "More actions"
   },
   "nav": {
     "allProjects": "← All projects",
     "entities": "Entities",
     "graph": "Graph",
     "assistant": "AI Assistant",
-    "settings": "⚙ Settings"
+    "settings": "Settings"
   },
   "theme": {
     "light": "Light",
@@ -25,30 +26,50 @@
   },
   "projects": {
     "title": "Projects",
-    "importProject": "Import project",
-    "noProjects": "No projects yet. Create one to get started.",
-    "newProjectHeading": "+ New Project",
+    "importProject": "Import",
+    "noProjects": "No projects yet.",
+    "emptyBody": "Create your first project — or import an existing one from an export file.",
+    "newProjectButton": "New project",
+    "newProjectHeading": "New project",
     "namePlaceholder": "Name",
     "descriptionPlaceholder": "Description (optional)",
     "createButton": "Create",
+    "createdToast": "Project \"{{name}}\" created",
     "exportButton": "Export",
+    "exportedToast": "Project \"{{name}}\" exported",
+    "importedToast": "Project imported",
+    "deleteConfirmTitle": "Delete project?",
+    "deleteConfirmBody": "All entities, relationships and attachments of \"{{name}}\" will be deleted forever. This cannot be undone.",
     "deleteConfirmPlaceholder": "Type \"{{name}}\" to confirm",
-    "confirmDeleteButton": "Confirm delete",
-    "deleteButton": "Delete"
+    "confirmDeleteButton": "Delete forever",
+    "deletedToast": "Project deleted",
+    "deleteButton": "Delete",
+    "menuLabel": "Project actions"
   },
   "entities": {
     "title": "Entities",
-    "newEntity": "+ New Entity",
-    "filterPlaceholder": "Filter by type (e.g. npc)",
-    "noEntities": "No entities yet. Create one to get started."
+    "newEntity": "New entity",
+    "searchPlaceholder": "Search by title…",
+    "allTypes": "All",
+    "noEntities": "No entities yet. Create one — or ask the assistant to propose starting lore.",
+    "noMatches": "Nothing found — change the query or reset the filter.",
+    "fieldCount_one": "{{count}} field",
+    "fieldCount_other": "{{count}} fields"
   },
   "entityEdit": {
     "newTitle": "New Entity",
     "editTitle": "Edit Entity",
+    "backToList": "Entities",
     "typeLabel": "Type",
     "titleLabel": "Title",
     "iconLabel": "Icon",
-    "otherFiles": "Other files"
+    "otherFiles": "Other files",
+    "unsavedChanges": "Unsaved changes",
+    "savedToast": "Entity saved",
+    "createdToast": "Entity created",
+    "deletedToast": "Entity deleted",
+    "deleteConfirmTitle": "Delete entity?",
+    "deleteConfirmBody": "\"{{title}}\" and all of its fields and relationships will be deleted forever."
   },
   "entityDetail": {
     "fields": "Fields",
@@ -65,12 +86,14 @@
     "pickRoot": "Pick a root entity to view its neighborhood.",
     "emptyWorld": "Your world is empty — describe it in the AI panel and review the generated starting lore.",
     "rootEntity": "Root entity",
+    "rootSearchPlaceholder": "Find an entity…",
     "selectPlaceholder": "— select —",
     "depth": "Depth",
-    "edgeTypesLabel": "Edge types (comma-separated, empty = all)",
-    "edgeTypesPlaceholder": "ally_of, family_of",
+    "edgeTypesLabel": "Edge types",
+    "edgeTypesAll": "all types",
+    "edgeTypesSelected": "{{count}} selected",
     "closeAssistant": "Close assistant",
-    "openAssistant": "✨ AI Assistant"
+    "openAssistant": "AI Assistant"
   },
   "edges": {
     "linkToEntity": "— link to entity —",
@@ -126,12 +149,14 @@
     "instructionsHint": "Free-form notes on style, tone and format — blended into the assistant's and lore-generation system prompts for this project.",
     "saveButton": "Save",
     "saving": "Saving…",
-    "saved": "Saved.",
+    "saved": "Settings saved",
+    "unsavedChanges": "Unsaved changes",
     "maintenanceHeading": "Maintenance",
     "reindexHint": "The search index is rebuilt from your entities automatically, but if the assistant can't find something that clearly exists, rebuilding it here fixes that.",
     "reindexButton": "Rebuild search index",
     "reindexing": "Rebuilding…",
-    "reindexed": "Done — {{count}} entities indexed."
+    "reindexed_one": "Done — {{count}} entity indexed",
+    "reindexed_other": "Done — {{count}} entities indexed"
   },
   "knowledge": {
     "heading": "Project knowledge base",
@@ -139,14 +164,15 @@
     "dropzoneTitle": "Drag files here",
     "dropzoneSubtitle": "or click to browse",
     "dropzoneActive": "Drop to upload",
-    "uploadButton": "+ Upload document",
+    "uploadButton": "Upload document",
     "uploading": "Uploading…",
     "noDocuments": "No documents yet.",
-    "statusPending": "⏳ Queued",
-    "statusProcessing": "⏳ Processing",
-    "statusReady": "✅ Ready",
-    "statusFailed": "❌ Failed",
-    "chunksCount": "{{count}} chunks",
+    "statusPending": "Queued",
+    "statusProcessing": "Processing",
+    "statusReady": "Ready",
+    "statusFailed": "Failed",
+    "chunksCount_one": "{{count}} chunk",
+    "chunksCount_other": "{{count}} chunks",
     "deleteButton": "Delete"
   },
   "assistant": {
@@ -188,10 +214,11 @@
     "inputPlaceholderBlocked": "Finish reviewing the draft above first (approve / request changes / reject)",
     "inputPlaceholderDefault": "Ask about the world or request new lore… (Enter to send)",
     "anchorWholeWorld": "whole world",
-    "anchorTitle": "Context: which entity to build around",
+    "contextLabel": "Context",
+    "anchorTitle": "Which entity to build around",
     "attachTitle": "Attach a file to this message (image, PDF, text)",
     "sendButton": "Send",
-    "sending": "…",
+    "sending": "Sending…",
     "hintIsolatedText": "«{{title}}» is isolated — weave it in?",
     "hintIsolatedInstruction": "Weave «{{title}}» into the world: figure out who and what connects to it, and add the missing entities and relationships.",
     "review": {
@@ -202,7 +229,7 @@
       "sendRevision": "Send for revision",
       "approve_one": "Approve {{count}}",
       "approve_other": "Approve {{count}}",
-      "requestChanges": "✏️ Request changes",
+      "requestChanges": "Request changes",
       "reject": "Reject"
     }
   },

@@ -10,6 +10,7 @@ import {
   useUploadKnowledgeSource,
 } from "../../hooks/useKnowledge";
 import { translateApiError } from "../../i18n/eventText";
+import { Icon } from "../ui/Icon";
 
 const ACCEPTED_EXTENSIONS =
   ".pdf,.txt,.md,.markdown,.json,.csv,.tsv,.yaml,.yml,.log";
@@ -69,7 +70,7 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
         {...dropHandlers}
       >
         <div className="dropzone-icon" aria-hidden="true">
-          ⬆
+          <Icon name="upload" size={22} />
         </div>
         <p className="dropzone-title">
           {isDragging ? t("knowledge.dropzoneActive") : t("knowledge.dropzoneTitle")}
@@ -132,7 +133,9 @@ function KnowledgeSourceRow({
         {source.original_filename}
       </span>
       <span className="knowledge-source-meta">
-        <span className="knowledge-source-status">{statusLabels[source.status]}</span>
+        <span className={`knowledge-status-chip knowledge-status-${source.status}`}>
+          {statusLabels[source.status]}
+        </span>
         <span className="field-hint">{formatSize(source.size_bytes)}</span>
         {source.status === "ready" && (
           <span className="field-hint">
@@ -155,7 +158,7 @@ function KnowledgeSourceRow({
         title={t("knowledge.deleteButton")}
         aria-label={t("knowledge.deleteButton")}
       >
-        ×
+        <Icon name="x" size={14} />
       </button>
     </li>
   );

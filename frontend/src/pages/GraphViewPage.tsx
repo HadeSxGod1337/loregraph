@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom";
 import { apiClient } from "../api/client";
 import type { Edge } from "../api/types";
 import { AssistantPanel } from "../components/assistant/AssistantPanel";
+import { Icon } from "../components/ui/Icon";
 import { EntityNavigationContext } from "../components/EntityNavigationContext";
 import { EdgeEditPopover } from "../components/graph/EdgeEditPopover";
 import { EdgeQuickForm } from "../components/graph/EdgeQuickForm";
@@ -26,7 +27,7 @@ export function GraphViewPage() {
   const { data: entities } = useEntities(projectId!);
   const [rootId, setRootId] = useState("");
   const [depth, setDepth] = useState(2);
-  const [edgeTypesInput, setEdgeTypesInput] = useState("");
+  const [edgeTypes, setEdgeTypes] = useState<string[]>([]);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
@@ -86,13 +87,9 @@ export function GraphViewPage() {
     if (id) localStorage.setItem(`loregraph:last-root:${projectId}`, id);
   }
 
-  const edgeTypes = useMemo(
-    () =>
-      edgeTypesInput
-        .split(",")
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0),
-    [edgeTypesInput],
+  const availableEdgeTypes = useMemo(
+    () => [...new Set((allEdges ?? []).map((edge) => edge.type))].sort(),
+    [allEdges],
   );
 
   const { data: subgraph, isLoading } = useSubgraph(
@@ -110,16 +107,6 @@ export function GraphViewPage() {
     <EntityNavigationContext.Provider value={setSelectedEntityId}>
       <div className="graph-view-page">
       <div className="graph-canvas-area">
-        <GraphControls
-          entities={entities ?? []}
-          rootId={rootId}
-          depth={depth}
-          edgeTypesInput={edgeTypesInput}
-          onRootChange={changeRoot}
-          onDepthChange={setDepth}
-          onEdgeTypesInputChange={setEdgeTypesInput}
-        />
-
         {!rootId && !isEmptyWorld && (
           <p className="graph-empty-state">{t("graph.pickRoot")}</p>
         )}
@@ -128,37 +115,54 @@ export function GraphViewPage() {
         )}
         {rootId && isLoading && <p className="graph-empty-state">{t("common.loading")}</p>}
 
-        {!assistantVisible && (
-          <button
-            type="button"
-            className="assistant-drawer-toggle"
-            onClick={() => setAssistantOpen(true)}
-          >
-            {t("graph.openAssistant")}
-          </button>
-        )}
-        {assistantVisible && (
-          <aside className="assistant-drawer">
-            <div className="assistant-drawer-header">
-              <span>{t("graph.openAssistant")}</span>
-              <button
-                type="button"
-                className="icon-button assistant-drawer-close"
-                aria-label={t("graph.closeAssistant")}
-                onClick={() => setAssistantOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
-            <AssistantPanel
-              projectId={projectId!}
-              onCommitted={(entityIds) => {
-                // Focus the freshly generated web on the canvas.
-                if (entityIds.length > 0) changeRoot(entityIds[0]);
-              }}
-            />
-          </aside>
-        )}
+        {/* Controls, assistant toggle and drawer share one flex column, so
+            each element starts right below the previous one regardless of
+            their heights. */}
+        <div className="graph-overlay-left">
+          <GraphControls
+            entities={entities ?? []}
+            rootId={rootId}
+            depth={depth}
+            edgeTypes={edgeTypes}
+            availableEdgeTypes={availableEdgeTypes}
+            onRootChange={changeRoot}
+            onDepthChange={setDepth}
+            onEdgeTypesChange={setEdgeTypes}
+          />
+
+          {!assistantVisible && (
+            <button
+              type="button"
+              className="assistant-drawer-toggle"
+              onClick={() => setAssistantOpen(true)}
+            >
+              <Icon name="sparkles" size={15} />
+              {t("graph.openAssistant")}
+            </button>
+          )}
+          {assistantVisible && (
+            <aside className="assistant-drawer">
+              <div className="assistant-drawer-header">
+                <span>{t("graph.openAssistant")}</span>
+                <button
+                  type="button"
+                  className="icon-button assistant-drawer-close"
+                  aria-label={t("graph.closeAssistant")}
+                  onClick={() => setAssistantOpen(false)}
+                >
+                  <Icon name="x" />
+                </button>
+              </div>
+              <AssistantPanel
+                projectId={projectId!}
+                onCommitted={(entityIds) => {
+                  // Focus the freshly generated web on the canvas.
+                  if (entityIds.length > 0) changeRoot(entityIds[0]);
+                }}
+              />
+            </aside>
+          )}
+        </div>
         {rootId && subgraph && (
           <GraphCanvas
             nodes={subgraph.nodes}

@@ -11,6 +11,7 @@ import { EdgeList } from "../edges/EdgeList";
 import { FieldEditor } from "../entity/FieldEditor";
 import { IconPicker } from "../entity/IconPicker";
 import { RichTextView } from "../entity/RichTextView";
+import { Icon } from "../ui/Icon";
 
 interface EntityDetailPanelProps {
   projectId: string;
@@ -77,7 +78,7 @@ export function EntityDetailPanel({
       <div className="panel open">
         <div className="panel-head">
           <button className="panel-close" onClick={onClose}>
-            ✕
+            <Icon name="x" size={15} />
           </button>
           <span className="entity-type-badge">{entity.type}</span>
           <h2>{entity.title}</h2>
@@ -162,11 +163,19 @@ export function EntityDetailPanel({
               {t("common.edit")}
             </button>
           ) : (
-            <button type="button" onClick={handleSave} disabled={!title}>
+            <button
+              type="button"
+              className="button-primary"
+              onClick={handleSave}
+              disabled={!title}
+            >
               {t("common.save")}
             </button>
           )}
-          <Link to={`/projects/${projectId}/entities/${entityId}`}>
+          <Link
+            to={`/projects/${projectId}/entities/${entityId}`}
+            className="link-button"
+          >
             {t("entityDetail.openFullEditor")}
           </Link>
         </div>

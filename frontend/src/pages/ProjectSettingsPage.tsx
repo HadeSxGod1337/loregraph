@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import { KnowledgeBasePanel } from "../components/knowledge/KnowledgeBasePanel";
+import { useToast } from "../components/ui/Toast";
 import { useProject, useReindexProject, useUpdateProject } from "../hooks/useProjects";
 import { translateApiError } from "../i18n/eventText";
 
@@ -11,6 +12,7 @@ import { translateApiError } from "../i18n/eventText";
  * knowledge base (uploaded reference documents) lives on this same page. */
 export function ProjectSettingsPage() {
   const { t } = useTranslation();
+  const toast = useToast();
   const { projectId } = useParams<{ projectId: string }>();
   const { data: project, isLoading } = useProject(projectId);
   const updateProject = useUpdateProject(projectId!);
@@ -28,12 +30,28 @@ export function ProjectSettingsPage() {
     }
   }, [project]);
 
+  const isDirty =
+    project !== undefined &&
+    (name !== project.name ||
+      description !== (project.description ?? "") ||
+      agentInstructions !== (project.agent_instructions ?? ""));
+
   function handleSave() {
     if (!name.trim()) return;
-    updateProject.mutate({
-      name,
-      description: description || null,
-      agent_instructions: agentInstructions || null,
+    updateProject.mutate(
+      {
+        name,
+        description: description || null,
+        agent_instructions: agentInstructions || null,
+      },
+      { onSuccess: () => toast(t("projectSettings.saved")) },
+    );
+  }
+
+  function handleReindex() {
+    reindexProject.mutate(undefined, {
+      onSuccess: (result) =>
+        toast(t("projectSettings.reindexed", { count: result.indexed })),
     });
   }
 
@@ -85,17 +103,16 @@ export function ProjectSettingsPage() {
             <button
               type="button"
               className="button-primary"
-              disabled={!name.trim()}
+              disabled={!name.trim() || !isDirty || updateProject.isPending}
               onClick={handleSave}
             >
+              {updateProject.isPending && <span className="spinner" aria-hidden="true" />}
               {updateProject.isPending
                 ? t("projectSettings.saving")
                 : t("projectSettings.saveButton")}
             </button>
-            {updateProject.isSuccess && (
-              <span className="settings-save-status">
-                {t("projectSettings.saved")}
-              </span>
+            {isDirty && (
+              <span className="dirty-hint">{t("projectSettings.unsavedChanges")}</span>
             )}
             {updateProject.isError && (
               <span className="error-text">
@@ -113,19 +130,15 @@ export function ProjectSettingsPage() {
               <button
                 type="button"
                 disabled={reindexProject.isPending}
-                onClick={() => reindexProject.mutate()}
+                onClick={handleReindex}
               >
+                {reindexProject.isPending && (
+                  <span className="spinner" aria-hidden="true" />
+                )}
                 {reindexProject.isPending
                   ? t("projectSettings.reindexing")
                   : t("projectSettings.reindexButton")}
               </button>
-              {reindexProject.data !== undefined && (
-                <span className="settings-save-status">
-                  {t("projectSettings.reindexed", {
-                    count: reindexProject.data.indexed,
-                  })}
-                </span>
-              )}
               {reindexProject.isError && (
                 <span className="error-text">
                   {translateApiError(reindexProject.error, t)}

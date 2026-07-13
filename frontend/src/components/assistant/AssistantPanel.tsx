@@ -14,6 +14,7 @@ import {
 import { useEntities } from "../../hooks/useEntities";
 import { useFileDrop } from "../../hooks/useFileDrop";
 import { translateEvent, translateWarning } from "../../i18n/eventText";
+import { Icon } from "../ui/Icon";
 
 interface AssistantPanelProps {
   projectId: string;
@@ -124,7 +125,7 @@ function Transcript({
             <div className="assistant-attachment-chips">
               {message.attachments.map((filename) => (
                 <span key={filename} className="assistant-attachment-chip">
-                  📎 {filename}
+                  <Icon name="paperclip" size={12} /> {filename}
                 </span>
               ))}
             </div>
@@ -222,14 +223,15 @@ function ChatInput({
         <div className="assistant-attachment-chips">
           {files.map((file, index) => (
             <span key={`${file.name}-${index}`} className="assistant-attachment-chip">
-              📎 {file.name}
+              <Icon name="paperclip" size={12} /> {file.name}
               <button
                 type="button"
                 className="assistant-attachment-remove"
                 onClick={() => removeFile(index)}
                 title={t("assistant.removeFileTitle")}
+                aria-label={t("assistant.removeFileTitle")}
               >
-                ×
+                <Icon name="x" size={12} />
               </button>
             </span>
           ))}
@@ -254,18 +256,17 @@ function ChatInput({
       />
       <div className="assistant-input-row">
         {entities.length > 0 && (
-          <select
-            value={anchorId}
-            title={t("assistant.anchorTitle")}
-            onChange={(e) => setAnchorId(e.target.value)}
-          >
-            <option value="">{t("assistant.anchorWholeWorld")}</option>
-            {entities.map((entity) => (
-              <option key={entity.id} value={entity.id}>
-                {entity.title}
-              </option>
-            ))}
-          </select>
+          <label className="assistant-context-label" title={t("assistant.anchorTitle")}>
+            {t("assistant.contextLabel")}:
+            <select value={anchorId} onChange={(e) => setAnchorId(e.target.value)}>
+              <option value="">{t("assistant.anchorWholeWorld")}</option>
+              {entities.map((entity) => (
+                <option key={entity.id} value={entity.id}>
+                  {entity.title}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
         <button
           type="button"
@@ -275,7 +276,7 @@ function ChatInput({
           aria-label={t("assistant.attachTitle")}
           onClick={() => fileInputRef.current?.click()}
         >
-          📎
+          <Icon name="paperclip" />
         </button>
         <input
           ref={fileInputRef}
@@ -291,6 +292,7 @@ function ChatInput({
           disabled={!text.trim() || blocked}
           onClick={submit}
         >
+          {chat.busy && <span className="spinner" aria-hidden="true" />}
           {chat.busy ? t("assistant.sending") : t("assistant.sendButton")}
         </button>
       </div>
@@ -460,7 +462,9 @@ function ReviewCard({
       {review.warnings.length > 0 && (
         <ul className="assistant-warnings">
           {review.warnings.map((warning, index) => (
-            <li key={`${warning.code}-${index}`}>⚠ {translateWarning(warning, t)}</li>
+            <li key={`${warning.code}-${index}`}>
+              <Icon name="alert" size={13} /> {translateWarning(warning, t)}
+            </li>
           ))}
         </ul>
       )}
@@ -505,7 +509,7 @@ function ReviewCard({
                     className="assistant-draft-new"
                     title={t("assistant.review.newBadgeTitle")}
                   >
-                    ✨
+                    <Icon name="sparkles" size={14} />
                   </span>
                 )}
               </div>

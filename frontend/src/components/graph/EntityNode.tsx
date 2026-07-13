@@ -1,4 +1,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import type { CSSProperties } from "react";
+
+import { typeColor, typeSoftBackground } from "../../lib/typeColor";
 
 export interface PreviewField {
   key: string;
@@ -17,9 +20,11 @@ export interface EntityNodeData extends Record<string, unknown> {
 export function EntityNode({ data }: NodeProps) {
   const { label, entityType, isRoot, isSelected, iconUrl, previewFields } =
     data as EntityNodeData;
+  const color = typeColor(entityType);
   return (
     <div
       className={`entity-node${isRoot ? " entity-node-root" : ""}${isSelected ? " entity-node-selected" : ""}`}
+      style={{ "--type-color": color } as CSSProperties}
     >
       <Handle type="target" position={Position.Top} />
       {iconUrl && (
@@ -28,7 +33,16 @@ export function EntityNode({ data }: NodeProps) {
         </div>
       )}
       <div className="entity-node-info">
-        <span className="entity-type-badge">{entityType}</span>
+        <span
+          className="entity-type-badge"
+          style={{
+            background: typeSoftBackground(entityType),
+            color,
+            borderColor: "transparent",
+          }}
+        >
+          {entityType}
+        </span>
         <span className="entity-node-title">{label}</span>
         {previewFields.length > 0 && (
           <div className="entity-node-preview">
