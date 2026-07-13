@@ -2,14 +2,24 @@
 
 Verified against the pinned langchain-core==1.4.9 / langchain-anthropic==1.4.8 /
 langchain-openai==1.3.4: `ImageContentBlock` ({"type": "image", "mime_type",
-"base64"}), `FileContentBlock` ({"type": "file", ...}), and
-`PlainTextContentBlock` ({"type": "text-plain", ...}) are auto-translated to
-each provider's native request format by `is_data_content_block()` /
+"base64"}) and `FileContentBlock` ({"type": "file", ...}) are auto-translated
+to each provider's native request format by `is_data_content_block()` /
 `_format_data_content_block()` inside both partner packages — no per-provider
-branching needed here. This is deliberately NOT the project's knowledge base
-(services/knowledge_index.py): these blocks live only inside one
-HumanMessage's content, persisted by the LangGraph checkpointer along with
-the rest of the conversation, never chunked or embedded.
+branching needed for those two.
+
+`PlainTextContentBlock` ({"type": "text-plain", ...}) is NOT one of them:
+langchain-anthropic implements it, but langchain_openai's
+convert_to_openai_data_block only handles "image"/"file"/"audio" and raises
+ValueError on anything else — confirmed against the installed package, not
+assumed. Rather than special-case providers here, text-like attachments
+(.txt/.md/.json/.csv/.yaml/...) are inlined as plain `{"type": "text"}`
+blocks instead — that block type needs no provider-specific translation at
+all, since it's just more text in the same message.
+
+This is deliberately NOT the project's knowledge base (services/
+knowledge_index.py): these blocks live only inside one HumanMessage's
+content, persisted by the LangGraph checkpointer along with the rest of the
+conversation, never chunked or embedded.
 """
 
 import base64
@@ -28,6 +38,14 @@ _PDF_CONTENT_TYPE = "application/pdf"
 _SUPPORTED_IMAGE_MIME_TYPES = frozenset(
     {"image/jpeg", "image/png", "image/gif", "image/webp"}
 )
+# A text-like attachment is inlined straight into the prompt (see module
+# docstring) — unlike a binary file, its size counts directly against the
+# model's context/token budget, so it gets its own, much smaller cap than
+# MAX_CHAT_ATTACHMENT_BYTES (which just bounds the upload itself). Truncated
+# rather than rejected, matching this codebase's existing "shorten with a
+# marker" convention for prompt-bound text (see agent/nodes/tools.py's
+# DETAIL_TEXT_LIMIT).
+MAX_INLINE_TEXT_CHARS = 20_000
 
 
 def build_message_content(
@@ -78,6 +96,10 @@ def _attachment_block(attachment: ChatAttachment) -> dict[str, Any]:
             "type": "file",
             "mime_type": _PDF_CONTENT_TYPE,
             "base64": attachment.data_base64,
+            # langchain_openai warns and substitutes a placeholder filename
+            # when this is missing; harmless extra key for Anthropic, which
+            # only reads mime_type/base64 off a "file" block.
+            "filename": attachment.filename,
         }
     if suffix in TEXT_LIKE_SUFFIXES:
         try:
@@ -86,10 +108,11 @@ def _attachment_block(attachment: ChatAttachment) -> dict[str, Any]:
             raise UnsupportedAttachmentTypeError(
                 attachment.filename, "not valid UTF-8 text"
             ) from e
+        if len(decoded) > MAX_INLINE_TEXT_CHARS:
+            decoded = decoded[:MAX_INLINE_TEXT_CHARS] + "\n…(truncated)"
         return {
-            "type": "text-plain",
-            "mime_type": "text/plain",
-            "text": decoded,
-            "title": attachment.filename,
+            "type": "text",
+            "text": f'<attached_file name="{attachment.filename}">\n'
+            f"{decoded}\n</attached_file>",
         }
     raise UnsupportedAttachmentTypeError(attachment.filename, attachment.content_type)

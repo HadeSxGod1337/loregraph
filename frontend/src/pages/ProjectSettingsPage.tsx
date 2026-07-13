@@ -42,43 +42,72 @@ export function ProjectSettingsPage() {
     <div className="project-settings-page">
       <h1>{t("projectSettings.heading")}</h1>
 
-      <label>
-        {t("projectSettings.nameLabel")}
-        <input value={name} onChange={(e) => setName(e.target.value)} />
-      </label>
+      <div className="project-settings-columns">
+        <div className="project-settings-column">
+          <section className="settings-card">
+            <div className="settings-card-head">
+              <h2>{t("projectSettings.generalHeading")}</h2>
+            </div>
 
-      <label>
-        {t("projectSettings.descriptionLabel")}
-        <input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </label>
+            <label>
+              {t("projectSettings.nameLabel")}
+              <input value={name} onChange={(e) => setName(e.target.value)} />
+            </label>
 
-      <label>
-        {t("projectSettings.instructionsLabel")}
-        <textarea
-          rows={6}
-          placeholder={t("projectSettings.instructionsPlaceholder")}
-          value={agentInstructions}
-          onChange={(e) => setAgentInstructions(e.target.value)}
-        />
-        <span className="field-hint">{t("projectSettings.instructionsHint")}</span>
-      </label>
+            <label>
+              {t("projectSettings.descriptionLabel")}
+              <input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </label>
+          </section>
 
-      <button type="button" disabled={!name.trim()} onClick={handleSave}>
-        {updateProject.isPending
-          ? t("projectSettings.saving")
-          : t("projectSettings.saveButton")}
-      </button>
-      {updateProject.isSuccess && (
-        <span className="field-hint">{t("projectSettings.saved")}</span>
-      )}
-      {updateProject.isError && (
-        <p className="error-text">{translateApiError(updateProject.error, t)}</p>
-      )}
+          <section className="settings-card">
+            <div className="settings-card-head">
+              <h2>{t("projectSettings.agentHeading")}</h2>
+              <p className="field-hint">{t("projectSettings.instructionsHint")}</p>
+            </div>
 
-      <KnowledgeBasePanel projectId={projectId!} />
+            <label>
+              {t("projectSettings.instructionsLabel")}
+              <textarea
+                rows={6}
+                placeholder={t("projectSettings.instructionsPlaceholder")}
+                value={agentInstructions}
+                onChange={(e) => setAgentInstructions(e.target.value)}
+              />
+            </label>
+          </section>
+
+          <div className="settings-save-row">
+            <button
+              type="button"
+              className="button-primary"
+              disabled={!name.trim()}
+              onClick={handleSave}
+            >
+              {updateProject.isPending
+                ? t("projectSettings.saving")
+                : t("projectSettings.saveButton")}
+            </button>
+            {updateProject.isSuccess && (
+              <span className="settings-save-status">
+                {t("projectSettings.saved")}
+              </span>
+            )}
+            {updateProject.isError && (
+              <span className="error-text">
+                {translateApiError(updateProject.error, t)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="project-settings-column">
+          <KnowledgeBasePanel projectId={projectId!} />
+        </div>
+      </div>
     </div>
   );
 }

@@ -117,6 +117,8 @@
   },
   "projectSettings": {
     "heading": "Project settings",
+    "generalHeading": "General",
+    "agentHeading": "Instructions for the assistant",
     "nameLabel": "Name",
     "descriptionLabel": "Description",
     "instructionsLabel": "Instructions for the assistant",
@@ -129,6 +131,9 @@
   "knowledge": {
     "heading": "Project knowledge base",
     "hint": "Upload reference documents (rulebooks, player's handbook, a setting overview — PDF, .txt, .md, .json, .csv, .yaml and other text formats). The assistant uses them when generating lore and can search them in chat, but they never become world canon.",
+    "dropzoneTitle": "Drag files here",
+    "dropzoneSubtitle": "or click to browse",
+    "dropzoneActive": "Drop to upload",
     "uploadButton": "+ Upload document",
     "uploading": "Uploading…",
     "noDocuments": "No documents yet.",
@@ -174,6 +179,7 @@
     "emptyInviteEmptyWorld": "Your world is empty. Describe it in a couple of sentences — the assistant will propose starting lore: locations, factions, characters and their connections. Nothing becomes canon without your approval. You can also just ask questions.",
     "emptyInviteHasWorld": "Ask about the world, ask it to expand a part of it, or add new lore — the assistant answers grounded in existing canon and proposes drafts for review.",
     "removeFileTitle": "Remove file",
+    "dropHint": "Drop to attach",
     "inputPlaceholderBlocked": "Finish reviewing the draft above first (approve / request changes / reject)",
     "inputPlaceholderDefault": "Ask about the world or request new lore… (Enter to send)",
     "anchorWholeWorld": "whole world",

@@ -1,14 +1,18 @@
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { KnowledgeSource, KnowledgeSourceStatus } from "../../api/types";
+import { useFileDrop } from "../../hooks/useFileDrop";
 import {
   useDeleteKnowledgeSource,
   useKnowledgeSources,
   useUploadKnowledgeSource,
 } from "../../hooks/useKnowledge";
 import { translateApiError } from "../../i18n/eventText";
+
+const ACCEPTED_EXTENSIONS =
+  ".pdf,.txt,.md,.markdown,.json,.csv,.tsv,.yaml,.yml,.log";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -27,28 +31,61 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
   const remove = useDeleteKnowledgeSource(projectId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (file) upload.mutate(file);
+  function uploadFiles(files: File[]) {
+    // Each file is its own upload — react-query's mutation state (pending/
+    // error) reflects the most recent call, which is fine for the light
+    // inline status this panel shows.
+    for (const file of files) upload.mutate(file);
   }
 
-  return (
-    <div className="knowledge-base-panel">
-      <h2>{t("knowledge.heading")}</h2>
-      <p className="field-hint">{t("knowledge.hint")}</p>
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length > 0) uploadFiles(files);
+  }
 
-      <button
-        type="button"
+  function handleDropzoneKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fileInputRef.current?.click();
+    }
+  }
+
+  const { isDragging, dropHandlers } = useFileDrop(uploadFiles);
+
+  return (
+    <section className="settings-card knowledge-base-panel">
+      <div className="settings-card-head">
+        <h2>{t("knowledge.heading")}</h2>
+        <p className="field-hint">{t("knowledge.hint")}</p>
+      </div>
+
+      <div
+        className={`dropzone${isDragging ? " dropzone-active" : ""}`}
+        role="button"
+        tabIndex={0}
         onClick={() => fileInputRef.current?.click()}
-        disabled={upload.isPending}
+        onKeyDown={handleDropzoneKeyDown}
+        {...dropHandlers}
       >
-        {upload.isPending ? t("knowledge.uploading") : t("knowledge.uploadButton")}
-      </button>
+        <div className="dropzone-icon" aria-hidden="true">
+          ⬆
+        </div>
+        <p className="dropzone-title">
+          {isDragging ? t("knowledge.dropzoneActive") : t("knowledge.dropzoneTitle")}
+        </p>
+        {!isDragging && (
+          <p className="dropzone-subtitle">{t("knowledge.dropzoneSubtitle")}</p>
+        )}
+        {upload.isPending && (
+          <p className="dropzone-status">{t("knowledge.uploading")}</p>
+        )}
+      </div>
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.txt,.md,.markdown,.json,.csv,.tsv,.yaml,.yml,.log"
+        multiple
+        accept={ACCEPTED_EXTENSIONS}
         onChange={handleFileChange}
         style={{ display: "none" }}
       />
@@ -56,8 +93,10 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
         <p className="error-text">{translateApiError(upload.error, t)}</p>
       )}
 
-      {isLoading && <p>{t("common.loading")}</p>}
-      {sources?.length === 0 && <p className="field-hint">{t("knowledge.noDocuments")}</p>}
+      {isLoading && <p className="field-hint">{t("common.loading")}</p>}
+      {sources?.length === 0 && (
+        <p className="field-hint">{t("knowledge.noDocuments")}</p>
+      )}
 
       <ul className="knowledge-source-list">
         {sources?.map((source) => (
@@ -68,7 +107,7 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
           />
         ))}
       </ul>
-    </div>
+    </section>
   );
 }
 
@@ -89,21 +128,34 @@ function KnowledgeSourceRow({
 
   return (
     <li className="knowledge-source-row">
-      <span className="knowledge-source-name">{source.original_filename}</span>
-      <span className="knowledge-source-status">{statusLabels[source.status]}</span>
-      <span className="field-hint">{formatSize(source.size_bytes)}</span>
-      {source.status === "ready" && (
-        <span className="field-hint">
-          {t("knowledge.chunksCount", { count: source.chunk_count })}
-        </span>
-      )}
-      {source.status === "failed" && source.error && (
-        <span className="error-text" title={source.error}>
-          {source.error.slice(0, 80)}
-        </span>
-      )}
-      <button type="button" className="button-danger" onClick={onRemove}>
-        {t("knowledge.deleteButton")}
+      <span className="knowledge-source-name" title={source.original_filename}>
+        {source.original_filename}
+      </span>
+      <span className="knowledge-source-meta">
+        <span className="knowledge-source-status">{statusLabels[source.status]}</span>
+        <span className="field-hint">{formatSize(source.size_bytes)}</span>
+        {source.status === "ready" && (
+          <span className="field-hint">
+            {t("knowledge.chunksCount", { count: source.chunk_count })}
+          </span>
+        )}
+        {source.status === "failed" && source.error && (
+          <span
+            className="error-text knowledge-source-error"
+            title={source.error}
+          >
+            {source.error.slice(0, 80)}
+          </span>
+        )}
+      </span>
+      <button
+        type="button"
+        className="icon-button icon-button-danger knowledge-source-remove"
+        onClick={onRemove}
+        title={t("knowledge.deleteButton")}
+        aria-label={t("knowledge.deleteButton")}
+      >
+        ×
       </button>
     </li>
   );

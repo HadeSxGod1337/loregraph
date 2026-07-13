@@ -143,7 +143,7 @@ export function GraphViewPage() {
               <span>{t("graph.openAssistant")}</span>
               <button
                 type="button"
-                className="assistant-drawer-close"
+                className="icon-button assistant-drawer-close"
                 aria-label={t("graph.closeAssistant")}
                 onClick={() => setAssistantOpen(false)}
               >

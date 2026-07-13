@@ -12,6 +12,7 @@ import {
   useAgentSessions,
 } from "../../hooks/useAgent";
 import { useEntities } from "../../hooks/useEntities";
+import { useFileDrop } from "../../hooks/useFileDrop";
 import { translateEvent, translateWarning } from "../../i18n/eventText";
 
 interface AssistantPanelProps {
@@ -78,6 +79,7 @@ function SessionPicker({ projectId, chat }: { projectId: string; chat: AgentChat
       {chat.threadId && (
         <button
           type="button"
+          className="assistant-new-session-button"
           onClick={chat.reset}
           title={t("assistant.newConversation")}
         >
@@ -193,8 +195,21 @@ function ChatInput({
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
+  const { isDragging, dropHandlers } = useFileDrop((dropped) => {
+    if (blocked) return;
+    setFiles((prev) => [...prev, ...dropped]);
+  });
+
   return (
-    <div className="assistant-chat-input">
+    <div
+      className={`assistant-chat-input${isDragging ? " assistant-chat-input-dragging" : ""}`}
+      {...dropHandlers}
+    >
+      {isDragging && (
+        <div className="assistant-drop-overlay" aria-hidden="true">
+          {t("assistant.dropHint")}
+        </div>
+      )}
       <SuggestionHints
         projectId={projectId}
         entities={entities}
@@ -254,8 +269,10 @@ function ChatInput({
         )}
         <button
           type="button"
+          className="icon-button"
           disabled={blocked}
           title={t("assistant.attachTitle")}
+          aria-label={t("assistant.attachTitle")}
           onClick={() => fileInputRef.current?.click()}
         >
           📎
@@ -268,7 +285,12 @@ function ChatInput({
           onChange={handleFilesPicked}
           style={{ display: "none" }}
         />
-        <button type="button" disabled={!text.trim() || blocked} onClick={submit}>
+        <button
+          type="button"
+          className="assistant-send-button"
+          disabled={!text.trim() || blocked}
+          onClick={submit}
+        >
           {chat.busy ? t("assistant.sending") : t("assistant.sendButton")}
         </button>
       </div>
@@ -558,6 +580,7 @@ function ReviewCard({
           />
           <button
             type="button"
+            className="button-primary"
             disabled={!feedback.trim() || busy}
             onClick={() => onDecision("revise", keptDraft(), feedback.trim())}
           >
@@ -577,6 +600,7 @@ function ReviewCard({
         </button>
         <button
           type="button"
+          className="assistant-request-changes"
           disabled={busy}
           onClick={() => setShowFeedback((v) => !v)}
         >

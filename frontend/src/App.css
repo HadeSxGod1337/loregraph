@@ -278,10 +278,33 @@
 /* project settings */
 
 .project-settings-page {
-  max-width: 560px;
+  max-width: 1040px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 20px;
+}
+
+.project-settings-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.project-settings-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .project-settings-columns {
+    grid-template-columns: 1fr;
+  }
 }
 
 .project-settings-page label {
@@ -293,14 +316,14 @@
   color: var(--text-muted);
 }
 
+.project-settings-page label:last-child {
+  margin-bottom: 0;
+}
+
 .project-settings-page input,
 .project-settings-page textarea {
   color: var(--text);
   font-family: inherit;
-}
-
-.project-settings-page button {
-  align-self: flex-start;
 }
 
 .field-hint {
@@ -311,14 +334,12 @@
 /* knowledge base */
 
 .knowledge-base-panel {
-  border-top: 1px solid var(--border);
-  margin-top: 24px;
-  padding-top: 16px;
+  gap: 14px;
 }
 
 .knowledge-source-list {
   list-style: none;
-  margin: 12px 0 0;
+  margin: 4px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -330,9 +351,14 @@
   align-items: center;
   gap: 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 12px;
+  border-radius: 8px;
+  padding: 8px 8px 8px 12px;
   font-size: 13px;
+  transition: border-color 0.12s;
+}
+
+.knowledge-source-row:hover {
+  border-color: var(--border-strong);
 }
 
 .knowledge-source-name {
@@ -344,8 +370,32 @@
   white-space: nowrap;
 }
 
+.knowledge-source-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 .knowledge-source-status {
   flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.knowledge-source-error {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-source-remove {
+  opacity: 0.55;
+}
+
+.knowledge-source-row:hover .knowledge-source-remove,
+.knowledge-source-remove:focus-visible {
+  opacity: 1;
 }
 
 .icon-picker {
@@ -415,6 +465,145 @@
 .button-danger:hover:not(:disabled) {
   background: var(--danger);
   color: #ffffff;
+}
+
+/* ---------- Icon buttons ----------
+   Shared minimal/ghost button language (borrows .panel-close's recipe,
+   which already reads as clean IDE chrome): no border, no fill, a soft
+   background on hover/focus. Used for attach/remove/close-style actions
+   throughout the assistant, drawer, and file lists — anywhere a bordered
+   text button would look heavier than the action deserves. */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.icon-button:hover:not(:disabled),
+.icon-button:focus-visible {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.icon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.icon-button-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+.icon-button-accent:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ---------- Settings cards ---------- */
+
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-card-head {
+  margin-bottom: 14px;
+}
+
+.settings-card-head h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--text);
+}
+
+.settings-card-head .field-hint {
+  margin: 0;
+}
+
+.settings-save-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-save-status {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+/* ---------- Dropzone ---------- */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 28px 16px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.dropzone:hover,
+.dropzone:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+  outline: none;
+}
+
+.dropzone-active {
+  border-color: var(--accent);
+  border-style: solid;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.dropzone-icon {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 2px;
+  opacity: 0.8;
+}
+
+.dropzone-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dropzone-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dropzone-status {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--accent);
 }
 
 /* field editor */
@@ -1383,20 +1572,49 @@
   color: var(--accent-text);
   font-weight: 600;
   cursor: pointer;
+  transition: opacity 0.12s;
+}
+
+.assistant-approve:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+/* Neutral middle action — same weight as .assistant-reject but without the
+   danger tint, so the row reads approve → neutral → danger left to right. */
+.assistant-request-changes {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s;
+}
+
+.assistant-request-changes:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
 }
 
 .assistant-reject {
   padding: 8px 16px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: 8px;
   background: none;
   color: var(--danger);
   cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s;
+}
+
+.assistant-reject:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
 }
 
 .assistant-approve:disabled,
+.assistant-request-changes:disabled,
 .assistant-reject:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: default;
 }
 
@@ -1433,10 +1651,17 @@
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
+  transition: border-color 0.12s, transform 0.12s, box-shadow 0.12s;
 }
 
 .assistant-drawer-toggle:hover {
   border-color: var(--accent);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+
+.assistant-drawer-toggle:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
 }
 
 /* The drawer lives on the LEFT (below the graph controls); the entity detail
@@ -1458,6 +1683,18 @@
   border-radius: 12px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
   padding: 14px;
+  animation: assistant-drawer-in 0.18s ease-out;
+}
+
+@keyframes assistant-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .assistant-drawer-header {
@@ -1470,20 +1707,9 @@
   flex-shrink: 0;
 }
 
-.assistant-drawer-close {
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-.assistant-drawer-close:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
-}
+/* Visuals now come entirely from the shared .icon-button class (see
+   "Icon buttons" above) — this selector only exists for the rare
+   drawer-specific override, none needed today. */
 
 /* Textareas grow vertically only — horizontal resize breaks out of the
    drawer/card bounds. */
@@ -1665,14 +1891,20 @@
   font-size: 0.85em;
 }
 
-.assistant-session-picker button {
+.assistant-new-session-button {
   padding: 6px 10px;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 6px;
-  background: var(--surface);
+  background: none;
   color: var(--accent);
+  font-size: 0.85em;
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color 0.12s;
+}
+
+.assistant-new-session-button:hover {
+  background: var(--accent-soft);
 }
 
 .assistant-transcript {
@@ -1753,11 +1985,35 @@
 }
 
 .assistant-chat-input {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
   border-top: 1px solid var(--border);
   padding-top: 10px;
+}
+
+/* Drop target highlight — a dashed inset ring rather than resizing/shifting
+   layout, so dragging a file over the chat never jumps the transcript. */
+.assistant-chat-input-dragging {
+  outline: 1.5px dashed var(--accent);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+.assistant-drop-overlay {
+  position: absolute;
+  inset: -4px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--accent-soft) 88%, transparent);
+  border-radius: 10px;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9em;
+  pointer-events: none;
 }
 
 .assistant-input-row {
@@ -1777,17 +2033,26 @@
   font-size: 0.85em;
 }
 
-.assistant-input-row button {
+.assistant-send-button {
   padding: 8px 16px;
   border: none;
   border-radius: 8px;
   background: var(--accent);
-  color: var(--on-accent, #fff);
+  color: var(--accent-text);
   font-weight: 600;
   cursor: pointer;
+  transition: opacity 0.12s, transform 0.1s;
 }
 
-.assistant-input-row button:disabled {
+.assistant-send-button:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.assistant-send-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.assistant-send-button:disabled {
   opacity: 0.5;
   cursor: default;
 }

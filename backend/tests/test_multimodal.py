@@ -51,10 +51,15 @@ def test_pdf_attachment_becomes_file_block() -> None:
         "type": "file",
         "mime_type": "application/pdf",
         "base64": _b64(b"pdf-bytes"),
+        "filename": "rules.pdf",
     }
 
 
-def test_plain_text_attachment_becomes_text_plain_block() -> None:
+def test_plain_text_attachment_becomes_text_block() -> None:
+    """Not a "text-plain" block — langchain_openai's data-block translator
+    doesn't implement that type (only image/file/audio) and raises on it;
+    plain text is inlined as an ordinary "text" block instead, which needs
+    no provider-specific translation at all."""
     content = build_message_content(
         "See notes",
         [
@@ -67,14 +72,12 @@ def test_plain_text_attachment_becomes_text_plain_block() -> None:
     )
     assert isinstance(content, list)
     assert content[1] == {
-        "type": "text-plain",
-        "mime_type": "text/plain",
-        "text": "Привет мир",
-        "title": "notes.txt",
+        "type": "text",
+        "text": '<attached_file name="notes.txt">\nПривет мир\n</attached_file>',
     }
 
 
-def test_markdown_attachment_becomes_text_plain_block() -> None:
+def test_markdown_attachment_becomes_text_block() -> None:
     content = build_message_content(
         "See notes",
         [
@@ -88,11 +91,11 @@ def test_markdown_attachment_becomes_text_plain_block() -> None:
     assert isinstance(content, list)
     block = content[1]
     assert isinstance(block, dict)
-    assert block["type"] == "text-plain"
-    assert block["text"] == "# Title"
+    assert block["type"] == "text"
+    assert "# Title" in block["text"]
 
 
-def test_json_attachment_becomes_text_plain_block() -> None:
+def test_json_attachment_becomes_text_block() -> None:
     content = build_message_content(
         "What's in this?",
         [
@@ -106,8 +109,30 @@ def test_json_attachment_becomes_text_plain_block() -> None:
     assert isinstance(content, list)
     block = content[1]
     assert isinstance(block, dict)
-    assert block["type"] == "text-plain"
-    assert block["text"] == '{"name": "Mira"}'
+    assert block["type"] == "text"
+    assert '{"name": "Mira"}' in block["text"]
+    assert "party.json" in block["text"]
+
+
+def test_long_text_attachment_is_truncated() -> None:
+    from loregraph.agent.multimodal import MAX_INLINE_TEXT_CHARS
+
+    long_text = "x" * (MAX_INLINE_TEXT_CHARS + 500)
+    content = build_message_content(
+        "See notes",
+        [
+            ChatAttachment(
+                filename="big.txt",
+                content_type="text/plain",
+                data_base64=_b64(long_text.encode()),
+            )
+        ],
+    )
+    assert isinstance(content, list)
+    block = content[1]
+    assert isinstance(block, dict)
+    assert len(block["text"]) < len(long_text)
+    assert "(truncated)" in block["text"]
 
 
 def test_pdf_detected_by_extension_even_with_generic_content_type() -> None:
