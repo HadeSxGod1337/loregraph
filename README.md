@@ -9,6 +9,28 @@
   entities and relationships in a graph, with an AI agent layer on top.
 </p>
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-5c6ac4?style=flat-square" alt="License: PolyForm Noncommercial"></a>
+  <a href="backend/pyproject.toml"><img src="https://img.shields.io/badge/python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+"></a>
+  <a href="backend/pyproject.toml"><img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI"></a>
+  <a href="frontend/package.json"><img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 19"></a>
+  <a href="frontend/package.json"><img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript"></a>
+  <a href="backend/pyproject.toml"><img src="https://img.shields.io/badge/LangGraph-Agent-1C3C3C?style=flat-square&logo=langchain&logoColor=white" alt="LangGraph"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/self--hosted-local%20first-2ea44f?style=flat-square" alt="Self-hosted, local-first">
+  <img src="https://img.shields.io/badge/BYOK-bring%20your%20own%20key-8b5cf6?style=flat-square" alt="BYOK">
+  <img src="https://img.shields.io/badge/HITL-human%20review%20gate-f97316?style=flat-square" alt="Human-in-the-loop">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-4b5563?style=flat-square" alt="Windows, macOS, Linux">
+</p>
+
+<p align="center">
+  <b>English</b> · <a href="README.ru.md">Русский</a>
+</p>
+
+---
+
 ## What this is
 
 Loregraph stores your campaign as **entities** (NPCs, factions, locations, items —
