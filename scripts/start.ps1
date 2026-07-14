@@ -1,4 +1,4 @@
-﻿# Loregraph one-click launcher for non-developers.
+# Loregraph one-click launcher for non-developers.
 # Installs missing tools (uv, Node.js), pulls updates, installs dependencies,
 # asks for an API key on first run, starts backend + frontend, opens the browser.
 # Run via start.bat in the repo root (double-click).
@@ -94,72 +94,334 @@ if (-not (Test-Path $EnvFile)) {
     Write-Step "Первый запуск: настройка AI-ассистента (необязательно)"
     Write-Host "    Без AI редактор мира работает полностью, не будет только AI-ассистента." -ForegroundColor Gray
     Write-Host ""
-    Write-Host "      1 - Anthropic / Claude (рекомендуется, нужен API-ключ)"
-    Write-Host "      2 - OpenAI (нужен API-ключ)"
-    Write-Host "      3 - Ollama (локальные модели, без ключа; Ollama должна быть установлена)"
+    Write-Host "      1  - Anthropic / Claude (рекомендуется)"
+    Write-Host "      2  - OpenAI"
+    Write-Host "      3  - Google Gemini (бесплатный tier)"
+    Write-Host "      4  - Mistral"
+    Write-Host "      5  - DeepSeek (дешёвый, сильный)"
+    Write-Host "      6  - Groq (ультра-быстрый)"
+    Write-Host "      7  - xAI / Grok"
+    Write-Host "      8  - OpenRouter (агрегатор: 100+ моделей)"
+    Write-Host "      9  - Cohere"
+    Write-Host "      10 - Together AI"
+    Write-Host "      11 - Fireworks AI"
+    Write-Host "      12 - Cerebras (быстрый инференс)"
+    Write-Host "      13 - Perplexity"
+    Write-Host "      14 - Nebius"
+    Write-Host "      15 - Ollama (локальные модели, без ключа)"
     Write-Host "      Enter - пропустить, настроить позже"
     Write-Host ""
-    $choice = (Read-Host "    Выберите провайдера (1/2/3 или Enter)").Trim()
+    $choice = (Read-Host "    Выберите провайдера (номер или Enter)").Trim()
 
     # $null = skip and copy .env.example instead.
     $envLines = $null
-    if ($choice -eq "1") {
-        $key = (Read-Host "    Вставьте Anthropic API ключ (sk-ant-...)").Trim()
-        if (-not [string]::IsNullOrWhiteSpace($key)) {
-            # Default provider and models are already Anthropic — the key is enough.
-            $envLines = @("CAMPAIGN_ANTHROPIC_API_KEY=$key")
-        } else {
-            Write-Warn2 "Ключ пустой - пропускаю настройку."
+    switch ($choice) {
+        "1" {
+            $key = (Read-Host "    Вставьте Anthropic API ключ (sk-ant-...)").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @("CAMPAIGN_ANTHROPIC_API_KEY=$key")
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
         }
-    } elseif ($choice -eq "2") {
-        $key = (Read-Host "    Вставьте OpenAI API ключ (sk-...)").Trim()
-        if (-not [string]::IsNullOrWhiteSpace($key)) {
-            # Default model ids are Anthropic — must override all three tiers.
+        "2" {
+            $key = (Read-Host "    Вставьте OpenAI API ключ (sk-...)").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=openai",
+                    "CAMPAIGN_OPENAI_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=gpt-4o-mini",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=gpt-4o-mini",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=gpt-4o"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "3" {
+            $key = (Read-Host "    Вставьте Google API ключ (AIza...)").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=google",
+                    "CAMPAIGN_GOOGLE_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=gemini-2.0-flash",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=gemini-2.0-flash",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=gemini-2.5-pro-preview-05-06"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "4" {
+            $key = (Read-Host "    Вставьте Mistral API ключ").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=mistral",
+                    "CAMPAIGN_MISTRAL_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=mistral-small-latest",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=mistral-small-latest",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=mistral-large-latest"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "5" {
+            $key = (Read-Host "    Вставьте DeepSeek API ключ (sk-...)").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=deepseek",
+                    "CAMPAIGN_DEEPSEEK_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=deepseek-chat",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=deepseek-chat",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=deepseek-reasoner"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "6" {
+            $key = (Read-Host "    Вставьте Groq API ключ (gsk_...)").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=groq",
+                    "CAMPAIGN_GROQ_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=llama-3.3-70b-versatile",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=llama-3.3-70b-versatile",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=llama-3.3-70b-versatile"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "7" {
+            $key = (Read-Host "    Вставьте xAI API ключ (xai-...)").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=xai",
+                    "CAMPAIGN_XAI_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=grok-3-mini",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=grok-3-mini",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=grok-3"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "8" {
+            $key = (Read-Host "    Вставьте OpenRouter API ключ (sk-or-...)").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=openrouter",
+                    "CAMPAIGN_OPENROUTER_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=anthropic/claude-3.5-haiku",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=anthropic/claude-3.5-haiku",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=anthropic/claude-sonnet-4"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "9" {
+            $key = (Read-Host "    Вставьте Cohere API ключ").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=cohere",
+                    "CAMPAIGN_COHERE_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=command-r-plus",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=command-r",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=command-r-plus"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "10" {
+            $key = (Read-Host "    Вставьте Together AI API ключ").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=together",
+                    "CAMPAIGN_TOGETHER_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=meta-llama/Llama-3-70b-chat-hf",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=meta-llama/Llama-3-8b-chat-hf",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=meta-llama/Llama-3-70b-chat-hf"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "11" {
+            $key = (Read-Host "    Вставьте Fireworks AI API ключ").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=fireworks",
+                    "CAMPAIGN_FIREWORKS_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=accounts/fireworks/models/llama-v3p3-70b-instruct",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=accounts/fireworks/models/llama-v3p3-70b-instruct",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=accounts/fireworks/models/llama-v3p3-70b-instruct"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "12" {
+            $key = (Read-Host "    Вставьте Cerebras API ключ").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=cerebras",
+                    "CAMPAIGN_CEREBRAS_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=llama-3.3-70b",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=llama-3.3-70b",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=llama-3.3-70b"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "13" {
+            $key = (Read-Host "    Вставьте Perplexity API ключ (pplx-...)").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=perplexity",
+                    "CAMPAIGN_PERPLEXITY_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=sonar",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=sonar",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=sonar-pro"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "14" {
+            $key = (Read-Host "    Вставьте Nebius API ключ").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=nebius",
+                    "CAMPAIGN_NEBIUS_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=meta-llama/Llama-3-70B-Instruct",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=meta-llama/Llama-3-8B-Instruct",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=meta-llama/Llama-3-70B-Instruct"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
+        "15" {
+            $model = (Read-Host "    Имя модели Ollama (Enter = llama3.3; модель должна быть скачана: ollama pull <имя>)").Trim()
+            if ([string]::IsNullOrWhiteSpace($model)) { $model = "llama3.3" }
             $envLines = @(
-                "CAMPAIGN_LLM_PROVIDER=openai",
-                "CAMPAIGN_OPENAI_API_KEY=$key",
-                "CAMPAIGN_LLM_MODEL_EXTRACTION=gpt-4o-mini",
-                "CAMPAIGN_LLM_MODEL_GENERATION=gpt-4o",
-                "CAMPAIGN_LLM_MODEL_COMPOSITION=gpt-4o"
+                "CAMPAIGN_LLM_PROVIDER=ollama",
+                "CAMPAIGN_LLM_MODEL_ASSISTANT=$model",
+                "CAMPAIGN_LLM_MODEL_EXTRACTION=$model",
+                "CAMPAIGN_LLM_MODEL_GENERATION=$model"
             )
-        } else {
-            Write-Warn2 "Ключ пустой - пропускаю настройку."
         }
-    } elseif ($choice -eq "3") {
-        $model = (Read-Host "    Имя модели Ollama (Enter = llama3.1; модель должна быть скачана: ollama pull <имя>)").Trim()
-        if ([string]::IsNullOrWhiteSpace($model)) { $model = "llama3.1" }
-        $envLines = @(
-            "CAMPAIGN_LLM_PROVIDER=ollama",
-            "CAMPAIGN_LLM_MODEL_EXTRACTION=$model",
-            "CAMPAIGN_LLM_MODEL_GENERATION=$model",
-            "CAMPAIGN_LLM_MODEL_COMPOSITION=$model"
-        )
     }
 
     if ($null -ne $envLines) {
         Write-Host ""
         Write-Host "      Векторный поиск по лору (эмбеддинги):"
         Write-Host "      1 - Локальная модель (по умолчанию; лор не покидает машину)"
-        Write-Host "      2 - OpenAI (качественнее, но текст лора уходит в OpenAI; нужен OpenAI-ключ)"
-        Write-Host "      3 - Отключить (ассистент будет хуже находить связанный лор)"
+        Write-Host "      2 - OpenAI (качественнее, но текст лора уходит в OpenAI)"
+        Write-Host "      3 - Google Gemini"
+        Write-Host "      4 - Mistral"
+        Write-Host "      5 - Cohere"
+        Write-Host "      6 - Together AI"
+        Write-Host "      7 - Fireworks AI"
+        Write-Host "      8 - Ollama (локальные модели через Ollama)"
+        Write-Host "      9 - Отключить (ассистент будет хуже находить связанный лор)"
         Write-Host ""
-        $embChoice = (Read-Host "    Выберите (1/2/3 или Enter = 1)").Trim()
-        if ($embChoice -eq "2") {
-            $hasOpenAiKey = @($envLines | Where-Object { $_ -like "CAMPAIGN_OPENAI_API_KEY=*" }).Count -gt 0
-            if (-not $hasOpenAiKey) {
-                $embKey = (Read-Host "    Вставьте OpenAI API ключ для эмбеддингов (sk-...)").Trim()
-                if (-not [string]::IsNullOrWhiteSpace($embKey)) {
-                    $envLines += "CAMPAIGN_OPENAI_API_KEY=$embKey"
-                    $hasOpenAiKey = $true
-                } else {
-                    Write-Warn2 "Ключ пустой - оставляю локальные эмбеддинги."
+        $embChoice = (Read-Host "    Выберите (1-9 или Enter = 1)").Trim()
+        switch ($embChoice) {
+            "2" {
+                $hasOpenAiKey = @($envLines | Where-Object { $_ -like "CAMPAIGN_OPENAI_API_KEY=*" }).Count -gt 0
+                if (-not $hasOpenAiKey) {
+                    $embKey = (Read-Host "    Вставьте OpenAI API ключ для эмбеддингов (sk-...)").Trim()
+                    if (-not [string]::IsNullOrWhiteSpace($embKey)) {
+                        $envLines += "CAMPAIGN_OPENAI_API_KEY=$embKey"
+                        $hasOpenAiKey = $true
+                    } else {
+                        Write-Warn2 "Ключ пустой - оставляю локальные эмбеддинги."
+                    }
                 }
+                if ($hasOpenAiKey) { $envLines += "CAMPAIGN_EMBEDDING_PROVIDER=openai" }
             }
-            if ($hasOpenAiKey) { $envLines += "CAMPAIGN_EMBEDDING_PROVIDER=openai" }
-        } elseif ($embChoice -eq "3") {
-            $envLines += "CAMPAIGN_EMBEDDING_PROVIDER=disabled"
+            "3" {
+                $hasKey = @($envLines | Where-Object { $_ -like "CAMPAIGN_GOOGLE_API_KEY=*" }).Count -gt 0
+                if (-not $hasKey) {
+                    $embKey = (Read-Host "    Вставьте Google API ключ для эмбеддингов (AIza...)").Trim()
+                    if (-not [string]::IsNullOrWhiteSpace($embKey)) {
+                        $envLines += "CAMPAIGN_GOOGLE_API_KEY=$embKey"
+                        $hasKey = $true
+                    } else {
+                        Write-Warn2 "Ключ пустой - оставляю локальные эмбеддинги."
+                    }
+                }
+                if ($hasKey) { $envLines += "CAMPAIGN_EMBEDDING_PROVIDER=google" }
+            }
+            "4" {
+                $hasKey = @($envLines | Where-Object { $_ -like "CAMPAIGN_MISTRAL_API_KEY=*" }).Count -gt 0
+                if (-not $hasKey) {
+                    $embKey = (Read-Host "    Вставьте Mistral API ключ для эмбеддингов").Trim()
+                    if (-not [string]::IsNullOrWhiteSpace($embKey)) {
+                        $envLines += "CAMPAIGN_MISTRAL_API_KEY=$embKey"
+                        $hasKey = $true
+                    } else {
+                        Write-Warn2 "Ключ пустой - оставляю локальные эмбеддинги."
+                    }
+                }
+                if ($hasKey) { $envLines += "CAMPAIGN_EMBEDDING_PROVIDER=mistral" }
+            }
+            "5" {
+                $hasKey = @($envLines | Where-Object { $_ -like "CAMPAIGN_COHERE_API_KEY=*" }).Count -gt 0
+                if (-not $hasKey) {
+                    $embKey = (Read-Host "    Вставьте Cohere API ключ для эмбеддингов").Trim()
+                    if (-not [string]::IsNullOrWhiteSpace($embKey)) {
+                        $envLines += "CAMPAIGN_COHERE_API_KEY=$embKey"
+                        $hasKey = $true
+                    } else {
+                        Write-Warn2 "Ключ пустой - оставляю локальные эмбеддинги."
+                    }
+                }
+                if ($hasKey) { $envLines += "CAMPAIGN_EMBEDDING_PROVIDER=cohere" }
+            }
+            "6" {
+                $hasKey = @($envLines | Where-Object { $_ -like "CAMPAIGN_TOGETHER_API_KEY=*" }).Count -gt 0
+                if (-not $hasKey) {
+                    $embKey = (Read-Host "    Вставьте Together AI API ключ для эмбеддингов").Trim()
+                    if (-not [string]::IsNullOrWhiteSpace($embKey)) {
+                        $envLines += "CAMPAIGN_TOGETHER_API_KEY=$embKey"
+                        $hasKey = $true
+                    } else {
+                        Write-Warn2 "Ключ пустой - оставляю локальные эмбеддинги."
+                    }
+                }
+                if ($hasKey) { $envLines += "CAMPAIGN_EMBEDDING_PROVIDER=together" }
+            }
+            "7" {
+                $hasKey = @($envLines | Where-Object { $_ -like "CAMPAIGN_FIREWORKS_API_KEY=*" }).Count -gt 0
+                if (-not $hasKey) {
+                    $embKey = (Read-Host "    Вставьте Fireworks AI API ключ для эмбеддингов").Trim()
+                    if (-not [string]::IsNullOrWhiteSpace($embKey)) {
+                        $envLines += "CAMPAIGN_FIREWORKS_API_KEY=$embKey"
+                        $hasKey = $true
+                    } else {
+                        Write-Warn2 "Ключ пустой - оставляю локальные эмбеддинги."
+                    }
+                }
+                if ($hasKey) { $envLines += "CAMPAIGN_EMBEDDING_PROVIDER=fireworks" }
+            }
+            "8" {
+                $model = (Read-Host "    Имя модели Ollama для эмбеддингов (Enter = nomic-embed-text)").Trim()
+                if ([string]::IsNullOrWhiteSpace($model)) { $model = "nomic-embed-text" }
+                $envLines += "CAMPAIGN_EMBEDDING_PROVIDER=ollama"
+                $envLines += "CAMPAIGN_OLLAMA_EMBEDDING_MODEL=$model"
+            }
+            "9" {
+                $envLines += "CAMPAIGN_EMBEDDING_PROVIDER=disabled"
+            }
+            # Enter / anything else = local, the Settings default: nothing to write.
         }
-        # Enter / anything else = local, the Settings default: nothing to write.
 
         $content = ($envLines -join "`n") + "`n"
         [System.IO.File]::WriteAllText($EnvFile, $content, [System.Text.Encoding]::ASCII)

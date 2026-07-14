@@ -34,3 +34,9 @@ Thumbs.db
 # claude
 CLAUDE.md
 .claude/
+
+# mimo
+.mimocode/
+
+# throwaway debug scripts
+_*.py
