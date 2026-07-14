@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { AgentReviewPayload, DraftEntity, LoreDraft } from "../../api/agent";
+import type { AgentReviewPayload, DraftEntity, EntityEditDraft, LoreDraft } from "../../api/agent";
 import { ApiError, apiClient } from "../../api/client";
 import type { Edge, Entity } from "../../api/types";
 import {
@@ -14,6 +14,7 @@ import {
 import { useEntities } from "../../hooks/useEntities";
 import { useFileDrop } from "../../hooks/useFileDrop";
 import { translateEvent, translateWarning } from "../../i18n/eventText";
+import { typeColor, typeSoftBackground } from "../../lib/typeColor";
 import { Icon } from "../ui/Icon";
 import { DraftPreviewDrawer } from "./DraftPreviewDrawer";
 
@@ -143,8 +144,18 @@ function Transcript({
           })}
         </div>
       )}
-      {chat.pendingReview?.draft && (
+      {chat.pendingReview?.draft && !chat.pendingReview?.entity_edit_draft && (
         <ReviewCard
+          review={chat.pendingReview}
+          entities={entities}
+          busy={chat.busy}
+          onDecision={(action, draft, feedback) =>
+            void chat.review({ action, draft, feedback })
+          }
+        />
+      )}
+      {chat.pendingReview?.entity_edit_draft && (
+        <EditReviewCard
           review={chat.pendingReview}
           entities={entities}
           busy={chat.busy}
@@ -412,6 +423,10 @@ function ReviewCard({
   const [showFeedback, setShowFeedback] = useState(false);
   const [previewRef, setPreviewRef] = useState<string | null>(null);
 
+  // Edit-only reviews are handled by EditReviewCard — this component only
+  // renders when review.draft is present.
+  if (!review.draft) return null;
+
   // A revise replaces the payload — resync local editing state.
   useEffect(() => {
     setDraft(review.draft!);
@@ -645,6 +660,211 @@ function ReviewCard({
             />
           );
         })()}
+    </div>
+  );
+}
+
+function EditReviewCard({
+  review,
+  entities,
+  busy,
+  onDecision,
+}: {
+  review: AgentReviewPayload;
+  entities: Entity[];
+  busy: boolean;
+  onDecision: (
+    action: "approve" | "reject" | "revise",
+    draft: LoreDraft | null,
+    feedback?: string,
+  ) => void;
+}) {
+  const { t } = useTranslation();
+  const [feedback, setFeedback] = useState("");
+  const [showFeedback, setShowFeedback] = useState(false);
+  const ed = review.entity_edit_draft!;
+  const color = typeColor(ed.type);
+
+  useEffect(() => {
+    setFeedback("");
+    setShowFeedback(false);
+  }, [review]);
+
+  const existingEntity = useMemo(
+    () => entities.find((e) => e.id === ed.entity_id),
+    [entities, ed.entity_id],
+  );
+
+  const existingFieldMap = useMemo(() => {
+    if (!existingEntity) return new Map<string, string>();
+    return new Map(
+      existingEntity.fields.map((f) => [f.key, String(f.value)]),
+    );
+  }, [existingEntity]);
+
+  const existingSummary = existingFieldMap.get("summary") ?? "";
+
+  const fieldChanges = useMemo(() => {
+    const currentKeys = new Set(existingFieldMap.keys());
+    const proposedKeys = new Set(ed.fields.map((f) => f.key));
+    const allKeys = [...currentKeys, ...proposedKeys];
+    const changes: { key: string; current: string; proposed: string; isNew: boolean; isRemoved: boolean }[] = [];
+    for (const key of allKeys) {
+      if (key === "summary") continue;
+      const current = existingFieldMap.get(key) ?? "";
+      const proposed = ed.fields.find((f) => f.key === key)?.value ?? "";
+      if (current === proposed) continue;
+      changes.push({
+        key,
+        current,
+        proposed,
+        isNew: !currentKeys.has(key),
+        isRemoved: !proposedKeys.has(key),
+      });
+    }
+    return changes;
+  }, [existingFieldMap, ed.fields]);
+
+  const summaryChanged = ed.summary !== existingSummary;
+
+  return (
+    <div className="assistant-review assistant-edit-review">
+      {review.warnings.length > 0 && (
+        <ul className="assistant-warnings">
+          {review.warnings.map((warning, index) => (
+            <li key={`${warning.code}-${index}`}>
+              <Icon name="alert" size={13} /> {translateWarning(warning, t)}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="assistant-edit-header">
+        <span className="assistant-draft-type">{ed.type}</span>
+        <span
+          className="assistant-edit-badge"
+          style={{ background: typeSoftBackground(ed.type), color, borderColor: "transparent" }}
+        >
+          {t("assistant.review.editHeading")}
+        </span>
+      </div>
+
+      <h3 className="assistant-edit-entity-title">
+        {existingEntity?.title ?? ed.entity_id}
+      </h3>
+
+      {ed.edit_reason && (
+        <p className="assistant-edit-reason">
+          <strong>{t("assistant.review.editReason")}:</strong> {ed.edit_reason}
+        </p>
+      )}
+
+      {summaryChanged && (
+        <div className="assistant-edit-diff-section">
+          <h4>Summary</h4>
+          <div className="assistant-edit-diff">
+            {existingSummary && (
+              <div className="assistant-edit-old">
+                <span className="assistant-edit-label">{t("assistant.review.editCurrentHeading")}</span>
+                {existingSummary}
+              </div>
+            )}
+            <div className="assistant-edit-new">
+              <span className="assistant-edit-label">{t("assistant.review.editProposedHeading")}</span>
+              {ed.summary}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fieldChanges.length > 0 && (
+        <div className="assistant-edit-diff-section">
+          <h4>{t("entityDetail.fields")}</h4>
+          {fieldChanges.map((change) => (
+            <div key={change.key} className="assistant-edit-field-change">
+              <span className="assistant-edit-field-key">{change.key}</span>
+              <div className="assistant-edit-diff">
+                {change.current && (
+                  <div className="assistant-edit-old">
+                    <span className="assistant-edit-label">{t("assistant.review.editCurrentHeading")}</span>
+                    {change.current}
+                  </div>
+                )}
+                {change.isRemoved ? (
+                  <div className="assistant-edit-removed">
+                    <span className="assistant-edit-label">—</span>
+                    <em>{t("common.remove")}</em>
+                  </div>
+                ) : (
+                  <div className="assistant-edit-new">
+                    <span className="assistant-edit-label">{change.isNew ? t("assistant.review.newBadgeTitle").split("—")[0].trim() : t("assistant.review.editProposedHeading")}</span>
+                    {change.proposed}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!summaryChanged && fieldChanges.length === 0 && (
+        <p className="assistant-edit-no-changes">
+          {t("assistant.review.editHeading")} — no field changes detected.
+        </p>
+      )}
+
+      <p className="assistant-review-cost">
+        {t("assistant.review.tokensSuffix", {
+          count: review.input_tokens + review.output_tokens,
+        })}
+      </p>
+
+      {showFeedback && (
+        <div className="assistant-feedback">
+          <textarea
+            rows={2}
+            autoFocus
+            placeholder={t("assistant.review.feedbackPlaceholder")}
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+          />
+          <button
+            type="button"
+            className="button-primary"
+            disabled={!feedback.trim() || busy}
+            onClick={() => onDecision("revise", null, feedback.trim())}
+          >
+            {t("assistant.review.sendRevision")}
+          </button>
+        </div>
+      )}
+
+      <div className="assistant-review-actions">
+        <button
+          type="button"
+          className="assistant-approve"
+          disabled={busy}
+          onClick={() => onDecision("approve", null)}
+        >
+          {t("assistant.review.approve", { count: 1 })}
+        </button>
+        <button
+          type="button"
+          className="assistant-request-changes"
+          disabled={busy}
+          onClick={() => setShowFeedback((v) => !v)}
+        >
+          {t("assistant.review.requestChanges")}
+        </button>
+        <button
+          type="button"
+          className="assistant-reject"
+          disabled={busy}
+          onClick={() => onDecision("reject", null)}
+        >
+          {t("assistant.review.reject")}
+        </button>
+      </div>
     </div>
   );
 }

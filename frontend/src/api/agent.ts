@@ -29,6 +29,15 @@ export interface LoreDraft {
   relationships: DraftRelationship[];
 }
 
+export interface EntityEditDraft {
+  entity_id: string;
+  type: string;
+  title: string;
+  summary: string;
+  fields: DraftField[];
+  edit_reason: string;
+}
+
 /** Mirrors backend schemas/agent.py AgentWarning — a structured,
  * machine-translatable warning. `code === "llm_text"` is the one exception:
  * free text from an LLM judge, already in the conversation's language,
@@ -40,6 +49,7 @@ export interface AgentWarning {
 
 export interface AgentReviewPayload {
   draft: LoreDraft | null;
+  entity_edit_draft: EntityEditDraft | null;
   warnings: AgentWarning[];
   input_tokens: number;
   output_tokens: number;

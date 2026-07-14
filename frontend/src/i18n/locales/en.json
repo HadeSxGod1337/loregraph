@@ -207,9 +207,11 @@
       "assistant": "💭 Thinking…",
       "tools": "📚 Reading lore…",
       "begin_proposal": "🚧 Preparing draft…",
+      "begin_edit": "🔧 Preparing edit…",
       "retrieve_context": "🔎 Searching related lore…",
       "check_duplicates_request": "🧭 Checking against existing lore…",
       "generate_lore": "✍️ Writing world draft…",
+      "generate_edit": "✍️ Writing edit proposal…",
       "check_duplicates_draft": "🧭 Checking for duplicates…",
       "verify_grounding": "✔️ Verifying facts…",
       "commit": "💾 Writing to the world…",
@@ -263,7 +265,12 @@
       "previewBanner": "This is a preview — it enters the world only after you approve.",
       "summaryHeading": "Summary",
       "groundedIn_one": "Grounded in {{count}} fragment of existing lore",
-      "groundedIn_other": "Grounded in {{count}} fragments of existing lore"
+      "groundedIn_other": "Grounded in {{count}} fragments of existing lore",
+      "editHeading": "Proposed edit",
+      "editReason": "Why",
+      "editEntityTitle": "Entity",
+      "editCurrentHeading": "Current",
+      "editProposedHeading": "Proposed"
     }
   },
   "warnings": {
@@ -280,7 +287,9 @@
     "budget_exhausted_reply": "Token budget for this conversation is exhausted — start a new session to continue.",
     "batch_committed": "Done — added {{count}} entities to the world ({{titles}}) and {{edges}} relationships.",
     "batch_rejected": "Draft rejected — nothing was written to the world.",
-    "draft_failed": "Couldn't produce a draft:"
+    "draft_failed": "Couldn't produce a draft:",
+    "entity_updated": "Updated entity '{{title}}'.",
+    "edit_failed": "Edit failed: {{reason}}"
   },
   "errors": {
     "project_not_found": "Project not found.",

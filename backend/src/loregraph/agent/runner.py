@@ -249,6 +249,7 @@ class AgentRunner:
                 output_tokens=state.output_tokens,
                 review=AgentReviewPayload(
                     draft=state.draft,
+                    entity_edit_draft=state.entity_edit_draft,
                     warnings=state.warnings,
                     input_tokens=state.input_tokens,
                     output_tokens=state.output_tokens,

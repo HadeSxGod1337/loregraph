@@ -219,9 +219,11 @@
       "assistant": "💭 Думаю…",
       "tools": "📚 Читаю лор…",
       "begin_proposal": "🚧 Готовлю черновик…",
+      "begin_edit": "🔧 Готовлю правку…",
       "retrieve_context": "🔎 Ищу связанный лор…",
       "check_duplicates_request": "🧭 Сверяю с существующим…",
       "generate_lore": "✍️ Пишу черновик мира…",
+      "generate_edit": "✍️ Пишу предложение правки…",
       "check_duplicates_draft": "🧭 Проверяю дубликаты…",
       "verify_grounding": "✔️ Проверяю факты…",
       "commit": "💾 Записываю в мир…",
@@ -279,7 +281,12 @@
       "groundedIn_one": "Основано на {{count}} фрагменте существующего лора",
       "groundedIn_few": "Основано на {{count}} фрагментах существующего лора",
       "groundedIn_many": "Основано на {{count}} фрагментах существующего лора",
-      "groundedIn_other": "Основано на {{count}} фрагментах существующего лора"
+      "groundedIn_other": "Основано на {{count}} фрагментах существующего лора",
+      "editHeading": "Предложенное изменение",
+      "editReason": "Почему",
+      "editEntityTitle": "Сущность",
+      "editCurrentHeading": "Текущее",
+      "editProposedHeading": "Новое"
     }
   },
   "warnings": {
@@ -296,7 +303,9 @@
     "budget_exhausted_reply": "Бюджет токенов на этот разговор исчерпан — начни новую сессию, чтобы продолжить.",
     "batch_committed": "Готово — добавлено в мир сущностей: {{count}} ({{titles}}), связей: {{edges}}.",
     "batch_rejected": "Черновик отклонён — в мир ничего не записано.",
-    "draft_failed": "Не удалось подготовить черновик:"
+    "draft_failed": "Не удалось подготовить черновик:",
+    "entity_updated": "Сущность «{{title}}» обновлена.",
+    "edit_failed": "Ошибка редактирования: {{reason}}"
   },
   "errors": {
     "project_not_found": "Проект не найден.",
