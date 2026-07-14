@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loregraph.agent.graph import build_agent_graph
 from loregraph.agent.state import AgentState
 from loregraph.llm.structured import StructuredResult
+from loregraph.llm.usage import LLMCallUsage
 from loregraph.schemas.agent import DraftEntity, DraftRelationship, LoreDraft
 from loregraph.schemas.entity import EntityCreate
 from loregraph.schemas.project import ProjectCreate
@@ -30,6 +31,7 @@ from loregraph.storage.sqlite.db import (
 from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
+from loregraph.storage.sqlite.usage_store import SqliteUsageStore
 
 
 class ScriptedChatModel(BaseChatModel):
@@ -64,11 +66,11 @@ class FakeGenerator:
         self._results = deque(results)
 
     async def generate[T: BaseModel](
-        self, schema: type[T], *, system: str, user: str
+        self, schema: type[T], *, system: str, user: str, cached_prefix: str = ""
     ) -> StructuredResult[T]:
         value = self._results.popleft()
         assert isinstance(value, schema), f"expected {schema}, got {type(value)}"
-        return StructuredResult(value, input_tokens=100, output_tokens=50)
+        return StructuredResult(value, LLMCallUsage(input_tokens=100, output_tokens=50))
 
 
 @pytest_asyncio.fixture
@@ -334,6 +336,47 @@ async def test_mid_batch_failure_rolls_back_created_entities(
         await graph.ainvoke(Command(resume={"action": "approve"}), CONFIG)
     # The first (successfully created) entity was compensated away.
     assert await entity_store.list_entities(project.id) == []
+
+
+@pytest.mark.asyncio
+async def test_usage_is_recorded_per_node_and_model(db_session: AsyncSession) -> None:
+    """End-to-end wiring: every LLM node writes its own usage row, tagged with
+    the model actually behind its injected client — that is what makes the
+    project rollup sliceable by node and by model."""
+    project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
+    usage_store = SqliteUsageStore(db_session)
+    entity_store = SqliteEntityStore(db_session)
+    edge_store = SqliteEdgeStore(db_session)
+    graph: Any = build_agent_graph(
+        chat_model=ScriptedChatModel(script=deque([propose_call("лор")])),
+        creative=FakeGenerator([starter_lore()]),
+        extraction=FakeGenerator([]),
+        vector_index=None,
+        knowledge_index=None,
+        entity_store=entity_store,
+        edge_store=edge_store,
+        project_store=SqliteProjectStore(db_session),
+        entity_service=EntityService(entity_store),
+        edge_service=EdgeService(edge_store, entity_store),
+        token_budget=100_000,
+        checkpointer=MemorySaver(),
+        usage_store=usage_store,
+        assistant_model_name="assistant-model",
+        generation_model_name="generation-model",
+        extraction_model_name="extraction-model",
+    )
+    await graph.ainvoke(turn(project.id, "Создай лор"), CONFIG)
+
+    rows = {row.node: row for row in await usage_store.project_rollup(project.id)}
+
+    assert rows["generate_lore"].model == "generation-model"
+    assert rows["generate_lore"].calls == 1
+    assert rows["generate_lore"].input_tokens == 100
+    assert rows["generate_lore"].output_tokens == 50
+    assert rows["assistant"].model == "assistant-model"
+    # No lore to check against, so the grounding judge never ran — and an
+    # LLM call that did not happen must not show up as spend.
+    assert "verify_grounding" not in rows
 
 
 def test_mentions_uses_word_boundaries() -> None:

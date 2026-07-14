@@ -62,9 +62,9 @@ def test_missing_api_key_raises_configuration_error(
 @pytest.mark.parametrize(
     "tier,expected_model_field",
     [
+        ("assistant", "llm_model_assistant"),
         ("extraction", "llm_model_extraction"),
         ("generation", "llm_model_generation"),
-        ("composition", "llm_model_composition"),
     ],
 )
 def test_tier_selects_model_and_temperature(

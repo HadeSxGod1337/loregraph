@@ -27,6 +27,11 @@ class AgentState(BaseModel):
 
     # Conversation
     project_id: str
+    # The checkpointer's thread_id, mirrored into state so nodes can attribute
+    # token usage to this session without reaching for the runtime config.
+    # Additive with a default (safe for pre-existing checkpoints, like
+    # knowledge_context below — STATE_VERSION unchanged).
+    thread_id: str = ""
     anchor_entity_id: str | None = None
     messages: Annotated[list[AnyMessage], add_messages] = Field(default_factory=list)
 

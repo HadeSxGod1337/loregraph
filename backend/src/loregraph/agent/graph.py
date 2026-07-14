@@ -27,7 +27,12 @@ from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
 from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.vector_index import VectorIndex
-from loregraph.storage.protocols import EdgeStore, EntityStore, ProjectStore
+from loregraph.storage.protocols import (
+    EdgeStore,
+    EntityStore,
+    ProjectStore,
+    UsageStore,
+)
 
 
 def build_agent_graph(
@@ -44,6 +49,13 @@ def build_agent_graph(
     edge_service: EdgeService,
     token_budget: int,
     checkpointer: BaseCheckpointSaver[str] | None,
+    usage_store: UsageStore | None = None,
+    # Resolved model ids, for per-model token attribution. The nodes get the
+    # id of the model actually behind their injected client, since the
+    # BaseChatModel/StructuredGenerator abstractions deliberately hide it.
+    assistant_model_name: str = "",
+    generation_model_name: str = "",
+    extraction_model_name: str = "",
 ) -> CompiledStateGraph[AgentState]:
     """Conversational assistant with a lore-proposal pipeline.
 
@@ -63,6 +75,8 @@ def build_agent_graph(
             chat_model=chat_model,
             token_budget=token_budget,
             project_store=project_store,
+            usage_store=usage_store,
+            model_name=assistant_model_name,
         ),
     )
     builder.add_node(
@@ -98,6 +112,8 @@ def build_agent_graph(
             creative=creative,
             token_budget=token_budget,
             project_store=project_store,
+            usage_store=usage_store,
+            model_name=generation_model_name,
         ),
     )
     builder.add_node(
@@ -106,7 +122,13 @@ def build_agent_graph(
     )
     builder.add_node(
         "verify_grounding",
-        partial(verify_grounding, extraction=extraction, token_budget=token_budget),
+        partial(
+            verify_grounding,
+            extraction=extraction,
+            token_budget=token_budget,
+            usage_store=usage_store,
+            model_name=extraction_model_name,
+        ),
     )
     builder.add_node("human_review", human_review)
     builder.add_node(

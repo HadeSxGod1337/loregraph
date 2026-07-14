@@ -1,13 +1,22 @@
 from typing import Any
 
 from loregraph.agent.state import NO_LORE_SENTINEL, AgentState
+from loregraph.agent.usage import record_usage
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.prompts import render
 from loregraph.schemas.agent import AgentWarning, GroundingReport, LoreDraft
+from loregraph.storage.protocols import UsageStore
+
+NODE = "verify_grounding"
 
 
 async def verify_grounding(
-    state: AgentState, *, extraction: StructuredGenerator, token_budget: int
+    state: AgentState,
+    *,
+    extraction: StructuredGenerator,
+    token_budget: int,
+    usage_store: UsageStore | None,
+    model_name: str,
 ) -> dict[str, Any]:
     """Verifier before review. Deterministic part always runs: relationship
     endpoints must be real draft refs or retrieved entity ids (the model
@@ -69,12 +78,20 @@ async def verify_grounding(
                 draft=draft.model_dump_json(indent=2),
             ),
         )
+        await record_usage(
+            usage_store,
+            project_id=state.project_id,
+            thread_id=state.thread_id,
+            node=NODE,
+            model=model_name,
+            usage=result.usage,
+        )
         warnings.extend(
             AgentWarning(code="llm_text", params={"text": text})
             for text in result.value.warnings
         )
-        update["input_tokens"] = state.input_tokens + result.input_tokens
-        update["output_tokens"] = state.output_tokens + result.output_tokens
+        update["input_tokens"] = state.input_tokens + result.usage.input_tokens
+        update["output_tokens"] = state.output_tokens + result.usage.output_tokens
 
     update["warnings"] = [*state.warnings, *warnings]
     return update

@@ -88,6 +88,30 @@ class AgentSessionRow(Base):
     updated_at: Mapped[datetime]
 
 
+class UsageEventRow(Base):
+    """One recorded LLM call. The per-session totals on AgentSessionRow are a
+    denormalized fast path for the review UI; this table is the granular
+    source of truth (per node, per model, incl. cache tokens) that the
+    /projects/{id}/usage rollup aggregates."""
+
+    __tablename__ = "usage_events"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    # Not an FK to agent_sessions: usage is worth keeping even if a session row
+    # is later pruned, and the project-scoped CASCADE above already bounds it.
+    thread_id: Mapped[str] = mapped_column(index=True)
+    node: Mapped[str] = mapped_column(index=True)
+    model: Mapped[str] = mapped_column(index=True)
+    input_tokens: Mapped[int] = mapped_column(default=0)
+    output_tokens: Mapped[int] = mapped_column(default=0)
+    cache_read_tokens: Mapped[int] = mapped_column(default=0)
+    cache_creation_tokens: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime]
+
+
 class AttachmentRow(Base):
     __tablename__ = "attachments"
 

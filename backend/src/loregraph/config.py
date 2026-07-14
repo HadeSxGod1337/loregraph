@@ -19,18 +19,32 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
     ollama_base_url: str = "http://localhost:11434"
-    # One model per task class, not one model for everything (see CLAUDE.md,
-    # "Модель и температура по типу задачи"). Defaults are Anthropic model ids;
-    # override all three when switching provider.
+    # One model per task class, not one model for everything. Defaults are
+    # Anthropic model ids; override all three when switching provider.
+    # - assistant: the conversational loop (tool routing + concise replies +
+    #   brief writing). A cheap, fast model is enough here and is the single
+    #   largest recurring cost, so it gets its own tier defaulting to Haiku
+    #   rather than sharing the pricier `generation` tier. Bump it to the
+    #   generation model if routing/brief quality suffers.
+    # - extraction: deterministic classification/verification (grounding judge).
+    # - generation: creative lore batches (entities + relationship web).
+    llm_model_assistant: str = "claude-haiku-4-5-20251001"
     llm_model_extraction: str = "claude-haiku-4-5-20251001"
     llm_model_generation: str = "claude-sonnet-5"
-    llm_model_composition: str = "claude-opus-4-8"
 
     # --- Agent ---
     # Hard per-run ceiling so a retry loop can't silently burn the user's key;
     # exceeding it interrupts into human_review, it does not kill the draft.
     agent_run_token_budget: int = 200_000
     web_search_enabled: bool = False
+    # Anthropic prompt caching for the generate_lore stable prefix (existing
+    # lore + knowledge base + instruction). Net positive when a proposal is
+    # regenerated (title-collision retry, review revision, re-propose): those
+    # reuse the cached prefix at ~0.1x. Only Anthropic supports it, and a
+    # prefix below the model's cache minimum silently isn't cached (no write
+    # penalty), so leaving this on is safe; turn off for a purely one-shot
+    # workload to avoid the 1.25x cache-write premium on large first drafts.
+    agent_prompt_caching: bool = True
 
     # --- Embeddings / vector store ---
     # "local" keeps lore on the machine (multilingual ONNX model via fastembed,

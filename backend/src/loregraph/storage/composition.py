@@ -10,6 +10,7 @@ from loregraph.storage.protocols import (
     EntityStore,
     KnowledgeSourceStore,
     ProjectStore,
+    UsageStore,
 )
 
 
@@ -25,3 +26,4 @@ class StoreFactories:
     attachment: Callable[[AsyncSession], AttachmentStore]
     agent_session: Callable[[AsyncSession], AgentSessionStore]
     knowledge_source: Callable[[AsyncSession], KnowledgeSourceStore]
+    usage: Callable[[AsyncSession], UsageStore]

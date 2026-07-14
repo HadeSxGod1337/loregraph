@@ -9,26 +9,27 @@ from pydantic import SecretStr
 from loregraph.config import Settings
 from loregraph.exceptions import ConfigurationError
 
-type ModelTier = Literal["extraction", "generation", "composition"]
+type ModelTier = Literal["assistant", "extraction", "generation"]
 
-# Temperature per task class (CLAUDE.md, "Модель и температура по типу задачи"):
-# extraction is deterministic classification, generation is creative content,
-# composition is long-context reasoning where wild sampling hurts coherence.
+# Temperature per task class:
+# assistant is tool-routing + concise grounded chat (low temp for reliable
+# routing, still natural), extraction is deterministic classification,
+# generation is creative content.
 TIER_TEMPERATURE: dict[ModelTier, float] = {
+    "assistant": 0.3,
     "extraction": 0.0,
     "generation": 0.8,
-    "composition": 0.7,
 }
 
 
 def _model_for_tier(settings: Settings, tier: ModelTier) -> str:
     match tier:
+        case "assistant":
+            return settings.llm_model_assistant
         case "extraction":
             return settings.llm_model_extraction
         case "generation":
             return settings.llm_model_generation
-        case "composition":
-            return settings.llm_model_composition
         case _:
             assert_never(tier)
 

@@ -22,6 +22,7 @@ from loregraph.storage.protocols import (
     EntityStore,
     KnowledgeSourceStore,
     ProjectStore,
+    UsageStore,
 )
 
 
@@ -73,6 +74,10 @@ async def get_knowledge_source_store(
     return _factories(request).knowledge_source(session)
 
 
+async def get_usage_store(request: Request, session: SessionDep) -> UsageStore:
+    return _factories(request).usage(session)
+
+
 ProjectStoreDep = Annotated[ProjectStore, Depends(get_project_store)]
 EntityStoreDep = Annotated[EntityStore, Depends(get_entity_store)]
 EdgeStoreDep = Annotated[EdgeStore, Depends(get_edge_store)]
@@ -80,6 +85,7 @@ AttachmentStoreDep = Annotated[AttachmentStore, Depends(get_attachment_store)]
 KnowledgeSourceStoreDep = Annotated[
     KnowledgeSourceStore, Depends(get_knowledge_source_store)
 ]
+UsageStoreDep = Annotated[UsageStore, Depends(get_usage_store)]
 
 
 def get_vector_index(request: Request) -> VectorIndex | None:
@@ -138,19 +144,30 @@ async def get_agent_runner(
     vector_index: VectorIndexDep,
     knowledge_index: KnowledgeIndexDep,
     agent_sessions: AgentSessionStoreDep,
+    usage_store: UsageStoreDep,
 ) -> AgentRunner:
     """Builds the per-request agent graph: services are session-scoped, so
     the graph is compiled per request against the shared checkpointer (state
     lives with the checkpointer/thread_id, not with the compiled object).
     Raises ConfigurationError (→ 409) when no LLM is configured."""
     checkpointer = cast(BaseCheckpointSaver[str], request.app.state.agent_checkpointer)
+    # Three tiers, three roles: the chat loop is the highest-frequency caller
+    # and only routes tools / writes short replies, so it runs on the cheap
+    # `assistant` model rather than sharing the pricier creative one.
+    assistant_model = get_chat_model(settings, tier="assistant")
     generation_model = get_chat_model(settings, tier="generation")
+    extraction_model = get_chat_model(settings, tier="extraction")
+    # Prompt caching is an Anthropic feature; other providers get the same
+    # prompt as one plain block (see llm/structured.py).
+    prompt_caching = settings.agent_prompt_caching and settings.llm_provider == (
+        "anthropic"
+    )
     graph = build_agent_graph(
-        chat_model=generation_model,
-        creative=LangChainStructuredGenerator(generation_model),
-        extraction=LangChainStructuredGenerator(
-            get_chat_model(settings, tier="extraction")
+        chat_model=assistant_model,
+        creative=LangChainStructuredGenerator(
+            generation_model, prompt_caching=prompt_caching
         ),
+        extraction=LangChainStructuredGenerator(extraction_model),
         vector_index=vector_index,
         knowledge_index=knowledge_index,
         entity_store=entity_store,
@@ -160,6 +177,10 @@ async def get_agent_runner(
         edge_service=edge_service,
         token_budget=settings.agent_run_token_budget,
         checkpointer=checkpointer,
+        usage_store=usage_store,
+        assistant_model_name=settings.llm_model_assistant,
+        generation_model_name=settings.llm_model_generation,
+        extraction_model_name=settings.llm_model_extraction,
     )
     return AgentRunner(graph, agent_sessions)
 

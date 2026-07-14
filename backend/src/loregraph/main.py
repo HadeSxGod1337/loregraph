@@ -19,6 +19,7 @@ from loregraph.api.routers import (
     graph,
     knowledge,
     projects,
+    usage,
 )
 from loregraph.config import Settings
 from loregraph.exceptions import (
@@ -56,6 +57,7 @@ from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
 from loregraph.storage.sqlite.knowledge_source_store import SqliteKnowledgeSourceStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
+from loregraph.storage.sqlite.usage_store import SqliteUsageStore
 from loregraph.storage.vectorstore.chroma_store import ChromaVectorStore
 
 SEED_DEMO_PROJECT_PATH = Path(__file__).parent / "seed" / "demo_project.json"
@@ -131,6 +133,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             knowledge_source=lambda session: SqliteKnowledgeSourceStore(
                 session, settings.knowledge_dir
             ),
+            usage=SqliteUsageStore,
         )
         # Vector layer is optional derived data: None when embeddings are
         # disabled, and the manual editor must keep working either way.
@@ -194,6 +197,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(attachments.router, prefix="/api")
     app.include_router(agent.router, prefix="/api")
     app.include_router(knowledge.router, prefix="/api")
+    app.include_router(usage.router, prefix="/api")
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

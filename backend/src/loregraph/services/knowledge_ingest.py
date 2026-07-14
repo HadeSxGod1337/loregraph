@@ -35,8 +35,12 @@ async def ingest_source(
             # searchable — the same degrade VectorIndex applies to canon.
             await source_store.update_status(source_id, status="ready", chunk_count=0)
             return
-        text = extract_text(content, content_type, filename)
-        chunks = chunk_text(text)
+        # pypdf parsing and chunking are synchronous CPU/IO work — keep them
+        # off the event loop so one large upload can't stall every other
+        # request while it is being ingested (this runs as a BackgroundTask
+        # on the same loop as live requests).
+        text = await asyncio.to_thread(extract_text, content, content_type, filename)
+        chunks = await asyncio.to_thread(chunk_text, text)
         await knowledge_index.index_source(project_id, source_id, chunks)
         await source_store.update_status(
             source_id, status="ready", chunk_count=len(chunks)

@@ -16,6 +16,4 @@ relationship web.
 
 Instruction from the game master:
 ${instruction}
-${revision_block}
-${retry_feedback}
 </task>

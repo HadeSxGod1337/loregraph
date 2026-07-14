@@ -11,6 +11,7 @@ from loregraph.schemas.edge import EdgeCreate, EdgeOut, EdgeUpdate
 from loregraph.schemas.entity import EntityCreate, EntityOut, EntityUpdate
 from loregraph.schemas.knowledge import KnowledgeSourceOut
 from loregraph.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
+from loregraph.schemas.usage import UsageEvent, UsageRollupRow
 
 
 @runtime_checkable
@@ -68,6 +69,16 @@ class AgentSessionStore(Protocol):
         review: AgentReviewPayload | None = None,
         clear_review: bool = False,
     ) -> AgentSessionOut: ...
+
+
+@runtime_checkable
+class UsageStore(Protocol):
+    """Granular per-call LLM token accounting (per node/model/session/project,
+    cache-aware). Written at each call site during a run; read as a project
+    rollup for the usage endpoint."""
+
+    async def record(self, event: UsageEvent) -> None: ...
+    async def project_rollup(self, project_id: str) -> list[UsageRollupRow]: ...
 
 
 @runtime_checkable

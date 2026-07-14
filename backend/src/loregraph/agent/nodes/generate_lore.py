@@ -1,12 +1,15 @@
 from typing import Any
 
 from loregraph.agent.state import AgentState
+from loregraph.agent.usage import record_usage
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.prompts import project_instructions_block, render
 from loregraph.schemas.agent import AgentWarning, LoreDraft
-from loregraph.storage.protocols import ProjectStore
+from loregraph.storage.protocols import ProjectStore, UsageStore
 
 BUDGET_EXHAUSTED_WARNING = AgentWarning(code="budget_exhausted")
+
+NODE = "generate_lore"
 
 
 def _revision_block(state: AgentState) -> str:
@@ -23,12 +26,20 @@ def _revision_block(state: AgentState) -> str:
     )
 
 
+def _retry_block(state: AgentState) -> str:
+    if not state.retry_feedback:
+        return ""
+    return f"\nIMPORTANT — previous attempt was rejected: {state.retry_feedback}"
+
+
 async def generate_lore(
     state: AgentState,
     *,
     creative: StructuredGenerator,
     token_budget: int,
     project_store: ProjectStore,
+    usage_store: UsageStore | None,
+    model_name: str,
 ) -> dict[str, Any]:
     """One creative call produces a coherent batch: entities (types chosen by
     the model, steered toward the project's existing taxonomy) plus the
@@ -45,12 +56,23 @@ async def generate_lore(
             "attempts": state.attempts + 1,
         }
 
-    retry_feedback = (
-        f"\nIMPORTANT — previous attempt was rejected: {state.retry_feedback}"
-        if state.retry_feedback
-        else ""
-    )
     project = await project_store.get(state.project_id)
+    # Split into a stable prefix and a volatile tail so prompt caching can
+    # work: retrieved lore, the knowledge base, the taxonomy and the brief are
+    # identical across every regeneration of this proposal (collision retry,
+    # review revision), while the revision/retry directives are what changed.
+    # The generator puts the cache breakpoint on the prefix (see
+    # llm/structured.py) — regenerations then re-read it instead of re-paying.
+    cached_prefix = render(
+        "generate_lore.user.md",
+        existing_lore=state.existing_lore,
+        knowledge_context=state.knowledge_context,
+        known_types=", ".join(state.known_entity_types) or "(none yet)",
+        instruction=state.pending_brief,
+    )
+    volatile = "\n".join(
+        part for part in (_revision_block(state), _retry_block(state)) if part
+    )
     result = await creative.generate(
         LoreDraft,
         system=render(
@@ -59,21 +81,22 @@ async def generate_lore(
                 project.agent_instructions
             ),
         ),
-        user=render(
-            "generate_lore.user.md",
-            existing_lore=state.existing_lore,
-            knowledge_context=state.knowledge_context,
-            known_types=", ".join(state.known_entity_types) or "(none yet)",
-            instruction=state.pending_brief,
-            revision_block=_revision_block(state),
-            retry_feedback=retry_feedback,
-        ),
+        cached_prefix=cached_prefix,
+        user=volatile,
+    )
+    await record_usage(
+        usage_store,
+        project_id=state.project_id,
+        thread_id=state.thread_id,
+        node=NODE,
+        model=model_name,
+        usage=result.usage,
     )
     return {
         "draft": result.value,
         "attempts": state.attempts + 1,
         "retry_feedback": "",
         "revision_feedback": "",
-        "input_tokens": state.input_tokens + result.input_tokens,
-        "output_tokens": state.output_tokens + result.output_tokens,
+        "input_tokens": state.input_tokens + result.usage.input_tokens,
+        "output_tokens": state.output_tokens + result.usage.output_tokens,
     }

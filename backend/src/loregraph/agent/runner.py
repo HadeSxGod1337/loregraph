@@ -146,6 +146,7 @@ class AgentRunner:
         )
         graph_input: dict[str, Any] = {
             "project_id": project_id,
+            "thread_id": thread_id,
             "anchor_entity_id": anchor_entity_id,
             "messages": [message],
             # Per-turn outcome fields reset so _finalize reports THIS turn's

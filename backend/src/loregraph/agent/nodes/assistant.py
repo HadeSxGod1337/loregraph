@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, SystemMessage, ToolMessage
@@ -6,12 +6,16 @@ from pydantic import BaseModel, Field
 
 from loregraph.agent.events import event_message
 from loregraph.agent.state import AgentState
+from loregraph.agent.usage import record_usage
+from loregraph.llm.usage import parse_usage
 from loregraph.prompts import project_instructions_block, render
-from loregraph.storage.protocols import ProjectStore
+from loregraph.storage.protocols import ProjectStore, UsageStore
 
 # Conversation window sent to the LLM: enough for coherent chat, small enough
 # to keep per-turn token cost flat as the conversation grows.
 MAX_CHAT_WINDOW = 24
+
+NODE = "assistant"
 
 BUDGET_EXHAUSTED_REPLY = (
     "Token budget for this conversation is exhausted — start a new session to continue."
@@ -73,6 +77,8 @@ async def assistant(
     chat_model: BaseChatModel,
     token_budget: int,
     project_store: ProjectStore,
+    usage_store: UsageStore | None,
+    model_name: str,
 ) -> dict[str, Any]:
     """The conversational brain: answers from retrieved lore, asks clarifying
     questions, and calls propose_lore to draft content. Deliberately has no
@@ -102,11 +108,19 @@ async def assistant(
             *chat_window(state.messages),
         ]
     )
-    usage = cast(dict[str, int], response.usage_metadata or {})
+    usage = parse_usage(response.usage_metadata)
+    await record_usage(
+        usage_store,
+        project_id=state.project_id,
+        thread_id=state.thread_id,
+        node=NODE,
+        model=model_name,
+        usage=usage,
+    )
     return {
         "messages": [response],
-        "input_tokens": state.input_tokens + usage.get("input_tokens", 0),
-        "output_tokens": state.output_tokens + usage.get("output_tokens", 0),
+        "input_tokens": state.input_tokens + usage.input_tokens,
+        "output_tokens": state.output_tokens + usage.output_tokens,
     }
 
 
