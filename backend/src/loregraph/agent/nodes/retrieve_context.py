@@ -92,6 +92,12 @@ async def retrieve_context(
     # taxonomy instead of inventing a new type name per run.
     all_entities = await entity_store.list_entities(state.project_id)
     known_types = sorted({entity.type for entity in all_entities})
+    # Compact title→id map from retrieved entities only — bounded by
+    # RETRIEVAL_K, enough for the LLM to create valid [[wikilinks]].
+    # Full entity list is NOT dumped into the prompt (token-efficient).
+    available_links = "\n".join(
+        f'{entity.title} → {entity.id}' for entity in entities
+    )
     if subgraph is not None:
         lore_lines.extend(
             f'<relationship source="graph_store">'
@@ -109,6 +115,7 @@ async def retrieve_context(
         ),
         "context_entity_ids": context_ids,
         "known_entity_types": known_types,
+        "available_links": available_links,
     }
 
 

@@ -1,17 +1,119 @@
 import asyncio
 import logging
+import re
 from typing import Any
 
 from loregraph.agent.events import event_message
 from loregraph.agent.state import AgentState
 from loregraph.exceptions import CampaignError
-from loregraph.schemas.agent import AgentWarning
+from loregraph.schemas.agent import AgentWarning, DraftEntity, EntityEditDraft
 from loregraph.schemas.edge import EdgeCreate
 from loregraph.schemas.entity import EntityCreate, EntityFieldIn, EntityUpdate, FieldType
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
 
 logger = logging.getLogger(__name__)
+
+_WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
+
+
+def _wikilinks_to_prosemirror(text: str, title_to_id: dict[str, str]) -> dict:
+    """Convert text with ``[[label]]`` wikilinks to a ProseMirror doc containing
+    ``entityLink`` nodes.  Unresolved labels (no matching entity) are left as
+    plain text so the doc never breaks."""
+    paragraphs = text.split("\n\n")
+    doc_content: list[dict] = []
+
+    for para_text in paragraphs:
+        if not para_text.strip():
+            continue
+        # Handle single newlines within a paragraph as hard breaks
+        lines = para_text.split("\n")
+        para_content: list[dict] = []
+
+        for i, line in enumerate(lines):
+            if i > 0:
+                para_content.append({"type": "hardBreak"})
+            last_end = 0
+            for match in _WIKILINK_RE.finditer(line):
+                if match.start() > last_end:
+                    para_content.append(
+                        {"type": "text", "text": line[last_end : match.start()]}
+                    )
+                label = match.group(1)
+                entity_id = title_to_id.get(label.lower(), "")
+                para_content.append(
+                    {
+                        "type": "entityLink",
+                        "attrs": {
+                            "entityId": entity_id,
+                            "fieldKey": None,
+                            "label": label,
+                        },
+                    }
+                )
+                last_end = match.end()
+            if last_end < len(line):
+                para_content.append({"type": "text", "text": line[last_end:]})
+
+        if para_content:
+            doc_content.append({"type": "paragraph", "content": para_content})
+
+    if not doc_content:
+        doc_content.append({"type": "paragraph", "content": []})
+
+    return {"type": "doc", "content": doc_content}
+
+
+async def _build_title_to_id(
+    entity_service: EntityService,
+    project_id: str,
+    extra: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """Build a case-insensitive title→id map from existing entities, merged
+    with any ``extra`` mappings (e.g. batch entities created so far)."""
+    all_entities = await entity_service.list_entities(project_id)
+    title_to_id: dict[str, str] = {
+        entity.title.lower(): entity.id for entity in all_entities
+    }
+    if extra:
+        title_to_id.update({k.lower(): v for k, v in extra.items()})
+    return title_to_id
+
+
+def _build_fields(
+    draft_entity: DraftEntity | EntityEditDraft,
+    title_to_id: dict[str, str],
+) -> list[EntityFieldIn]:
+    """Build EntityFieldIn list from a draft entity, converting rich_text
+    fields that contain ``[[label]]`` wikilinks to ProseMirror docs."""
+    fields: list[EntityFieldIn] = [
+        EntityFieldIn(
+            key="summary",
+            field_type=FieldType.TEXT,
+            value=draft_entity.summary,
+            show_on_card=True,
+        ),
+    ]
+    for field in draft_entity.fields:
+        if getattr(field, "field_type", FieldType.TEXT) == FieldType.RICH_TEXT:
+            prosemirror = _wikilinks_to_prosemirror(field.value, title_to_id)
+            fields.append(
+                EntityFieldIn(
+                    key=field.key,
+                    field_type=FieldType.RICH_TEXT,
+                    value=prosemirror,
+                )
+            )
+        else:
+            fields.append(
+                EntityFieldIn(
+                    key=field.key,
+                    field_type=FieldType.TEXT,
+                    value=field.value,
+                )
+            )
+    return fields
 
 
 async def _rollback_created(
@@ -87,24 +189,12 @@ async def commit(
 
     warnings: list[AgentWarning] = []
     ref_to_id: dict[str, str] = {}
+    title_to_id = await _build_title_to_id(entity_service, state.project_id)
     titles: list[str] = []
     edge_count = 0
     try:
         for draft_entity in state.draft.entities:
-            fields = [
-                EntityFieldIn(
-                    key="summary",
-                    field_type=FieldType.TEXT,
-                    value=draft_entity.summary,
-                    show_on_card=True,
-                ),
-                *(
-                    EntityFieldIn(
-                        key=field.key, field_type=FieldType.TEXT, value=field.value
-                    )
-                    for field in draft_entity.fields
-                ),
-            ]
+            fields = _build_fields(draft_entity, title_to_id)
             entity = await entity_service.create(
                 EntityCreate(
                     type=draft_entity.type, title=draft_entity.title, fields=fields
@@ -112,6 +202,7 @@ async def commit(
                 state.project_id,
             )
             ref_to_id[draft_entity.ref] = entity.id
+            title_to_id[draft_entity.title.lower()] = entity.id
             titles.append(draft_entity.title)
 
         for relationship in state.draft.relationships:
@@ -202,20 +293,8 @@ async def _commit_edit(
         }
 
     ed = state.entity_edit_draft
-    fields = [
-        EntityFieldIn(
-            key="summary",
-            field_type=FieldType.TEXT,
-            value=ed.summary,
-            show_on_card=True,
-        ),
-        *(
-            EntityFieldIn(
-                key=field.key, field_type=FieldType.TEXT, value=field.value
-            )
-            for field in ed.fields
-        ),
-    ]
+    title_to_id = await _build_title_to_id(entity_service, state.project_id)
+    fields = _build_fields(ed, title_to_id)
     entity = await entity_service.update(
         state.project_id,
         ed.entity_id,

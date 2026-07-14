@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 def _prosemirror_text(node: Any) -> str:
     """Flatten a ProseMirror JSON doc to plain text for embedding."""
     if isinstance(node, dict):
+        # Extract entityLink labels so wikilinked names are searchable
+        if node.get("type") == "entityLink":
+            label = node.get("attrs", {}).get("label", "")
+            return label if isinstance(label, str) else ""
         own = node.get("text")
         parts = [own] if isinstance(own, str) else []
         parts.extend(_prosemirror_text(child) for child in node.get("content", []))

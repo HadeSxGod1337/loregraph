@@ -49,6 +49,7 @@ class AgentState(BaseModel):
     knowledge_context: str = ""
     context_entity_ids: list[str] = Field(default_factory=list)
     known_entity_types: list[str] = Field(default_factory=list)
+    available_links: str = ""
     draft: LoreDraft | None = None
     # Edit pipeline: set when the assistant calls edit_entity
     entity_edit_draft: EntityEditDraft | None = None

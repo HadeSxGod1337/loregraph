@@ -13,7 +13,10 @@ Hard rules:
 4. `summary` must be one or two sentences.
 5. Return `fields` as a flat list of {key, value} pairs (text values only).
    Include unchanged fields from <current_entity> so the full entity is
-   represented in the output.
-6. `edit_reason` is a single sentence explaining what changed and why.
-7. Write in the same language as the game master's instruction.
+   represented in the output. Use `field_type: "rich_text"` for fields
+   containing wikilinks (`[[Entity Name]]` syntax).
+6. When referencing other entities in field values, use wikilink syntax:
+   `[[Entity Name]]`. Match the exact title from <available_links>.
+7. `edit_reason` is a single sentence explaining what changed and why.
+8. Write in the same language as the game master's instruction.
 ${project_instructions_block}

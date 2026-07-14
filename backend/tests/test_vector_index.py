@@ -69,6 +69,38 @@ def test_entity_to_text_extracts_rich_text() -> None:
     assert "Кузнец из Норвинтера" in entity_to_text(entity)
 
 
+def test_entity_to_text_includes_entity_link_labels() -> None:
+    """entityLink labels (wikilinks) must appear in vector-embeddable text."""
+    entity = make_entity("e1", "Мира")
+    entity.fields.append(
+        EntityFieldOut(
+            key="workplace",
+            field_type=FieldType.RICH_TEXT,
+            value={
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {"type": "text", "text": "Works at "},
+                            {
+                                "type": "entityLink",
+                                "attrs": {
+                                    "entityId": "loc_001",
+                                    "fieldKey": None,
+                                    "label": "The Iron Forge",
+                                },
+                            },
+                        ],
+                    }
+                ],
+            },
+        )
+    )
+    text = entity_to_text(entity)
+    assert "The Iron Forge" in text
+
+
 @pytest.mark.asyncio
 async def test_index_query_and_remove(tmp_path: Path) -> None:
     index = VectorIndex(ChromaVectorStore(tmp_path / "chroma", FakeEmbedder()))

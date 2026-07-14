@@ -10,6 +10,10 @@ ${knowledge_context}
 ${known_types}
 </known_types>
 
+<available_links>
+${available_links}
+</available_links>
+
 <task>
 Design the piece of world the game master asks for — entities plus their
 relationship web.

@@ -68,6 +68,7 @@ async def generate_lore(
         existing_lore=state.existing_lore,
         knowledge_context=state.knowledge_context,
         known_types=", ".join(state.known_entity_types) or "(none yet)",
+        available_links=state.available_links or "(no entities in scope)",
         instruction=state.pending_brief,
     )
     volatile = "\n".join(

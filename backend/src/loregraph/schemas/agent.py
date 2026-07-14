@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from loregraph.schemas.entity import FieldType
+
 type AgentSessionStatus = Literal[
     "idle", "running", "awaiting_review", "committed", "rejected", "failed"
 ]
@@ -11,6 +13,7 @@ type AgentSessionStatus = Literal[
 class DraftField(BaseModel):
     key: str
     value: str
+    field_type: FieldType = FieldType.TEXT
 
 
 class DraftEntity(BaseModel):
