@@ -7,6 +7,7 @@ from langgraph.graph.state import CompiledStateGraph
 
 from loregraph.agent.nodes.assistant import (
     assistant,
+    begin_edit,
     begin_proposal,
     route_after_assistant,
 )
@@ -16,6 +17,7 @@ from loregraph.agent.nodes.check_duplicates import (
     route_after_draft_check,
 )
 from loregraph.agent.nodes.commit import commit
+from loregraph.agent.nodes.generate_edit import generate_edit
 from loregraph.agent.nodes.generate_lore import generate_lore
 from loregraph.agent.nodes.human_review import human_review, route_after_review
 from loregraph.agent.nodes.retrieve_context import retrieve_context
@@ -89,6 +91,7 @@ def build_agent_graph(
         ),
     )
     builder.add_node("begin_proposal", begin_proposal)
+    builder.add_node("begin_edit", begin_edit)
 
     # --- Proposal pipeline (unchanged core)
     builder.add_node(
@@ -136,11 +139,25 @@ def build_agent_graph(
         partial(commit, entity_service=entity_service, edge_service=edge_service),
     )
 
+    # ── Edit pipeline ───────────────────────────────────────────────────────────
+    builder.add_node(
+        "generate_edit",
+        partial(
+            generate_edit,
+            creative=creative,
+            token_budget=token_budget,
+            entity_store=entity_store,
+            project_store=project_store,
+            usage_store=usage_store,
+            model_name=generation_model_name,
+        ),
+    )
+
     builder.add_edge(START, "assistant")
     builder.add_conditional_edges(
         "assistant",
         route_after_assistant,
-        {"tools": "tools", "propose": "begin_proposal", "end": END},
+        {"tools": "tools", "propose": "begin_proposal", "edit": "begin_edit", "end": END},
     )
     builder.add_edge("tools", "assistant")
 
@@ -160,5 +177,11 @@ def build_agent_graph(
         {"revise": "generate_lore", "commit": "commit"},
     )
     builder.add_edge("commit", END)
+
+    # Edit pipeline edges (skips retrieve/dedup/verify — not applicable to
+    # targeted single-entity edits).
+    builder.add_edge("begin_edit", "generate_edit")
+    builder.add_edge("generate_edit", "human_review")
+    # human_review → commit already wired above; commit → END already wired.
 
     return builder.compile(checkpointer=checkpointer)

@@ -9,6 +9,7 @@ from loregraph.schemas.agent import AgentResumeRequest, AgentReviewPayload
 def build_review_payload(state: AgentState) -> AgentReviewPayload:
     return AgentReviewPayload(
         draft=state.draft,
+        entity_edit_draft=state.entity_edit_draft,
         warnings=state.warnings,
         input_tokens=state.input_tokens,
         output_tokens=state.output_tokens,
@@ -19,7 +20,8 @@ async def human_review(state: AgentState) -> dict[str, Any]:
     """The mandatory HITL gate: the graph pauses here (checkpointed to disk)
     until the DM resumes with an explicit decision. Nothing reaches canon
     without passing through this node."""
-    if state.draft is None:
+    has_content = state.draft is not None or state.entity_edit_draft is not None
+    if not has_content:
         # Nothing to review (e.g. budget ran out before the first
         # generation) — don't trap the session at an empty interrupt;
         # commit's no-draft branch reports the warnings to the chat.

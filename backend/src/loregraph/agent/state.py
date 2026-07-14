@@ -4,7 +4,7 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
 
-from loregraph.schemas.agent import AgentWarning, LoreDraft
+from loregraph.schemas.agent import AgentWarning, EntityEditDraft, LoreDraft
 
 # Checkpointed state is the app's closest thing to a public contract:
 # interrupted graphs live on disk between process restarts.
@@ -12,7 +12,9 @@ from loregraph.schemas.agent import AgentWarning, LoreDraft
 # `instruction`; old v2 checkpoints cannot resume — pending drafts reset.
 # v4: `warnings` became structured (AgentWarning) instead of free strings, so
 # the frontend can translate them — old v3 checkpoints cannot resume either.
-STATE_VERSION = 4
+# v5: entity_edit_draft + pending_edit_entity_id added for the edit-entity
+# pipeline — old v4 checkpoints cannot resume interrupted edit sessions.
+STATE_VERSION = 5
 
 # Marker injected into prompts when retrieval found nothing — the model must
 # be told explicitly instead of being left to hallucinate connections.
@@ -48,6 +50,9 @@ class AgentState(BaseModel):
     context_entity_ids: list[str] = Field(default_factory=list)
     known_entity_types: list[str] = Field(default_factory=list)
     draft: LoreDraft | None = None
+    # Edit pipeline: set when the assistant calls edit_entity
+    entity_edit_draft: EntityEditDraft | None = None
+    pending_edit_entity_id: str = ""
     warnings: list[AgentWarning] = Field(default_factory=list)
     attempts: int = 0
     retry_feedback: str = ""

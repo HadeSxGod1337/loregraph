@@ -53,6 +53,21 @@ class LoreDraft(BaseModel):
     relationships: list[DraftRelationship] = Field(default_factory=list)
 
 
+class EntityEditDraft(BaseModel):
+    """What the agent proposes when editing an existing entity. Contains the
+    full new state of the entity so the DM can review it as a diff against
+    the current version before any write happens."""
+
+    entity_id: str = Field(description="Id of the entity being edited.")
+    type: str
+    title: str
+    summary: str
+    fields: list[DraftField] = Field(default_factory=list)
+    edit_reason: str = Field(
+        description="One-sentence explanation of what changed and why."
+    )
+
+
 class GroundingReport(BaseModel):
     """LLM-as-judge output — free text in the lore's language, not a UI
     string. Wrapped into AgentWarning(code="llm_text") before it reaches the
@@ -78,6 +93,7 @@ class AgentReviewPayload(BaseModel):
     """Everything the DM sees at the human_review gate."""
 
     draft: LoreDraft | None
+    entity_edit_draft: "EntityEditDraft | None" = None
     warnings: list[AgentWarning] = Field(default_factory=list)
     input_tokens: int = 0
     output_tokens: int = 0

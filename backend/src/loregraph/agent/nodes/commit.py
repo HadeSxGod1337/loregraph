@@ -7,7 +7,7 @@ from loregraph.agent.state import AgentState
 from loregraph.exceptions import CampaignError
 from loregraph.schemas.agent import AgentWarning
 from loregraph.schemas.edge import EdgeCreate
-from loregraph.schemas.entity import EntityCreate, EntityFieldIn, FieldType
+from loregraph.schemas.entity import EntityCreate, EntityFieldIn, EntityUpdate, FieldType
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
 
@@ -48,6 +48,14 @@ async def commit(
     English text is only for the model's own conversation history."""
     if state.draft_committed:
         return {}
+
+    # ── Entity-edit path ──────────────────────────────────────────────────────
+    if state.entity_edit_draft is not None:
+        return await _commit_edit(
+            state, entity_service=entity_service
+        )
+
+    # ── Batch-create path (propose_lore) ─────────────────────────────────────
     if state.decision_action != "approve" or state.draft is None:
         if state.draft is None and state.decision_action is None:
             # The pipeline produced no draft (e.g. token budget exhausted) —
@@ -165,4 +173,67 @@ async def commit(
         "draft": None,
         "warnings": warnings,
         "pending_brief": "",
+    }
+
+
+async def _commit_edit(
+    state: AgentState,
+    *,
+    entity_service: EntityService,
+) -> dict[str, Any]:
+    """Write path for the entity-edit pipeline.
+
+    Applies the approved EntityEditDraft via entity_service.update so that
+    project-scoping rules and vector re-indexing are enforced exactly as
+    for REST / MCP writes.
+    """
+    if state.decision_action != "approve" or state.entity_edit_draft is None:
+        return {
+            "messages": [
+                event_message(
+                    "Edit rejected — nothing was written to the world.",
+                    "batch_rejected",
+                )
+            ],
+            "entity_edit_draft": None,
+            "warnings": [],
+            "pending_brief": "",
+            "pending_edit_entity_id": "",
+        }
+
+    ed = state.entity_edit_draft
+    fields = [
+        EntityFieldIn(
+            key="summary",
+            field_type=FieldType.TEXT,
+            value=ed.summary,
+            show_on_card=True,
+        ),
+        *(
+            EntityFieldIn(
+                key=field.key, field_type=FieldType.TEXT, value=field.value
+            )
+            for field in ed.fields
+        ),
+    ]
+    entity = await entity_service.update(
+        state.project_id,
+        ed.entity_id,
+        EntityUpdate(type=ed.type, title=ed.title, fields=fields),
+    )
+    return {
+        "messages": [
+            event_message(
+                f"Updated entity '{entity.title}'.",
+                "entity_updated",
+                entity_id=entity.id,
+                title=entity.title,
+            )
+        ],
+        "committed_entity_ids": [*state.committed_entity_ids, entity.id],
+        "draft_committed": True,
+        "entity_edit_draft": None,
+        "warnings": [],
+        "pending_brief": "",
+        "pending_edit_entity_id": "",
     }

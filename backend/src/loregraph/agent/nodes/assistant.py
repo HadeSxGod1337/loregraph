@@ -54,11 +54,25 @@ class propose_lore(BaseModel):
     )
 
 
+class edit_entity(BaseModel):
+    """Propose edits to an existing entity for the game master's review.
+    Always call get_entity_details first to read the current state.
+    The only way to modify world content. Never promise changes without
+    calling this tool."""
+
+    entity_id: str = Field(description="Id of the entity to edit.")
+    brief: str = Field(
+        description="Concise description of what to change and why, "
+        "carrying all user constraints."
+    )
+
+
 ASSISTANT_TOOLS: list[type[BaseModel]] = [
     search_lore,
     get_entity_details,
     search_knowledge_base,
     propose_lore,
+    edit_entity,
 ]
 
 
@@ -126,12 +140,15 @@ async def assistant(
 
 def route_after_assistant(state: AgentState) -> str:
     """tools → run read tools; propose → start the draft pipeline;
+    edit → start the entity-edit pipeline;
     end → the turn is a plain reply (answer or clarifying question)."""
     last = state.messages[-1] if state.messages else None
     if not isinstance(last, AIMessage) or not last.tool_calls:
         return "end"
     if any(call["name"] == "propose_lore" for call in last.tool_calls):
         return "propose"
+    if any(call["name"] == "edit_entity" for call in last.tool_calls):
+        return "edit"
     return "tools"
 
 
@@ -156,6 +173,36 @@ def begin_proposal(state: AgentState) -> dict[str, Any]:
         "messages": tool_messages,
         "pending_brief": brief,
         "revision_feedback": "",
+        "draft": None,
+        "entity_edit_draft": None,
+        "warnings": [],
+        "attempts": 0,
+        "retry_feedback": "",
+        "draft_committed": False,
+        "decision_action": None,
+    }
+
+
+def begin_edit(state: AgentState) -> dict[str, Any]:
+    """Accept the edit_entity call: answer it and capture the target entity
+    id + brief so generate_edit can read them from state."""
+    last = state.messages[-1]
+    assert isinstance(last, AIMessage)
+    edit_call = next(
+        call for call in last.tool_calls if call["name"] == "edit_entity"
+    )
+    tool_messages = [
+        ToolMessage(
+            "Edit pipeline started; the result goes to the game master's review.",
+            tool_call_id=call["id"] or "",
+        )
+        for call in last.tool_calls
+    ]
+    return {
+        "messages": tool_messages,
+        "pending_brief": str(edit_call["args"].get("brief", "")),
+        "pending_edit_entity_id": str(edit_call["args"].get("entity_id", "")),
+        "entity_edit_draft": None,
         "draft": None,
         "warnings": [],
         "attempts": 0,
