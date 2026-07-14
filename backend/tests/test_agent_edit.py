@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from loregraph.agent.graph import build_agent_graph
+from loregraph.agent.runner import AgentRunner
 from loregraph.agent.state import AgentState
 from loregraph.llm.structured import StructuredResult
 from loregraph.llm.usage import LLMCallUsage
@@ -22,6 +23,7 @@ from loregraph.schemas.entity import EntityCreate
 from loregraph.schemas.project import ProjectCreate
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
+from loregraph.storage.sqlite.agent_session_store import SqliteAgentSessionStore
 from loregraph.storage.sqlite.db import (
     create_engine_for,
     init_db,
@@ -276,3 +278,72 @@ async def test_edit_nonexistent_entity_fails_gracefully(
     snapshot = await graph.aget_state(CONFIG)
     assert not any(task.interrupts for task in snapshot.tasks)
     assert state.entity_edit_draft is None
+
+
+@pytest.mark.asyncio
+async def test_edit_review_survives_session_registry_round_trip(
+    db_session: AsyncSession,
+) -> None:
+    """The frontend never reads AgentState directly: the live SSE 'review'
+    event and a reopened session (SessionPicker -> openSession -> GET
+    .../sessions/{id}) both go through AgentReviewPayload persisted as JSON
+    on the AgentSessionRow. Regression guard for entity_edit_draft getting
+    dropped anywhere in that path — the graph-level tests above only prove
+    it exists in AgentState, not that it survives the registry round trip."""
+    project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
+    entity_store = SqliteEntityStore(db_session)
+    edge_store = SqliteEdgeStore(db_session)
+    entity = await entity_store.create(
+        EntityCreate(type="npc", title="Мира Кузнец", fields=[]), project.id
+    )
+    edit_draft = EntityEditDraft(
+        entity_id=entity.id,
+        type="npc",
+        title="Мира Кузнец",
+        summary="Мастер-кузнец с тёмным прошлым.",
+        edit_reason="Добавлено тёмное прошлое.",
+    )
+    graph = build_agent_graph(
+        chat_model=ScriptedChatModel(
+            script=deque([edit_call(entity.id, "дай Мире тёмное прошлое")])
+        ),
+        creative=FakeGenerator([edit_draft]),
+        extraction=FakeGenerator([]),
+        vector_index=None,
+        knowledge_index=None,
+        entity_store=entity_store,
+        edge_store=edge_store,
+        project_store=SqliteProjectStore(db_session),
+        entity_service=EntityService(entity_store),
+        edge_service=EdgeService(edge_store, entity_store),
+        token_budget=100_000,
+        checkpointer=MemorySaver(),
+    )
+    sessions = SqliteAgentSessionStore(db_session)
+    thread_id = "edit-round-trip"
+    await sessions.create(project.id, thread_id)
+    runner = AgentRunner(graph, sessions)
+
+    events = [
+        event
+        async for event in runner.stream_message(
+            project.id, thread_id, "отредактируй Миру", None, []
+        )
+    ]
+
+    review_events = [e for e in events if e["type"] == "review"]
+    assert len(review_events) == 1
+    assert review_events[0]["payload"]["entity_edit_draft"]["entity_id"] == entity.id
+
+    # Reopen it exactly as SessionPicker.openSession() does — a fresh read
+    # from the registry, not the same in-memory AgentState.
+    detail = await runner.get_detail(project.id, thread_id)
+    assert detail.status == "awaiting_review"
+    assert detail.review is not None
+    assert detail.review.entity_edit_draft is not None
+    assert detail.review.entity_edit_draft.entity_id == entity.id
+    assert "тёмным" in detail.review.entity_edit_draft.summary
+    # The batch-create field must stay unset — the two review shapes are
+    # mutually exclusive, and the frontend's routing (draft vs
+    # entity_edit_draft) depends on that.
+    assert detail.review.draft is None

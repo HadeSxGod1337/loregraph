@@ -1694,121 +1694,6 @@
   cursor: default;
 }
 
-/* ---------- Edit review card ---------- */
-
-.assistant-edit-review {
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  padding: 12px;
-  background: color-mix(in srgb, var(--accent-soft) 40%, var(--surface));
-}
-
-.assistant-edit-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.assistant-edit-badge {
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.8em;
-  font-weight: 600;
-}
-
-.assistant-edit-entity-title {
-  margin: 0 0 8px;
-  font-size: 1.1em;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.assistant-edit-reason {
-  margin: 0 0 12px;
-  padding: 8px 10px;
-  background: var(--bg);
-  border-radius: 6px;
-  font-size: 0.9em;
-  color: var(--text-muted);
-}
-
-.assistant-edit-reason strong {
-  color: var(--text);
-}
-
-.assistant-edit-diff-section {
-  margin-bottom: 12px;
-}
-
-.assistant-edit-diff-section h4 {
-  margin: 0 0 6px;
-  font-size: 0.95em;
-  color: var(--text-muted);
-}
-
-.assistant-edit-diff {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.assistant-edit-old,
-.assistant-edit-new,
-.assistant-edit-removed {
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 0.9em;
-  white-space: pre-wrap;
-}
-
-.assistant-edit-old {
-  background: color-mix(in srgb, var(--danger) 8%, transparent);
-  border-left: 3px solid var(--danger);
-}
-
-.assistant-edit-new {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  border-left: 3px solid var(--accent);
-}
-
-.assistant-edit-removed {
-  background: color-mix(in srgb, var(--danger) 8%, transparent);
-  border-left: 3px solid var(--danger);
-  font-style: italic;
-}
-
-.assistant-edit-label {
-  display: block;
-  font-size: 0.8em;
-  color: var(--text-muted);
-  margin-bottom: 2px;
-  font-weight: 500;
-}
-
-.assistant-edit-field-change {
-  margin-bottom: 8px;
-}
-
-.assistant-edit-field-key {
-  display: block;
-  font-size: 0.85em;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-}
-
-.assistant-edit-no-changes {
-  margin: 0;
-  padding: 8px 10px;
-  background: var(--bg-subtle);
-  border-radius: 6px;
-  font-size: 0.9em;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
 .assistant-onboarding {
   padding: 24px;
   background: var(--surface);
@@ -2013,12 +1898,17 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--accent-soft) 40%, var(--surface));
 }
 
 .assistant-edit-header {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 8px;
 }
 
 .assistant-edit-badge {
@@ -2032,18 +1922,29 @@
   margin: 0;
   font-size: 1.05em;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .assistant-edit-reason {
   margin: 0;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: 6px;
   font-size: 0.9em;
   color: var(--text-muted);
+}
+
+.assistant-edit-reason strong {
+  color: var(--text);
 }
 
 .assistant-edit-diff-section {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-bottom: 12px;
 }
 
 .assistant-edit-diff-section h4 {
@@ -2092,6 +1993,7 @@
   font-size: 0.8em;
   font-weight: 600;
   color: var(--text-muted);
+  margin-bottom: 2px;
   margin-right: 6px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -2103,6 +2005,7 @@
   gap: 4px;
   padding: 4px 0;
   border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
 }
 
 .assistant-edit-field-change:last-child {
@@ -2110,13 +2013,18 @@
 }
 
 .assistant-edit-field-key {
-  font-weight: 600;
+  display: block;
   font-size: 0.85em;
+  font-weight: 600;
   color: var(--text);
+  margin-bottom: 4px;
 }
 
 .assistant-edit-no-changes {
   margin: 0;
+  padding: 8px 10px;
+  background: var(--bg-subtle);
+  border-radius: 6px;
   font-size: 0.9em;
   color: var(--text-muted);
   font-style: italic;

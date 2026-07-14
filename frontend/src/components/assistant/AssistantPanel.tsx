@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { AgentReviewPayload, DraftEntity, EntityEditDraft, LoreDraft } from "../../api/agent";
+import type { AgentReviewPayload, DraftEntity, LoreDraft } from "../../api/agent";
 import { ApiError, apiClient } from "../../api/client";
 import type { Edge, Entity } from "../../api/types";
 import {
@@ -423,13 +423,15 @@ function ReviewCard({
   const [showFeedback, setShowFeedback] = useState(false);
   const [previewRef, setPreviewRef] = useState<string | null>(null);
 
-  // Edit-only reviews are handled by EditReviewCard — this component only
-  // renders when review.draft is present.
-  if (!review.draft) return null;
-
-  // A revise replaces the payload — resync local editing state.
+  // A revise replaces the payload — resync local editing state. Guarded
+  // internally (not via an early return above the hooks) so every hook in
+  // this component runs on every render regardless of review.draft — an
+  // early return before useEffect/useMemo would violate the Rules of Hooks
+  // the moment this card's mount condition ever stops matching its own
+  // `review.draft` check 1:1.
   useEffect(() => {
-    setDraft(review.draft!);
+    if (!review.draft) return;
+    setDraft(review.draft);
     setRemovedRefs(new Set());
     setRemovedRelationships(new Set());
     setFeedback("");
@@ -445,6 +447,10 @@ function ReviewCard({
     () => new Map(draft.entities.map((entity) => [entity.ref, entity.title])),
     [draft.entities],
   );
+
+  // Edit-only reviews are handled by EditReviewCard — this component only
+  // renders when review.draft is present. Placed after every hook call.
+  if (!review.draft) return null;
 
   const targetName = (ref: string) =>
     draftTitleByRef.get(ref) ?? existingTitleById.get(ref) ?? ref;
