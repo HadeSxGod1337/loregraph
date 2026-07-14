@@ -682,6 +682,7 @@ function EditReviewCard({
   const { t } = useTranslation();
   const [feedback, setFeedback] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const ed = review.entity_edit_draft!;
   const color = typeColor(ed.type);
 
@@ -751,6 +752,15 @@ function EditReviewCard({
 
       <h3 className="assistant-edit-entity-title">
         {existingEntity?.title ?? ed.entity_id}
+        <button
+          type="button"
+          className="icon-button icon-button-accent"
+          title={t("assistant.review.detailsTitle")}
+          aria-label={t("assistant.review.detailsTitle")}
+          onClick={() => setShowPreview(true)}
+        >
+          <Icon name="expand" size={14} />
+        </button>
       </h3>
 
       {ed.edit_reason && (
@@ -865,6 +875,22 @@ function EditReviewCard({
           {t("assistant.review.reject")}
         </button>
       </div>
+
+      {showPreview && (
+        <DraftPreviewDrawer
+          entity={{
+            ref: ed.entity_id,
+            type: ed.type,
+            title: ed.title,
+            summary: ed.summary,
+            fields: ed.fields,
+            grounded_in: [],
+          }}
+          relationships={[]}
+          targetName={(ref) => entities.find((e) => e.id === ref)?.title ?? ref}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 }
