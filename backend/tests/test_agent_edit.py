@@ -33,7 +33,6 @@ from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
 
-
 # ---------------------------------------------------------------------------
 # Helpers reused from test_agent_graph.py
 # ---------------------------------------------------------------------------

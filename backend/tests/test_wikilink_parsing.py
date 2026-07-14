@@ -1,6 +1,5 @@
 """Tests for [[label]] wikilink → ProseMirror conversion in commit.py."""
 
-import pytest
 
 from loregraph.agent.nodes.commit import _wikilinks_to_prosemirror
 
@@ -11,7 +10,10 @@ class TestWikilinksToProseMirror:
         assert result == {
             "type": "doc",
             "content": [
-                {"type": "paragraph", "content": [{"type": "text", "text": "Hello world"}]}
+                {
+                    "type": "paragraph",
+                    "content": [{"type": "text", "text": "Hello world"}],
+                }
             ],
         }
 
@@ -36,7 +38,8 @@ class TestWikilinksToProseMirror:
             "[[Mira Kuznetz]] works at [[The Iron Forge]].", title_to_id
         )
         content = result["content"][0]["content"]
-        # [[Mira Kuznetz]] -> resolved, [[The Iron Forge]] -> unresolved (title mismatch)
+        # [[Mira Kuznetz]] -> resolved,
+        # [[The Iron Forge]] -> unresolved (title mismatch)
         assert content[0]["type"] == "entityLink"
         assert content[0]["attrs"]["entityId"] == "abc"
         # "The Iron Forge" not in map (lowercase "the iron forge" not in map)

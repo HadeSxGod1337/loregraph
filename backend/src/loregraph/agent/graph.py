@@ -157,7 +157,12 @@ def build_agent_graph(
     builder.add_conditional_edges(
         "assistant",
         route_after_assistant,
-        {"tools": "tools", "propose": "begin_proposal", "edit": "begin_edit", "end": END},
+        {
+            "tools": "tools",
+            "propose": "begin_proposal",
+            "edit": "begin_edit",
+            "end": END,
+        },
     )
     builder.add_edge("tools", "assistant")
 

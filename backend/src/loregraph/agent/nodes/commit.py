@@ -8,7 +8,12 @@ from loregraph.agent.state import AgentState
 from loregraph.exceptions import CampaignError
 from loregraph.schemas.agent import AgentWarning, DraftEntity, EntityEditDraft
 from loregraph.schemas.edge import EdgeCreate
-from loregraph.schemas.entity import EntityCreate, EntityFieldIn, EntityUpdate, FieldType
+from loregraph.schemas.entity import (
+    EntityCreate,
+    EntityFieldIn,
+    EntityUpdate,
+    FieldType,
+)
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
 

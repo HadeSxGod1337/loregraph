@@ -139,7 +139,8 @@ def get_chat_model(settings: Settings, *, tier: ModelTier) -> BaseChatModel:
         case "deepseek":
             if settings.deepseek_api_key is None:
                 raise ConfigurationError(
-                    "llm_provider is 'deepseek' but CAMPAIGN_DEEPSEEK_API_KEY is not set"
+                    "llm_provider is 'deepseek' but"
+                    " CAMPAIGN_DEEPSEEK_API_KEY is not set"
                 )
             from langchain_deepseek import ChatDeepSeek
 
@@ -201,7 +202,8 @@ def get_chat_model(settings: Settings, *, tier: ModelTier) -> BaseChatModel:
         case "together":
             if settings.together_api_key is None:
                 raise ConfigurationError(
-                    "llm_provider is 'together' but CAMPAIGN_TOGETHER_API_KEY is not set"
+                    "llm_provider is 'together' but"
+                    " CAMPAIGN_TOGETHER_API_KEY is not set"
                 )
             from langchain_together import ChatTogether
 
@@ -213,7 +215,8 @@ def get_chat_model(settings: Settings, *, tier: ModelTier) -> BaseChatModel:
         case "fireworks":
             if settings.fireworks_api_key is None:
                 raise ConfigurationError(
-                    "llm_provider is 'fireworks' but CAMPAIGN_FIREWORKS_API_KEY is not set"
+                    "llm_provider is 'fireworks' but"
+                    " CAMPAIGN_FIREWORKS_API_KEY is not set"
                 )
             from langchain_fireworks import ChatFireworks
 
@@ -225,7 +228,8 @@ def get_chat_model(settings: Settings, *, tier: ModelTier) -> BaseChatModel:
         case "cerebras":
             if settings.cerebras_api_key is None:
                 raise ConfigurationError(
-                    "llm_provider is 'cerebras' but CAMPAIGN_CEREBRAS_API_KEY is not set"
+                    "llm_provider is 'cerebras' but"
+                    " CAMPAIGN_CEREBRAS_API_KEY is not set"
                 )
             from langchain_cerebras import ChatCerebras
 
