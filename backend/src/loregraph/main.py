@@ -41,6 +41,7 @@ from loregraph.exceptions import (
     error_code,
 )
 from loregraph.llm.embeddings import EmbeddingProvider, get_embedding_provider
+from loregraph.observability import create_tracing
 from loregraph.schemas.project_transfer import ProjectExport
 from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.project_transfer import import_project
@@ -172,7 +173,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 app.state.store_factories,
                 settings.attachments_dir,
             )
+            tracing = create_tracing(settings)
+            if tracing is not None:
+                config, lifecycle = tracing
+                lifecycle.start()
+                app.state.tracing_config = config
+                app.state.tracing_lifecycle = lifecycle
             yield
+            if hasattr(app.state, "tracing_lifecycle"):
+                app.state.tracing_lifecycle.stop()
             if warmup_task is not None and not warmup_task.done():
                 warmup_task.cancel()
                 with suppress(asyncio.CancelledError):

@@ -35,6 +35,7 @@ type EmbeddingProviderKind = Literal[
     "ollama",
     "disabled",
 ]
+type TracingProviderKind = Literal["disabled", "langsmith", "langfuse"]
 
 
 class Settings(BaseSettings):
@@ -107,6 +108,15 @@ class Settings(BaseSettings):
     together_embedding_model: str = "intfloat/multilingual-e5-large-instruct"
     fireworks_embedding_model: str = "accounts/fireworks/models/fireworks-v1"
     ollama_embedding_model: str = "nomic-embed-text"
+
+    # --- Tracing (optional) ---
+    tracing_provider: TracingProviderKind = "disabled"
+    langsmith_api_key: str | None = None
+    langsmith_project: str = "loregraph"
+    langsmith_endpoint: str | None = None
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_host: str | None = None
 
     @property
     def db_path(self) -> Path:

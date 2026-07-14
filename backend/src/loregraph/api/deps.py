@@ -182,7 +182,8 @@ async def get_agent_runner(
         generation_model_name=settings.llm_model_generation,
         extraction_model_name=settings.llm_model_extraction,
     )
-    return AgentRunner(graph, agent_sessions)
+    tracing_config = getattr(request.app.state, "tracing_config", None)
+    return AgentRunner(graph, agent_sessions, tracing_config=tracing_config)
 
 
 AgentRunnerDep = Annotated[AgentRunner, Depends(get_agent_runner)]

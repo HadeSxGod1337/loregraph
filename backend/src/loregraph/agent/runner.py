@@ -11,6 +11,7 @@ from langgraph.types import Command
 from loregraph.agent.multimodal import build_message_content
 from loregraph.agent.state import AgentState
 from loregraph.exceptions import AgentSessionNotFoundError, error_code
+from loregraph.observability.protocols import TracingConfig
 from loregraph.schemas.agent import (
     AgentMessageOut,
     AgentResumeRequest,
@@ -97,10 +98,14 @@ class AgentRunner:
     registry — the UI's catalog — in sync."""
 
     def __init__(
-        self, graph: CompiledStateGraph[AgentState], sessions: AgentSessionStore
+        self,
+        graph: CompiledStateGraph[AgentState],
+        sessions: AgentSessionStore,
+        tracing_config: TracingConfig | None = None,
     ) -> None:
         self._graph = graph
         self._sessions = sessions
+        self._tracing_config = tracing_config
 
     async def stream_message(
         self,
@@ -154,7 +159,7 @@ class AgentRunner:
             "decision_action": None,
             "draft_committed": False,
         }
-        async for event in self._stream_turn(thread_id, graph_input):
+        async for event in self._stream_turn(thread_id, graph_input, project_id):
             yield event
 
     async def stream_review(
@@ -171,7 +176,7 @@ class AgentRunner:
             }
             return
         command: Command[Any] = Command(resume=decision.model_dump(mode="json"))
-        async for event in self._stream_turn(thread_id, command):
+        async for event in self._stream_turn(thread_id, command, project_id):
             yield event
 
     async def get_detail(self, project_id: str, thread_id: str) -> AgentSessionDetail:
@@ -184,9 +189,24 @@ class AgentRunner:
     # -- internals ---------------------------------------------------------
 
     async def _stream_turn(
-        self, thread_id: str, graph_input: dict[str, Any] | Command[Any]
+        self,
+        thread_id: str,
+        graph_input: dict[str, Any] | Command[Any],
+        project_id: str = "",
     ) -> AsyncIterator[AgentEvent]:
         config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
+        if self._tracing_config is not None and project_id:
+            meta = self._tracing_config.get_run_metadata(
+                project_id=project_id,
+                thread_id=thread_id,
+                run_name=f"agent_turn:{thread_id[:8]}",
+            )
+            config["run_name"] = meta.run_name
+            config["metadata"] = {
+                "project_id": meta.project_id,
+                "thread_id": meta.thread_id,
+                "tracing_provider": meta.provider,
+            }
         await self._sessions.update(thread_id, status="running")
         try:
             async with asyncio.timeout(AGENT_RUN_TIMEOUT_SECONDS):
