@@ -162,6 +162,9 @@ function GraphCanvasInner({
       onConnect={(c) => c.source && c.target && onConnectNodes(c.source, c.target)}
       onEdgeClick={(_, edge) => onEdgeSelect(edge.id)}
       onPaneClick={onPaneClick}
+      connectionRadius={120}
+      connectOnClick
+      defaultEdgeOptions={{ type: "floating" }}
     >
       <Background color="var(--border)" gap={22} size={1} />
       <Controls />

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import { apiClient } from "../api/client";
-import type { Edge } from "../api/types";
+import type { Edge, Entity } from "../api/types";
 import { AssistantPanel } from "../components/assistant/AssistantPanel";
 import { Icon } from "../components/ui/Icon";
 import { EntityNavigationContext } from "../components/EntityNavigationContext";
@@ -13,6 +13,7 @@ import { EdgeQuickForm } from "../components/graph/EdgeQuickForm";
 import { EntityDetailPanel } from "../components/graph/EntityDetailPanel";
 import { GraphCanvas } from "../components/graph/GraphCanvas";
 import { GraphControls } from "../components/graph/GraphControls";
+import { GraphCreateEntityButton } from "../components/graph/GraphCreateEntityButton";
 import { useEntities } from "../hooks/useEntities";
 import { useSubgraph } from "../hooks/useSubgraph";
 
@@ -31,6 +32,10 @@ export function GraphViewPage() {
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  // Newly created entities that aren't yet connected to the graph via edges.
+  // They appear as isolated nodes; once an edge is created, the backend
+  // includes them in the subgraph and we drop them from this local state.
+  const [tempEntities, setTempEntities] = useState<Entity[]>([]);
   const isEmptyWorld = entities !== undefined && entities.length === 0;
   // null = no explicit choice yet: an empty world opens the assistant by
   // itself ("start here"), but the user can still close it.
@@ -53,6 +58,7 @@ export function GraphViewPage() {
     setRootId("");
     setSelectedEntityId(null);
     setSelectedEdgeId(null);
+    setTempEntities([]);
   }, [projectId]);
 
   // If the current root was deleted, fall back to auto-picking a new one.
@@ -98,6 +104,14 @@ export function GraphViewPage() {
     depth,
     edgeTypes.length > 0 ? edgeTypes : undefined,
   );
+
+  // Merge subgraph nodes with temp (newly created, not yet connected) entities.
+  const visibleNodes = useMemo(() => {
+    if (!subgraph) return tempEntities;
+    const ids = new Set(subgraph.nodes.map((n) => n.id));
+    const orphans = tempEntities.filter((e) => !ids.has(e.id));
+    return orphans.length > 0 ? [...subgraph.nodes, ...orphans] : subgraph.nodes;
+  }, [subgraph, tempEntities]);
 
   const selectedEdge = subgraph?.edges.find((e) => e.id === selectedEdgeId) ?? null;
 
@@ -165,7 +179,7 @@ export function GraphViewPage() {
         </div>
         {rootId && subgraph && (
           <GraphCanvas
-            nodes={subgraph.nodes}
+            nodes={visibleNodes}
             edges={subgraph.edges}
             rootId={rootId}
             selectedEntityId={selectedEntityId}
@@ -176,12 +190,26 @@ export function GraphViewPage() {
           />
         )}
 
+        {rootId && (
+          <GraphCreateEntityButton
+            projectId={projectId!}
+            onCreated={(entity) => {
+              setTempEntities((prev) => [...prev, entity]);
+              setSelectedEntityId(entity.id);
+            }}
+          />
+        )}
+
         <EntityDetailPanel
           key={selectedEntityId}
           projectId={projectId!}
           entityId={selectedEntityId}
           onClose={() => setSelectedEntityId(null)}
           onNavigate={setSelectedEntityId}
+          onDeleted={(id) => {
+            setTempEntities((prev) => prev.filter((e) => e.id !== id));
+            setSelectedEntityId(null);
+          }}
         />
       </div>
 
@@ -192,7 +220,18 @@ export function GraphViewPage() {
               projectId={projectId!}
               sourceId={pendingConnection.sourceId}
               targetId={pendingConnection.targetId}
-              onDone={() => setPendingConnection(null)}
+              onDone={(edge) => {
+                setPendingConnection(null);
+                // Once an edge is created, the connected entity will appear in
+                // the subgraph via BFS — drop it from local temp state.
+                if (edge) {
+                  const connectedId =
+                    edge.source_entity_id === pendingConnection.sourceId
+                      ? edge.target_entity_id
+                      : edge.source_entity_id;
+                  setTempEntities((prev) => prev.filter((e) => e.id !== connectedId));
+                }
+              }}
             />
           </div>
         </div>

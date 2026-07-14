@@ -87,7 +87,11 @@
     "titleAndType": "Title & type",
     "openFullEditor": "Open full editor →",
     "attachmentPreview": "(attachment)",
-    "emptyValue": "—"
+    "emptyValue": "—",
+    "deleteConfirmTitle": "Delete entity?",
+    "deleteConfirmBody": "\"{{title}}\" and all of its fields and relationships will be deleted forever.",
+    "addRelationship": "Add relationship",
+    "selectEntity": "— select entity —"
   },
   "graph": {
     "pickRoot": "Pick a root entity to view its neighborhood.",
@@ -100,7 +104,12 @@
     "edgeTypesAll": "all types",
     "edgeTypesSelected": "{{count}} selected",
     "closeAssistant": "Close assistant",
-    "openAssistant": "AI Assistant"
+    "openAssistant": "AI Assistant",
+    "createEntity": "New entity",
+    "createEntityTitle": "Create entity on graph",
+    "typeLabel": "Type",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Entity name"
   },
   "edges": {
     "linkToEntity": "— link to entity —",

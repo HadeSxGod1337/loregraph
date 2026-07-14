@@ -1,23 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { API_URL } from "../../api/client";
-import type { EntityField, ProseMirrorDoc } from "../../api/types";
+import type { Edge, EntityField, ProseMirrorDoc } from "../../api/types";
 import { useEntities } from "../../hooks/useEntities";
-import { useEntity, useUpdateEntity } from "../../hooks/useEntity";
-import { useEdgesForEntity } from "../../hooks/useEdgesForEntity";
+import { useEntity, useDeleteEntity, useUpdateEntity } from "../../hooks/useEntity";
+import { useCreateEdge, useDeleteEdge, useEdgesForEntity } from "../../hooks/useEdgesForEntity";
+import { EdgeEditPopover } from "../graph/EdgeEditPopover";
 import { EdgeList } from "../edges/EdgeList";
 import { FieldEditor } from "../entity/FieldEditor";
 import { IconPicker } from "../entity/IconPicker";
 import { RichTextView } from "../entity/RichTextView";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Icon } from "../ui/Icon";
+
+const SUGGESTED_EDGE_TYPES = ["contains", "ally_of", "family_of", "enemy_of"];
 
 interface EntityDetailPanelProps {
   projectId: string;
   entityId: string | null;
   onClose: () => void;
   onNavigate: (entityId: string) => void;
+  onDeleted?: (entityId: string) => void;
 }
 
 export function EntityDetailPanel({
@@ -25,25 +30,29 @@ export function EntityDetailPanel({
   entityId,
   onClose,
   onNavigate,
+  onDeleted,
 }: EntityDetailPanelProps) {
   const { t } = useTranslation();
   const { data: entity } = useEntity(projectId, entityId ?? undefined);
   const { data: edges } = useEdgesForEntity(projectId, entityId ?? undefined);
   const { data: entities } = useEntities(projectId);
   const updateEntity = useUpdateEntity(projectId, entityId ?? "");
+  const deleteEntity = useDeleteEntity(projectId);
+  const deleteEdge = useDeleteEdge(projectId);
+  const createEdge = useCreateEdge(projectId);
 
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [title, setTitle] = useState("");
   const [type, setType] = useState("");
   const [fields, setFields] = useState<EntityField[]>([]);
+  const [editingEdge, setEditingEdge] = useState<Edge | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [expandedReasons, setExpandedReasons] = useState<Set<string>>(new Set());
+  const [addingEdge, setAddingEdge] = useState(false);
+  const [newTargetId, setNewTargetId] = useState("");
+  const [newEdgeType, setNewEdgeType] = useState("");
+  const [newEdgeLabel, setNewEdgeLabel] = useState("");
 
-  // `key={selectedEntityId}` on this component (see GraphViewPage) forces a
-  // full remount per entity — otherwise React reuses this component's
-  // subtree across different entities whenever the fields array happens to
-  // line up (same length/types), and Tiptap instances inside don't
-  // reinitialize on their own, leaking one entity's rich text into another's
-  // panel. Remounting also means `mode` naturally resets to "view" per
-  // entity without a separate effect.
   useEffect(() => {
     if (entity) {
       setTitle(entity.title);
@@ -51,6 +60,11 @@ export function EntityDetailPanel({
       setFields(entity.fields);
     }
   }, [entity]);
+
+  const otherEntities = useMemo(
+    () => (entities ?? []).filter((e) => e.id !== entityId),
+    [entities, entityId],
+  );
 
   if (!entityId || !entity) return null;
 
@@ -61,6 +75,35 @@ export function EntityDetailPanel({
     setMode("view");
   }
 
+  function toggleReason(edgeId: string) {
+    setExpandedReasons((prev) => {
+      const next = new Set(prev);
+      if (next.has(edgeId)) next.delete(edgeId);
+      else next.add(edgeId);
+      return next;
+    });
+  }
+
+  function handleAddEdge() {
+    if (!newTargetId || !newEdgeType || !entityId) return;
+    createEdge.mutate(
+      {
+        source_entity_id: entityId,
+        target_entity_id: newTargetId,
+        type: newEdgeType,
+        label: newEdgeLabel || null,
+      },
+      {
+        onSuccess: () => {
+          setAddingEdge(false);
+          setNewTargetId("");
+          setNewEdgeType("");
+          setNewEdgeLabel("");
+        },
+      },
+    );
+  }
+
   function renderFieldPreview(field: EntityField): string {
     switch (field.field_type) {
       case "tag":
@@ -68,7 +111,7 @@ export function EntityDetailPanel({
       case "attachment":
         return t("entityDetail.attachmentPreview");
       case "rich_text":
-        return ""; // rendered via RichTextView instead, see the field-line branch above
+        return "";
       default:
         return String(field.value);
     }
@@ -113,27 +156,134 @@ export function EntityDetailPanel({
               </div>
 
               <div className="panel-section">
-                <h3>{t("entityDetail.relationships")}</h3>
-                {edges?.length === 0 && (
+                <div className="rel-section-head">
+                  <h3>{t("entityDetail.relationships")}</h3>
+                  <button
+                    type="button"
+                    className="icon-button icon-button-accent"
+                    onClick={() => setAddingEdge(true)}
+                    title={t("entityDetail.addRelationship")}
+                  >
+                    <Icon name="plus" size={14} />
+                  </button>
+                </div>
+
+                {addingEdge && (
+                  <div className="rel-add-form">
+                    <select value={newTargetId} onChange={(e) => setNewTargetId(e.target.value)}>
+                      <option value="">{t("entityDetail.selectEntity")}</option>
+                      {otherEntities.map((e) => (
+                        <option key={e.id} value={e.id}>{e.title}</option>
+                      ))}
+                    </select>
+                    <input
+                      list="rel-add-type-suggestions"
+                      placeholder={t("edges.edgeTypePlaceholder")}
+                      value={newEdgeType}
+                      onChange={(e) => setNewEdgeType(e.target.value)}
+                    />
+                    <datalist id="rel-add-type-suggestions">
+                      {SUGGESTED_EDGE_TYPES.map((s) => (
+                        <option key={s} value={s} />
+                      ))}
+                    </datalist>
+                    <textarea
+                      placeholder={t("edges.reasonPlaceholder")}
+                      value={newEdgeLabel}
+                      onChange={(e) => setNewEdgeLabel(e.target.value)}
+                      rows={2}
+                    />
+                    <div className="rel-add-actions">
+                      <button
+                        type="button"
+                        className="button-primary button-sm"
+                        onClick={handleAddEdge}
+                        disabled={!newTargetId || !newEdgeType || createEdge.isPending}
+                      >
+                        {t("common.create")}
+                      </button>
+                      <button
+                        type="button"
+                        className="button-ghost button-sm"
+                        onClick={() => {
+                          setAddingEdge(false);
+                          setNewTargetId("");
+                          setNewEdgeType("");
+                          setNewEdgeLabel("");
+                        }}
+                      >
+                        {t("common.cancel")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {edges?.length === 0 && !addingEdge && (
                   <p className="field-line">{t("entityDetail.noRelationships")}</p>
                 )}
                 {edges?.map((edge) => {
                   const isOutgoing = edge.source_entity_id === entityId;
                   const otherId = isOutgoing ? edge.target_entity_id : edge.source_entity_id;
+                  const isExpanded = expandedReasons.has(edge.id);
                   return (
                     <div
                       key={edge.id}
                       className="rel-row"
-                      onClick={() => onNavigate(otherId)}
                     >
-                      <span className="rel-arrow">{isOutgoing ? "→" : "←"}</span>
-                      <span className="rel-type">{edge.type}</span>
-                      <span className="rel-title">{titleFor(otherId)}</span>
-                      {edge.label && <span className="rel-reason">{edge.label}</span>}
+                      <span className="rel-main">
+                        <span className="rel-arrow">{isOutgoing ? "→" : "←"}</span>
+                        <span className="rel-type">{edge.type}</span>
+                        <span
+                          className="rel-title"
+                          onClick={() => onNavigate(otherId)}
+                          style={{ cursor: "pointer" }}
+                        >
+                          {titleFor(otherId)}
+                        </span>
+                      </span>
+                      <span className="rel-actions">
+                        <button
+                          type="button"
+                          className="icon-button"
+                          onClick={() => setEditingEdge(edge)}
+                          title={t("common.edit")}
+                        >
+                          <Icon name="settings" size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button icon-button-danger"
+                          onClick={() => deleteEdge.mutate(edge.id)}
+                          title={t("common.remove")}
+                        >
+                          <Icon name="trash" size={13} />
+                        </button>
+                      </span>
+                      {edge.label && (
+                        <span
+                          className={`rel-reason${isExpanded ? " rel-reason-expanded" : ""}`}
+                          onClick={() => toggleReason(edge.id)}
+                          title={isExpanded ? undefined : edge.label}
+                        >
+                          {edge.label}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
               </div>
+
+              {editingEdge && (
+                <div className="popover-backdrop" onClick={() => setEditingEdge(null)}>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <EdgeEditPopover
+                      projectId={projectId}
+                      edge={editingEdge}
+                      onDone={() => setEditingEdge(null)}
+                    />
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -178,7 +328,34 @@ export function EntityDetailPanel({
           >
             {t("entityDetail.openFullEditor")}
           </Link>
+          <span className="spacer" />
+          <button
+            type="button"
+            className="icon-button icon-button-danger"
+            onClick={() => setConfirmingDelete(true)}
+            title={t("common.delete")}
+          >
+            <Icon name="trash" size={15} />
+          </button>
         </div>
+
+        {confirmingDelete && (
+          <ConfirmDialog
+            title={t("entityDetail.deleteConfirmTitle")}
+            body={t("entityDetail.deleteConfirmBody", { title: entity.title })}
+            confirmLabel={t("common.delete")}
+            busy={deleteEntity.isPending}
+            onConfirm={() => {
+              deleteEntity.mutate(entityId, {
+                onSuccess: () => {
+                  onDeleted?.(entityId);
+                  onClose();
+                },
+              });
+            }}
+            onCancel={() => setConfirmingDelete(false)}
+          />
+        )}
       </div>
   );
 }

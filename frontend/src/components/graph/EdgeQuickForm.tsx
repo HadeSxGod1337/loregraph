@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { Edge } from "../../api/types";
 import { useCreateEdge } from "../../hooks/useEdgesForEntity";
 
 const SUGGESTED_EDGE_TYPES = ["contains", "ally_of", "family_of", "enemy_of"];
@@ -9,7 +10,7 @@ interface EdgeQuickFormProps {
   projectId: string;
   sourceId: string;
   targetId: string;
-  onDone: () => void;
+  onDone: (edge?: Edge) => void;
 }
 
 export function EdgeQuickForm({ projectId, sourceId, targetId, onDone }: EdgeQuickFormProps) {
@@ -22,7 +23,7 @@ export function EdgeQuickForm({ projectId, sourceId, targetId, onDone }: EdgeQui
     if (!edgeType) return;
     createEdge.mutate(
       { source_entity_id: sourceId, target_entity_id: targetId, type: edgeType, label: label || null },
-      { onSuccess: onDone },
+      { onSuccess: (edge) => onDone(edge) },
     );
   }
 
@@ -41,16 +42,17 @@ export function EdgeQuickForm({ projectId, sourceId, targetId, onDone }: EdgeQui
           <option key={suggestion} value={suggestion} />
         ))}
       </datalist>
-      <input
+      <textarea
         placeholder={t("edges.reasonPlaceholder")}
         value={label}
         onChange={(e) => setLabel(e.target.value)}
+        rows={2}
       />
       <div className="edge-popover-actions">
         <button type="button" onClick={handleSubmit} disabled={!edgeType || createEdge.isPending}>
           {t("common.create")}
         </button>
-        <button type="button" onClick={onDone}>
+        <button type="button" onClick={() => onDone()}>
           {t("common.cancel")}
         </button>
       </div>

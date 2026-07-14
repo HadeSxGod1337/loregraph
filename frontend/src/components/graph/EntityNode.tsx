@@ -26,7 +26,9 @@ export function EntityNode({ data }: NodeProps) {
       className={`entity-node${isRoot ? " entity-node-root" : ""}${isSelected ? " entity-node-selected" : ""}`}
       style={{ "--type-color": color } as CSSProperties}
     >
-      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Top} id="target-top" isConnectable />
+      <Handle type="target" position={Position.Left} id="target-left" isConnectable />
+      <Handle type="target" position={Position.Right} id="target-right" isConnectable />
       {iconUrl && (
         <div className="entity-node-icon-slot">
           <img className="entity-node-icon" src={iconUrl} alt="" />
@@ -55,7 +57,9 @@ export function EntityNode({ data }: NodeProps) {
           </div>
         )}
       </div>
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Bottom} id="source-bottom" isConnectable />
+      <Handle type="source" position={Position.Left} id="source-left" isConnectable />
+      <Handle type="source" position={Position.Right} id="source-right" isConnectable />
     </div>
   );
 }

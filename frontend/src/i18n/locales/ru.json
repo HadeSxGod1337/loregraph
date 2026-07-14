@@ -93,7 +93,11 @@
     "titleAndType": "Название и тип",
     "openFullEditor": "Открыть в редакторе →",
     "attachmentPreview": "(вложение)",
-    "emptyValue": "—"
+    "emptyValue": "—",
+    "deleteConfirmTitle": "Удалить сущность?",
+    "deleteConfirmBody": "«{{title}}» и все её поля и связи будут удалены навсегда.",
+    "addRelationship": "Добавить связь",
+    "selectEntity": "— выбрать сущность —"
   },
   "graph": {
     "pickRoot": "Выбери корневую сущность, чтобы увидеть её окружение.",
@@ -106,7 +110,12 @@
     "edgeTypesAll": "все типы",
     "edgeTypesSelected": "выбрано: {{count}}",
     "closeAssistant": "Закрыть ассистента",
-    "openAssistant": "AI-ассистент"
+    "openAssistant": "AI-ассистент",
+    "createEntity": "Новая сущность",
+    "createEntityTitle": "Создать сущность на графе",
+    "typeLabel": "Тип",
+    "titleLabel": "Название",
+    "titlePlaceholder": "Имя сущности"
   },
   "edges": {
     "linkToEntity": "— связать с сущностью —",

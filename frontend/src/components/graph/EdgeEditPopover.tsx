@@ -45,10 +45,11 @@ export function EdgeEditPopover({ projectId, edge, onDone }: EdgeEditPopoverProp
           <option key={suggestion} value={suggestion} />
         ))}
       </datalist>
-      <input
+      <textarea
         placeholder={t("edges.reasonPlaceholder")}
         value={label}
         onChange={(e) => setLabel(e.target.value)}
+        rows={2}
       />
       <div className="edge-popover-actions">
         <button type="button" onClick={handleSave} disabled={!edgeType || updateEdge.isPending}>

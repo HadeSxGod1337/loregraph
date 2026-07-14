@@ -16,6 +16,7 @@ export function useCreateEntity(projectId: string) {
     mutationFn: (data: EntityCreate) => entitiesApi.create(projectId, data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["entities", projectId] });
+      void queryClient.invalidateQueries({ queryKey: ["subgraph", projectId] });
     },
   });
 }
