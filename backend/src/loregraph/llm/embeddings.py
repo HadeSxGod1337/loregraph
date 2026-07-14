@@ -113,7 +113,7 @@ def get_embedding_provider(settings: Settings) -> EmbeddingProvider | None:
                 settings.google_embedding_model,
                 GoogleGenerativeAIEmbeddings(
                     model=settings.google_embedding_model,
-                    google_api_key=SecretStr(settings.google_api_key),
+                    google_api_key=SecretStr(settings.google_api_key),  # type: ignore[call-arg]
                 ),
             )
         case "mistral":
@@ -143,7 +143,7 @@ def get_embedding_provider(settings: Settings) -> EmbeddingProvider | None:
                 settings.cohere_embedding_model,
                 CohereEmbeddings(
                     model=settings.cohere_embedding_model,
-                    api_key=SecretStr(settings.cohere_api_key),
+                    api_key=SecretStr(settings.cohere_api_key),  # type: ignore[call-arg]
                 ),
             )
         case "together":

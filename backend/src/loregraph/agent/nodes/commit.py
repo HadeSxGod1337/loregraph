@@ -22,19 +22,19 @@ logger = logging.getLogger(__name__)
 _WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
 
 
-def _wikilinks_to_prosemirror(text: str, title_to_id: dict[str, str]) -> dict:
+def _wikilinks_to_prosemirror(text: str, title_to_id: dict[str, str]) -> dict[str, Any]:
     """Convert text with ``[[label]]`` wikilinks to a ProseMirror doc containing
     ``entityLink`` nodes.  Unresolved labels (no matching entity) are left as
     plain text so the doc never breaks."""
     paragraphs = text.split("\n\n")
-    doc_content: list[dict] = []
+    doc_content: list[dict[str, Any]] = []
 
     for para_text in paragraphs:
         if not para_text.strip():
             continue
         # Handle single newlines within a paragraph as hard breaks
         lines = para_text.split("\n")
-        para_content: list[dict] = []
+        para_content: list[dict[str, Any]] = []
 
         for i, line in enumerate(lines):
             if i > 0:

@@ -132,7 +132,7 @@ def get_chat_model(settings: Settings, *, tier: ModelTier) -> BaseChatModel:
             from langchain_mistralai import ChatMistralAI
 
             return ChatMistralAI(
-                model=model,
+                model=model,  # type: ignore[call-arg]
                 api_key=SecretStr(settings.mistral_api_key),
                 temperature=temperature,
             )
@@ -196,7 +196,7 @@ def get_chat_model(settings: Settings, *, tier: ModelTier) -> BaseChatModel:
 
             return ChatCohere(
                 model=model,
-                api_key=SecretStr(settings.cohere_api_key),
+                api_key=SecretStr(settings.cohere_api_key),  # type: ignore[call-arg]
                 temperature=temperature,
             )
         case "together":

@@ -34,7 +34,9 @@ class LangFuseLifecycle:
                 "CAMPAIGN_LANGFUSE_PUBLIC_KEY is not set"
             )
         try:
-            from langfuse.callback import CallbackHandler
+            from langfuse.callback import (  # type: ignore[import-not-found]
+                CallbackHandler,
+            )
         except ImportError as e:
             raise ConfigurationError(
                 "langfuse package not installed. "

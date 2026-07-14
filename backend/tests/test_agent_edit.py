@@ -1,4 +1,5 @@
 from collections import deque
+from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
 
@@ -43,7 +44,7 @@ class ScriptedChatModel(BaseChatModel):
     script: deque[AIMessage]
 
     def bind_tools(self, tools: Any, **kwargs: Any) -> Runnable[Any, Any]:
-        return self  # type: ignore[return-value]
+        return self
 
     def _generate(
         self,
@@ -74,7 +75,7 @@ class FakeGenerator:
 
 
 @pytest_asyncio.fixture
-async def db_session(tmp_path: Path) -> AsyncSession:  # type: ignore[override]
+async def db_session(tmp_path: Path) -> AsyncGenerator[AsyncSession, None]:
     engine = create_engine_for(tmp_path / "test.sqlite3")
     await init_db(engine)
     session = make_session_factory(engine)()
@@ -127,9 +128,10 @@ def edit_call(entity_id: str, brief: str) -> AIMessage:
 def state_values(graph: Any) -> dict[str, Any]:
     import asyncio
 
-    return asyncio.get_event_loop().run_until_complete(
+    result: dict[str, Any] = asyncio.get_event_loop().run_until_complete(
         graph.aget_state(CONFIG)
     ).values
+    return result
 
 
 async def agent_state(graph: Any) -> AgentState:
