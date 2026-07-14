@@ -147,3 +147,14 @@ export interface KnowledgeSource {
   created_at: string;
   updated_at: string;
 }
+
+export interface UsageRollupRow {
+  node: string;
+  model: string;
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_creation_tokens: number;
+}
+

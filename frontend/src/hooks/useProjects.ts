@@ -64,3 +64,13 @@ export function useImportProject() {
     },
   });
 }
+
+export function useProjectUsage(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["projects", projectId, "usage"],
+    queryFn: () => projectsApi.usage(projectId!),
+    enabled: projectId !== undefined,
+    refetchInterval: 5000, // Poll every 5s to show dynamic usage updates during assistant runs
+  });
+}
+

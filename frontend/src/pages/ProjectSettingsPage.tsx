@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useBlocker, useParams } from "react-router-dom";
 
 import { KnowledgeBasePanel } from "../components/knowledge/KnowledgeBasePanel";
+import { TokenUsagePanel } from "../components/usage/TokenUsagePanel";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { useToast } from "../components/ui/Toast";
 import { useProject, useReindexProject, useUpdateProject } from "../hooks/useProjects";
@@ -143,6 +144,7 @@ export function ProjectSettingsPage() {
 
         <div className="project-settings-column">
           <KnowledgeBasePanel projectId={projectId!} />
+          <TokenUsagePanel projectId={projectId!} />
         </div>
       </div>
 

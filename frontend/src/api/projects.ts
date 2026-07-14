@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { Project, ProjectCreate, ProjectExport, ProjectUpdate } from "./types";
+import type { Project, ProjectCreate, ProjectExport, ProjectUpdate, UsageRollupRow } from "./types";
 
 export const projectsApi = {
   list: () => apiClient.get<Project[]>("/api/projects"),
@@ -17,4 +17,6 @@ export const projectsApi = {
   // backend directly.
   reindex: (id: string) =>
     apiClient.post<{ indexed: number }>(`/api/projects/${id}/reindex`),
+  usage: (id: string) => apiClient.get<UsageRollupRow[]>(`/api/projects/${id}/usage`),
 };
+

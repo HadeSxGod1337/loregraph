@@ -165,6 +165,24 @@
     "reindexed_one": "Done — {{count}} entity indexed",
     "reindexed_other": "Done — {{count}} entities indexed"
   },
+  "usage": {
+    "heading": "Token usage",
+    "hint": "Cumulative token spend for this project across all AI assistant turns, lore generation and verification runs.",
+    "noUsage": "No token usage recorded yet.",
+    "totalTokens": "Total tokens",
+    "input": "Input",
+    "output": "Output",
+    "cachedRead": "Cached (read)",
+    "cacheCreation": "Cache write",
+    "cacheHitRate": "Cache efficiency",
+    "calls_one": "{{count}} call",
+    "calls_other": "{{count}} calls",
+    "nodes": {
+      "assistant": "AI Assistant",
+      "generate_lore": "Lore generation",
+      "verify_grounding": "Grounding verification"
+    }
+  },
   "knowledge": {
     "heading": "Project knowledge base",
     "hint": "Upload reference documents (rulebooks, player's handbook, a setting overview — PDF, .txt, .md, .json, .csv, .yaml and other text formats). The assistant uses them when generating lore and can search them in chat, but they never become world canon.",
