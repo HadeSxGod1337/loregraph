@@ -177,6 +177,8 @@
     "cacheHitRate": "Cache efficiency",
     "calls_one": "{{count}} call",
     "calls_other": "{{count}} calls",
+    "estimatedCost": "Estimated spend",
+    "free": "free / local",
     "nodes": {
       "assistant": "AI Assistant",
       "generate_lore": "Lore generation",

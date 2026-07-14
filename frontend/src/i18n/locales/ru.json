@@ -187,6 +187,8 @@
     "calls_few": "{{count}} вызова",
     "calls_many": "{{count}} вызовов",
     "calls_other": "{{count}} вызова",
+    "estimatedCost": "Примерные расходы",
+    "free": "бесплатно / локально",
     "nodes": {
       "assistant": "AI-ассистент",
       "generate_lore": "Генерация лора",
