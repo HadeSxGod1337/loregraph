@@ -1,4 +1,4 @@
-# Loregraph one-click launcher for non-developers.
+﻿# Loregraph one-click launcher for non-developers.
 # Installs missing tools (uv, Node.js), pulls updates, installs dependencies,
 # asks for an API key on first run, starts backend + frontend, opens the browser.
 # Run via start.bat in the repo root (double-click).
@@ -322,7 +322,7 @@ if (-not (Test-Path $EnvFile)) {
         Write-Host ""
         Write-Host "      Векторный поиск по лору (эмбеддинги):"
         Write-Host "      1 - Локальная модель (по умолчанию; лор не покидает машину)"
-        Write-Host "      2 - OpenAI (качественнее, но текст лора уходит в OpenAI)"
+        Write-Host "      2 - OpenAI (качественнее, но text лора уходит в OpenAI)"
         Write-Host "      3 - Google Gemini"
         Write-Host "      4 - Mistral"
         Write-Host "      5 - Cohere"
