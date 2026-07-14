@@ -5,11 +5,6 @@
 <h1 align="center">Loregraph</h1>
 
 <p align="center">
-  A local, self-hosted app for preparing and running tabletop RPG campaigns —
-  entities and relationships in a graph, with an AI agent layer on top.
-</p>
-
-<p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-5c6ac4?style=flat-square" alt="License: PolyForm Noncommercial"></a>
   <a href="backend/pyproject.toml"><img src="https://img.shields.io/badge/python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+"></a>
   <a href="backend/pyproject.toml"><img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI"></a>
@@ -25,11 +20,15 @@
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-4b5563?style=flat-square" alt="Windows, macOS, Linux">
 </p>
 
-<p align="center">
-  <b>English</b> · <a href="README.ru.md">Русский</a>
-</p>
+<br>
 
----
+<details open>
+<summary><h2>English</h2></summary>
+
+<p align="center">
+  A local, self-hosted app for preparing and running tabletop RPG campaigns —
+  entities and relationships in a graph, with an AI agent layer on top.
+</p>
 
 ## What this is
 
@@ -132,3 +131,119 @@ npm run build
 [PolyForm Noncommercial 1.0.0](LICENSE) — free to use, modify, and fork for
 noncommercial purposes. Commercial use (including hosting it as a service for
 others, or selling a modified version) is not permitted without permission.
+
+</details>
+
+<br>
+
+<details>
+<summary><h2>Русский</h2></summary>
+
+<p align="center">
+  Локальное self-hosted приложение для подготовки и ведения настольных RPG-кампаний —
+  сущности и связи в графе, поверх — слой AI-агента.
+</p>
+
+## Что это
+
+Loregraph хранит кампанию как **сущности** (NPC, фракции, локации, предметы —
+что угодно), связанные **графом** типизированных отношений. Редактируете вручную
+или AI-агент предлагает новые сущности и связи, опираясь на уже существующий лор
+через гибридный retrieval (vector + graph), с обязательным human-in-the-loop
+ревью перед записью в канон. Foundry VTT и Markdown — коннекторы экспорта, не
+ядро продукта.
+
+**Статус**: ручной редактор сущностей/графа (v0) и разговорный слой агента уже
+работают. AI Assistant — это чат: отвечает на вопросы о вашем мире (только на
+основе retrieved-лора через инструменты, не из «памяти» модели), задаёт уточняющие
+вопросы и за один прогон создаёт целые куски мира — пакет сущностей (типы и
+количество выбирает сам) плюс сеть связей между ними и существующим лором
+(LangGraph: цикл ассистента с read-tools → propose-пайплайн: hybrid retrieve →
+проверка дубликатов → batch draft → grounding verification → review → commit).
+Ходы стримятся по SSE — стадии пайплайна и токены ответа видны в реальном времени.
+Inline batch review: approve (с правками/исключениями по сущностям), reject и
+**request changes** — итеративная доработка того же драфта. Ассистент живёт
+drawer'ом прямо в виде графа (пустой мир открывает его автоматически) и на
+отдельной вкладке. Также: `[[wikilink]]`-ссылки на сущности в rich text и stdio
+MCP-сервер (`loregraph-mcp`) для внешних MCP-клиентов. Многошаговая подготовка
+сессий (оркестратор + параллельные воркеры) и коннекторы Foundry/Markdown — в
+планах.
+
+### Настройка AI Assistant (опционально, BYOK)
+
+Создайте `backend/.env` с `CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...` (или
+`CAMPAIGN_LLM_PROVIDER=openai|ollama` и соответствующие настройки, см.
+`backend/src/loregraph/config.py`). Без ключа ручной редактор работает полностью;
+на вкладке Assistant показываются инструкции по настройке. Семантический retrieval
+по умолчанию использует локальную многоязычную embedding-модель (скачивается при
+первом запуске); лор не покидает вашу машину, кроме LLM-вызовов, которые вы сами
+настроите.
+
+## Стек
+
+- **Backend**: FastAPI + Pydantic v2, SQLAlchemy 2.0 (async) + SQLite, `uv` для
+  управления зависимостями.
+- **Frontend**: React 19 + TypeScript + Vite, `@xyflow/react` для canvas графа,
+  Tiptap для rich text, `@tanstack/react-query` для загрузки данных.
+- **В планах**: оркестрация LangGraph-агента, Chroma (vector store), networkx
+  (graph store), Anthropic SDK как основной LLM-провайдер (BYOK).
+
+## Локальный запуск
+
+### Быстрый старт (без dev-инструментов)
+
+- **Windows**: двойной клик по `start.bat` в корне репозитория.
+- **macOS / Linux**: `./start.sh` (или `bash start.sh`) в корне репозитория.
+
+Скрипт ставит недостающие инструменты (`uv`, Node.js), подтягивает обновления из
+git, устанавливает зависимости, при первом запуске предлагает выбрать LLM-провайдера
+(Anthropic, OpenAI или локальный Ollama) и источник эмбеддингов — или Enter, чтобы
+пропустить и настроить ассистента позже — затем поднимает оба сервера и открывает
+приложение в браузере. Закройте окно консоли (или Ctrl+C на macOS/Linux), чтобы
+остановить всё. Пока работает, периодически проверяет новые коммиты и сообщает,
+когда перезапуск подтянет обновление.
+
+### Backend
+
+```bash
+cd backend
+uv sync
+uv run uvicorn loregraph.main:app --reload
+```
+
+Слушает `http://localhost:8000`. Создайте `backend/.env`, если нужно переопределить
+дефолты в `Settings` (см. `backend/src/loregraph/config.py`).
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Слушает `http://localhost:5173` и ходит в backend на `:8000`.
+
+## Разработка
+
+```bash
+# backend
+cd backend
+uv run pytest
+uv run ruff check .
+uv run mypy .
+
+# frontend
+cd frontend
+npx tsc -b
+npx oxlint src
+npm run build
+```
+
+## Лицензия
+
+[PolyForm Noncommercial 1.0.0](LICENSE) — можно свободно использовать, менять и
+форкать в некоммерческих целях. Коммерческое использование (включая хостинг как
+сервис для других или продажу модифицированной версии) без разрешения запрещено.
+
+</details>
