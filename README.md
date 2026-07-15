@@ -22,6 +22,19 @@
 
 <br>
 
+<details>
+<summary><h2>Screenshots</h2></summary>
+  <img src="assets/readme/demo.png" alt="Loregraph demo">
+  <img src="assets/readme/demo2.png" alt="Loregraph demo">
+  <img src="assets/readme/demo3.png" alt="Loregraph demo">
+  <img src="assets/readme/demo4.png" alt="Loregraph demo">
+  <img src="assets/readme/demo5.png" alt="Loregraph demo">
+  <img src="assets/readme/demo6.png" alt="Loregraph demo">
+  <img src="assets/readme/demo7.png" alt="Loregraph demo">
+</details>
+
+<br>
+
 <details open>
 <summary><h2>English</h2></summary>
 
