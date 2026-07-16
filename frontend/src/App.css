@@ -1,83 +1,399 @@
-.layout {
+:root {
+  --panel-width: 380px;
+  --sidebar-width: 232px;
+  --sidebar-width-collapsed: 60px;
+}
+
+.app-shell {
   min-height: 100svh;
+  display: flex;
+}
+
+/* ---------- Sidebar ----------
+   Sticky rather than fixed-height: it pins to the viewport while the page
+   scrolls, but still participates in .app-shell's own layout sizing so the
+   full-bleed graph page (flex:1 chain down to .graph-view-page) keeps
+   working unchanged. */
+.sidebar {
+  flex: none;
+  width: var(--sidebar-width);
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  transition: width 0.16s ease;
+  z-index: 10;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-width-collapsed);
+}
+
+.sidebar-brand {
+  flex: none;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--text);
+  overflow: hidden;
+}
+
+.sidebar-brand-mark {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-control);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-brand-word {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* ---- project switcher ---- */
+
+.sidebar-switcher-wrap {
+  position: relative;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+
+.sidebar-switcher-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 7px 8px;
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-switcher-btn:hover {
+  background: var(--bg-subtle);
+}
+
+.sidebar-switcher-btn[aria-expanded="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.sidebar-switcher-icon {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.sidebar-switcher-label {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-:root {
-  --navbar-height: 56px;
-  --panel-width: 380px;
-}
-
-.navbar {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 12px 24px;
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--bg);
-  height: var(--navbar-height);
-  box-sizing: border-box;
-}
-
-.navbar-brand {
-  font-weight: 600;
-  text-decoration: none;
-  color: var(--text);
-}
-
-.navbar-links {
-  display: flex;
-  gap: 4px;
-}
-
-.navbar-links a {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  text-decoration: none;
+.sidebar-switcher-eyebrow {
+  font-size: 10px;
   color: var(--text-muted);
-  padding: 6px 10px;
-  border-radius: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sidebar-switcher-name {
   font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.navbar-links a:hover {
-  background: var(--bg-subtle);
+.sidebar-switcher-chev {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.sidebar.collapsed .sidebar-switcher-btn {
+  justify-content: center;
+}
+
+.sidebar-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 8px;
+  width: 260px;
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  padding: 6px;
+}
+
+.sidebar-project-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 9px;
+  border-radius: var(--radius-control);
+  border: none;
+  background: none;
   color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.navbar-links a.active {
+.sidebar-project-row:hover {
+  background: var(--bg-subtle);
+}
+
+.sidebar-project-row.active {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 600;
 }
 
-.navbar-controls {
-  margin-left: auto;
+.sidebar-project-dot {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
 }
 
-.theme-picker {
+.sidebar-project-row.active .sidebar-project-dot {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.sidebar-project-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-project-check {
+  flex: none;
+  color: var(--accent);
+}
+
+.sidebar-popover-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 4px;
+}
+
+.sidebar-popover-action {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border-radius: var(--radius-control);
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.navbar-project-back {
-  font-size: 13px;
-  padding: 5px 10px;
-}
-
-.navbar-project-name {
-  font-weight: 600;
+.sidebar-popover-action:hover {
+  background: var(--bg-subtle);
   color: var(--text);
+}
+
+/* ---- nav ---- */
+
+.sidebar-nav {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: none;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+  text-decoration: none;
+  position: relative;
+}
+
+.sidebar-nav-item:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.sidebar-nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sidebar-nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.sidebar-nav-icon {
+  flex: none;
+}
+
+.sidebar.collapsed .sidebar-nav-item {
+  justify-content: center;
+  padding: 8px;
+}
+
+.sidebar-spacer {
+  flex: 1;
+}
+
+/* ---- foot: preferences + collapse ---- */
+
+.sidebar-foot {
+  border-top: 1px solid var(--border);
+  padding: 8px;
+  flex: none;
+}
+
+.sidebar-prefs-wrap {
+  position: relative;
+}
+
+.sidebar-prefs-btn,
+.sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 11px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-prefs-btn:hover,
+.sidebar-collapse-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.sidebar-prefs-btn[aria-expanded="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.sidebar-collapse-btn {
+  margin-top: 2px;
+}
+
+.sidebar-collapse-icon {
+  transition: transform 0.16s ease;
+  transform: rotate(90deg);
+}
+
+.sidebar.collapsed .sidebar-collapse-icon {
+  transform: rotate(-90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-collapse-icon {
+    transition: none;
+  }
+}
+
+.sidebar.collapsed .sidebar-prefs-btn,
+.sidebar.collapsed .sidebar-collapse-btn {
+  justify-content: center;
+  padding: 8px;
+}
+
+.sidebar-prefs-popover {
+  position: absolute;
+  bottom: 0;
+  left: calc(100% + 8px);
+  width: 300px;
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+
+.sidebar-prefs-popover h3 {
+  margin: 0 0 12px;
   font-size: 13px;
+}
+
+.sidebar-pref-row {
+  margin-bottom: 12px;
+}
+
+.sidebar-pref-row:last-child {
+  margin-bottom: 0;
+}
+
+.sidebar-pref-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 7px;
 }
 
 .theme-mode-toggle {
@@ -100,9 +416,89 @@
   color: var(--accent);
 }
 
-.theme-picker select {
-  font-size: 12px;
-  padding: 5px 7px;
+.sidebar-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sidebar-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 0;
+}
+
+.sidebar-swatch.active::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+}
+
+/* Each swatch shows its own preset's brand color, independent of whichever
+   preset is currently active — same hex values as the preset tables in
+   index.css, keyed by data-preset and the active light/dark mode. */
+.sidebar-swatch[data-preset="teal"] { background: #0f6b63; }
+.sidebar-swatch[data-preset="blue"] { background: #2159b8; }
+.sidebar-swatch[data-preset="green"] { background: #2f7d3a; }
+.sidebar-swatch[data-preset="violet"] { background: #7645b8; }
+.sidebar-swatch[data-preset="amber"] { background: #a8660f; }
+.sidebar-swatch[data-preset="slate"] { background: #46505f; }
+.sidebar-swatch[data-preset="noir"] { background: #000000; color: #fff; }
+
+:root[data-theme="dark"] .sidebar-swatch[data-preset="teal"] { background: #35d6b8; color: #06120f; }
+:root[data-theme="dark"] .sidebar-swatch[data-preset="blue"] { background: #6ea3f5; color: #06101f; }
+:root[data-theme="dark"] .sidebar-swatch[data-preset="green"] { background: #66d178; color: #07130a; }
+:root[data-theme="dark"] .sidebar-swatch[data-preset="violet"] { background: #c199f0; color: #0d0816; }
+:root[data-theme="dark"] .sidebar-swatch[data-preset="amber"] { background: #f0ac52; color: #140d04; }
+:root[data-theme="dark"] .sidebar-swatch[data-preset="slate"] { background: #a7b0c2; color: #101114; }
+:root[data-theme="dark"] .sidebar-swatch[data-preset="noir"] { background: #ffffff; color: #000; }
+
+/* ---------- Main column: top bar + page content ---------- */
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.app-topbar {
+  flex: none;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+}
+
+.app-topbar-project {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.app-topbar-sep {
+  color: var(--border-strong);
+  font-size: 13px;
+}
+
+.app-topbar-current {
+  font-weight: 700;
+  font-size: 13.5px;
 }
 
 .layout-content {
@@ -223,7 +619,7 @@
   align-items: center;
   margin-bottom: 16px;
   position: sticky;
-  top: var(--navbar-height);
+  top: 0;
   z-index: 5;
   background: var(--bg);
   padding: 4px 0;
@@ -375,6 +771,7 @@
 .project-settings-page textarea {
   color: var(--text);
   font-family: inherit;
+  width: 100%;
 }
 
 .field-hint {
@@ -586,6 +983,9 @@
 }
 
 .settings-card-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 15px;
   font-weight: 600;
   margin: 0 0 4px;
@@ -602,17 +1002,77 @@
   gap: 12px;
 }
 
-/* Page-level save bar, mirrors .entity-edit-actions. */
-.settings-actions {
-  position: sticky;
-  bottom: 0;
+/* Read-only analytics (token usage) get a visibly different tone from
+   editable/action cards, so it reads as "not a form" at a glance. */
+.settings-card.readonly {
+  background: var(--bg-subtle);
+}
+
+.settings-readonly-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+/* ---------- Editable settings group ----------
+   Bounds the save action to the fields it actually covers (Name,
+   Description, Instructions) instead of a page-wide sticky bar that also
+   seemed to cover the Knowledge base/Maintenance/Usage cards below it. */
+.settings-editable-group {
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.settings-editable-eyebrow {
   display: flex;
   align-items: center;
+  gap: 7px;
+  padding: 10px 20px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.settings-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.settings-editable-body {
+  padding: 18px 20px 4px;
+}
+
+.settings-editable-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
+}
+
+.settings-editable-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  margin: 0 -24px;
-  padding: 12px 24px;
-  background: var(--bg);
+  padding: 12px 20px;
   border-top: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.settings-saved-hint {
+  color: var(--text-muted);
 }
 
 /* ---------- Dropzone ---------- */
@@ -880,25 +1340,170 @@
   color: var(--text-muted);
 }
 
-/* Lives inside .graph-overlay-left (see below) — no own positioning. */
-.graph-controls {
-  width: 100%;
+/* ---------- Graph dock ----------
+   Bottom-center cluster: view mode + entity picker + filters, with the
+   create-entity FAB right beside it — "change what's shown" and "add
+   something new" read as one related group of canvas-level actions. Also
+   sidesteps the old top-left card visually colliding with the sidebar's
+   project switcher popover in that same corner. */
+/* Centered via flex + inset edges, not left:50%/transform — a transform
+   here would make this the containing block for any position:fixed
+   descendant (GraphCreateEntityButton's popover backdrop), shrinking its
+   "fixed to viewport" popup down to this element's own small box instead. */
+.graph-dock-wrap {
+  position: absolute;
+  bottom: 20px;
+  left: 16px;
+  right: 16px;
+  z-index: 20;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   gap: 10px;
+  pointer-events: none;
+}
+
+.graph-dock-wrap > * {
+  pointer-events: auto;
+}
+
+.graph-dock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  padding: 12px 14px;
+  border-radius: var(--radius-pill);
+  padding: 6px;
   box-shadow: var(--shadow);
 }
 
-.graph-controls label {
+.graph-dock-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.graph-dock-trigger {
+  position: relative;
+}
+
+.graph-dock-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text);
+  font-weight: 400;
+  font-size: 12.5px;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  position: relative;
+}
+
+.graph-dock-trigger-btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
+}
+
+.graph-dock-trigger-btn[aria-expanded="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.graph-dock-value {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-filter-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+}
+
+/* Popovers open upward — the dock sits at the bottom of the canvas, so
+   there's nowhere to open downward into. */
+.graph-dock-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+}
+
+.combobox-popover {
+  width: 260px;
+  padding: 8px;
+}
+
+.combobox-search {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.graph-filters-popover {
+  width: 250px;
+  padding: 12px;
+}
+
+.graph-filter-block {
+  margin-bottom: 12px;
+}
+
+.graph-filter-block:last-child {
+  margin-bottom: 0;
+}
+
+.graph-filter-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 7px;
+}
+
+.graph-filter-checks {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.graph-filter-checks label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 5px;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.graph-filter-checks label:hover {
+  background: var(--bg-subtle);
+}
+
+.graph-filter-checks input {
+  padding: 0;
+  width: auto;
 }
 
 .graph-canvas {
@@ -2755,11 +3360,7 @@
 /* ---------- Graph create-entity FAB ---------- */
 
 .graph-create-fab {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 20;
+  flex: none;
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -2775,12 +3376,12 @@
 }
 
 .graph-create-fab:hover {
-  transform: translateX(-50%) scale(1.08);
+  transform: scale(1.08);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .graph-create-fab:active {
-  transform: translateX(-50%) scale(0.96);
+  transform: scale(0.96);
 }
 
 .graph-create-popover {
@@ -2878,7 +3479,7 @@
 .segmented {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-pill);
   overflow: hidden;
   background: var(--surface);
 }
@@ -2912,42 +3513,19 @@
    panel (it changes what the rest of the panel even shows) — full-width and
    evenly split reads as a primary toggle, not just another compact filter
    like the depth segmented control it otherwise shares styling with. */
-.graph-view-mode-toggle {
-  width: 100%;
-}
-
 .graph-view-mode-toggle button {
-  flex: 1;
   justify-content: center;
-  padding: 8px 14px;
+  padding: 7px 14px;
 }
 
 /* ---------- Combobox (searchable entity picker) ---------- */
 
-.combobox {
-  position: relative;
-  min-width: 0;
-}
-
-.combobox input {
-  width: 100%;
-}
-
 .combobox-list {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 30;
-  max-height: 260px;
-  overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
-  box-shadow: var(--shadow);
-  padding: 4px;
-  margin: 0;
   list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
 }
 
 .combobox-list button {
@@ -2980,60 +3558,6 @@
   padding: 8px 10px;
   color: var(--text-muted);
   font-size: 13px;
-}
-
-/* ---------- Edge-type multiselect ---------- */
-
-.multiselect {
-  position: relative;
-}
-
-.multiselect-toggle {
-  width: 100%;
-  justify-content: space-between;
-  font-weight: 400;
-  color: var(--text-muted);
-}
-
-.multiselect-list {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 30;
-  max-height: 220px;
-  overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
-  box-shadow: var(--shadow);
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.multiselect-list label {
-  display: flex;
-  /* .graph-controls label stacks its children in a column — these checkbox
-     rows must stay horizontal regardless of the parent panel. */
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  border-radius: 5px;
-  font-size: 13px;
-  color: var(--text);
-  cursor: pointer;
-}
-
-.multiselect-list label:hover {
-  background: var(--bg-subtle);
-}
-
-.multiselect-list input {
-  padding: 0;
-  width: auto;
 }
 
 /* ---------- Knowledge base status chips ---------- */
@@ -3294,7 +3818,7 @@
 .usage-summary-card .progress-fill {
   display: block;
   height: 100%;
-  background: #10b981;
+  background: var(--success);
   border-radius: 3px;
   transition: width 0.3s ease;
 }
@@ -3325,11 +3849,11 @@
 }
 
 .detail-total-row .dot.cached-read {
-  background: #10b981;
+  background: var(--success);
 }
 
 .detail-total-row .dot.cached-create {
-  background: #f59e0b;
+  background: var(--warning);
 }
 
 .detail-total-row .dot.output {
@@ -3421,11 +3945,11 @@
 }
 
 .bar-segment.cached-read {
-  background: #10b981;
+  background: var(--success);
 }
 
 .bar-segment.cached-create {
-  background: #f59e0b;
+  background: var(--warning);
 }
 
 .bar-segment.output {

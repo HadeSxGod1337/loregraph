@@ -75,9 +75,12 @@ export function TokenUsagePanel({ projectId }: TokenUsagePanelProps) {
 
   if (isLoading) {
     return (
-      <section className="settings-card token-usage-panel">
+      <section className="settings-card readonly token-usage-panel">
         <div className="settings-card-head">
-          <h2>{t("usage.heading")}</h2>
+          <h2>
+            {t("usage.heading")}
+            <span className="settings-readonly-tag">{t("usage.readonlyTag")}</span>
+          </h2>
           <p className="field-hint">{t("usage.hint")}</p>
         </div>
         <p className="field-hint">{t("common.loading")}</p>
@@ -110,9 +113,12 @@ export function TokenUsagePanel({ projectId }: TokenUsagePanelProps) {
   };
 
   return (
-    <section className="settings-card token-usage-panel">
+    <section className="settings-card readonly token-usage-panel">
       <div className="settings-card-head">
-        <h2>{t("usage.heading")}</h2>
+        <h2>
+          {t("usage.heading")}
+          <span className="settings-readonly-tag">{t("usage.readonlyTag")}</span>
+        </h2>
         <p className="field-hint">{t("usage.hint")}</p>
       </div>
 

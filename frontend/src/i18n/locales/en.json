@@ -16,7 +16,6 @@
     "leaveButton": "Leave"
   },
   "nav": {
-    "allProjects": "← All projects",
     "entities": "Entities",
     "graph": "Graph",
     "assistant": "AI Assistant",
@@ -26,6 +25,16 @@
     "light": "Light",
     "dark": "Dark",
     "system": "System"
+  },
+  "sidebar": {
+    "project": "Project",
+    "allProjects": "All projects",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "accent": "Accent",
+    "language": "Language"
   },
   "projects": {
     "title": "Projects",
@@ -107,6 +116,7 @@
     "rootSearchPlaceholder": "Find an entity…",
     "selectPlaceholder": "— select —",
     "depth": "Depth",
+    "filters": "Filters",
     "edgeTypesLabel": "Edge types",
     "edgeTypesAll": "all types",
     "edgeTypesSelected": "{{count}} selected",
@@ -179,6 +189,8 @@
     "saving": "Saving…",
     "saved": "Settings saved",
     "unsavedChanges": "Unsaved changes",
+    "allSaved": "All changes saved",
+    "editableTag": "Editing",
     "maintenanceHeading": "Maintenance",
     "reindexHint": "The search index is rebuilt from your entities automatically, but if the assistant can't find something that clearly exists, rebuilding it here fixes that.",
     "reindexButton": "Rebuild search index",
@@ -188,6 +200,7 @@
   },
   "usage": {
     "heading": "Token usage",
+    "readonlyTag": "read-only",
     "hint": "Cumulative token spend for this project across all AI assistant turns, lore generation and verification runs.",
     "noUsage": "No token usage recorded yet.",
     "totalTokens": "Total tokens",

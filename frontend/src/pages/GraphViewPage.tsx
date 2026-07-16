@@ -177,23 +177,11 @@ export function GraphViewPage() {
           </div>
         )}
 
-        {/* Controls, assistant toggle and drawer share one flex column, so
-            each element starts right below the previous one regardless of
-            their heights. */}
+        {/* Assistant toggle and drawer share one flex column, starting right
+            at the top of the canvas — the view/filter controls used to sit
+            above them here too, which visually collided with the sidebar's
+            project switcher popover opening in the same corner. */}
         <div className="graph-overlay-left">
-          <GraphControls
-            entities={entities ?? []}
-            rootId={rootId}
-            depth={depth}
-            edgeTypes={edgeTypes}
-            availableEdgeTypes={availableEdgeTypes}
-            viewMode={viewMode}
-            onRootChange={changeRoot}
-            onDepthChange={setDepth}
-            onEdgeTypesChange={setEdgeTypes}
-            onViewModeChange={setViewMode}
-          />
-
           {!assistantVisible && (
             <button
               type="button"
@@ -245,15 +233,33 @@ export function GraphViewPage() {
           />
         )}
 
-        {(viewMode === "all" || rootId) && (
-          <GraphCreateEntityButton
-            projectId={projectId!}
-            onCreated={(entity) => {
-              setTempEntities((prev) => [...prev, entity]);
-              setSelectedEntityId(entity.id);
-            }}
+        {/* Filters and the create button live together at the bottom-center
+            of the canvas — "change what's shown" and "add something new"
+            read as one related cluster of canvas-level actions. */}
+        <div className="graph-dock-wrap">
+          <GraphControls
+            entities={entities ?? []}
+            rootId={rootId}
+            depth={depth}
+            edgeTypes={edgeTypes}
+            availableEdgeTypes={availableEdgeTypes}
+            viewMode={viewMode}
+            onRootChange={changeRoot}
+            onDepthChange={setDepth}
+            onEdgeTypesChange={setEdgeTypes}
+            onViewModeChange={setViewMode}
           />
-        )}
+
+          {(viewMode === "all" || rootId) && (
+            <GraphCreateEntityButton
+              projectId={projectId!}
+              onCreated={(entity) => {
+                setTempEntities((prev) => [...prev, entity]);
+                setSelectedEntityId(entity.id);
+              }}
+            />
+          )}
+        </div>
 
         <EntityDetailPanel
           key={selectedEntityId}

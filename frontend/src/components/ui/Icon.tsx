@@ -2,12 +2,17 @@ import type { ReactNode, SVGProps } from "react";
 
 export type IconName =
   | "alert"
+  | "appearance"
   | "arrow-left"
   | "check"
   | "chevron-down"
   | "download"
   | "expand"
+  | "filter"
+  | "folder"
+  | "layers"
   | "more"
+  | "network"
   | "paperclip"
   | "plus"
   | "refresh"
@@ -27,6 +32,12 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
       <path d="M12 9v4" />
       <path d="M12 17h.01" />
+    </>
+  ),
+  appearance: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none" />
     </>
   ),
   "arrow-left": (
@@ -52,11 +63,33 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M9 21H3v-6" />
     </>
   ),
+  filter: (
+    <>
+      <path d="M4 5h16" />
+      <path d="M7 12h10" />
+      <path d="M10 19h4" />
+    </>
+  ),
+  folder: <path d="M3 7a2 2 0 0 1 2-2h4.2l1.6 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />,
+  layers: (
+    <>
+      <path d="M12 3 3 8l9 5 9-5-9-5Z" />
+      <path d="m3 15 9 5 9-5" />
+    </>
+  ),
   more: (
     <>
       <circle cx="12" cy="12" r="1" />
       <circle cx="5" cy="12" r="1" />
       <circle cx="19" cy="12" r="1" />
+    </>
+  ),
+  network: (
+    <>
+      <circle cx="12" cy="5" r="2.2" />
+      <circle cx="5" cy="18" r="2.2" />
+      <circle cx="19" cy="18" r="2.2" />
+      <path d="M12 7.2 6.6 16.3M12 7.2l5.4 9.1M7.2 18h9.6" />
     </>
   ),
   paperclip: (

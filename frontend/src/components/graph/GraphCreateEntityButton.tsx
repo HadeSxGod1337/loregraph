@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { Entity } from "../../api/types";
 import { DEFAULT_ENTITY_TYPES } from "../../api/types";
+import { useDismiss } from "../../hooks/useDismiss";
 import { useCreateEntity } from "../../hooks/useEntities";
 import { Icon } from "../ui/Icon";
 
@@ -19,24 +20,10 @@ export function GraphCreateEntityButton({ projectId, onCreated }: GraphCreateEnt
   const createEntity = useCreateEntity(projectId);
   const popoverRef = useRef<HTMLFormElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  useDismiss(open, popoverRef, () => setOpen(false));
 
   useEffect(() => {
-    if (!open) return;
-    titleRef.current?.focus();
-    function onPointerDown(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
-    };
+    if (open) titleRef.current?.focus();
   }, [open]);
 
   function handleSubmit(e: React.FormEvent) {

@@ -11,8 +11,8 @@
   Each preset is a complete theme (bg/surface/border/text AND accent), not
   just an accent color layered on shared neutrals — a "Blue" preset should
   actually look blue, the way VS Code/Notion themes each commit to their own
-  palette rather than reskinning one grey. `danger`/`warning` stay constant
-  across presets since they're semantic, not brand color.
+  palette rather than reskinning one grey. `danger`/`warning`/`success` stay
+  constant across presets since they're semantic, not brand color.
 */
 
 :root,
@@ -30,6 +30,7 @@
   --accent-text: #ffffff;
   --danger: #b3432b;
   --warning: #a9791f;
+  --success: #1f7a4d;
   --shadow: 0 8px 24px -8px rgba(16, 33, 30, 0.18);
 }
 :root[data-theme="dark"][data-preset="teal"] {
@@ -45,6 +46,7 @@
   --accent-text: #06120f;
   --danger: #e28066;
   --warning: #d9ae55;
+  --success: #3ddb96;
   --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
 }
 @media (prefers-color-scheme: dark) {
@@ -75,6 +77,7 @@
   --accent-text: #ffffff;
   --danger: #b3432b;
   --warning: #a9791f;
+  --success: #1f7a4d;
   --shadow: 0 8px 24px -8px rgba(12, 24, 45, 0.18);
 }
 :root[data-theme="dark"][data-preset="blue"] {
@@ -90,6 +93,7 @@
   --accent-text: #06101f;
   --danger: #e28066;
   --warning: #d9ae55;
+  --success: #3ddb96;
   --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
 }
 
@@ -106,6 +110,7 @@
   --accent-text: #ffffff;
   --danger: #b3432b;
   --warning: #a9791f;
+  --success: #1f7a4d;
   --shadow: 0 8px 24px -8px rgba(18, 34, 15, 0.18);
 }
 :root[data-theme="dark"][data-preset="green"] {
@@ -121,6 +126,7 @@
   --accent-text: #07130a;
   --danger: #e28066;
   --warning: #d9ae55;
+  --success: #3ddb96;
   --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
 }
 
@@ -137,6 +143,7 @@
   --accent-text: #ffffff;
   --danger: #b3432b;
   --warning: #a9791f;
+  --success: #1f7a4d;
   --shadow: 0 8px 24px -8px rgba(28, 21, 38, 0.18);
 }
 :root[data-theme="dark"][data-preset="violet"] {
@@ -152,6 +159,7 @@
   --accent-text: #0d0816;
   --danger: #e28066;
   --warning: #d9ae55;
+  --success: #3ddb96;
   --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
 }
 
@@ -168,6 +176,7 @@
   --accent-text: #ffffff;
   --danger: #b3432b;
   --warning: #a9791f;
+  --success: #1f7a4d;
   --shadow: 0 8px 24px -8px rgba(36, 28, 15, 0.18);
 }
 :root[data-theme="dark"][data-preset="amber"] {
@@ -183,6 +192,7 @@
   --accent-text: #140d04;
   --danger: #e28066;
   --warning: #d9ae55;
+  --success: #3ddb96;
   --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
 }
 
@@ -199,6 +209,7 @@
   --accent-text: #ffffff;
   --danger: #b3432b;
   --warning: #a9791f;
+  --success: #1f7a4d;
   --shadow: 0 8px 24px -8px rgba(15, 17, 21, 0.18);
 }
 :root[data-theme="dark"][data-preset="slate"] {
@@ -214,6 +225,7 @@
   --accent-text: #101114;
   --danger: #e28066;
   --warning: #d9ae55;
+  --success: #3ddb96;
   --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.5);
 }
 
@@ -230,6 +242,7 @@
   --accent-text: #ffffff;
   --danger: #b3432b;
   --warning: #a9791f;
+  --success: #1f7a4d;
   --shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.18);
 }
 :root[data-theme="dark"][data-preset="noir"] {
@@ -245,6 +258,7 @@
   --accent-text: #000000;
   --danger: #e28066;
   --warning: #d9ae55;
+  --success: #3ddb96;
   --shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.6);
 }
 

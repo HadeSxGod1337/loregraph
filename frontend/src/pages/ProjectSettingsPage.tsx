@@ -79,40 +79,75 @@ export function ProjectSettingsPage() {
 
       <div className="project-settings-columns">
         <div className="project-settings-column">
-          <section className="settings-card">
-            <div className="settings-card-head">
-              <h2>{t("projectSettings.generalHeading")}</h2>
+          {/* Bounded to just the fields Save actually covers — the old
+              page-wide sticky bar spanned the Knowledge base/Maintenance/Usage
+              cards too, even though saving here never touched them. */}
+          <section className="settings-editable-group">
+            <div className="settings-editable-eyebrow">
+              <span className="settings-live-dot" aria-hidden="true" />
+              {t("projectSettings.editableTag")}
             </div>
+            <div className="settings-editable-body">
+              <div className="settings-card-head">
+                <h2>{t("projectSettings.generalHeading")}</h2>
+              </div>
 
-            <label>
-              {t("projectSettings.nameLabel")}
-              <input value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
+              <label>
+                {t("projectSettings.nameLabel")}
+                <input value={name} onChange={(e) => setName(e.target.value)} />
+              </label>
 
-            <label>
-              {t("projectSettings.descriptionLabel")}
-              <input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+              <label>
+                {t("projectSettings.descriptionLabel")}
+                <input
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </label>
+
+              <div className="settings-editable-divider" />
+
+              <div className="settings-card-head">
+                <h2>{t("projectSettings.agentHeading")}</h2>
+                <p className="field-hint">{t("projectSettings.instructionsHint")}</p>
+              </div>
+
+              {/* The card heading is the label — repeating it above the
+                  textarea just duplicated the text. */}
+              <textarea
+                rows={6}
+                aria-label={t("projectSettings.instructionsLabel")}
+                placeholder={t("projectSettings.instructionsPlaceholder")}
+                value={agentInstructions}
+                onChange={(e) => setAgentInstructions(e.target.value)}
               />
-            </label>
-          </section>
-
-          <section className="settings-card">
-            <div className="settings-card-head">
-              <h2>{t("projectSettings.agentHeading")}</h2>
-              <p className="field-hint">{t("projectSettings.instructionsHint")}</p>
             </div>
 
-            {/* The card heading is the label — repeating it above the
-                textarea just duplicated the text. */}
-            <textarea
-              rows={6}
-              aria-label={t("projectSettings.instructionsLabel")}
-              placeholder={t("projectSettings.instructionsPlaceholder")}
-              value={agentInstructions}
-              onChange={(e) => setAgentInstructions(e.target.value)}
-            />
+            <div className="settings-editable-foot">
+              <span className={"dirty-hint" + (isDirty ? "" : " settings-saved-hint")}>
+                {isDirty
+                  ? t("projectSettings.unsavedChanges")
+                  : t("projectSettings.allSaved")}
+              </span>
+              <div className="settings-save-row">
+                {updateProject.isError && (
+                  <span className="error-text">
+                    {translateApiError(updateProject.error, t)}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="button-primary"
+                  disabled={!name.trim() || !isDirty || updateProject.isPending}
+                  onClick={handleSave}
+                >
+                  {updateProject.isPending && <span className="spinner" aria-hidden="true" />}
+                  {updateProject.isPending
+                    ? t("projectSettings.saving")
+                    : t("projectSettings.saveButton")}
+                </button>
+              </div>
+            </div>
           </section>
 
           <section className="settings-card">
@@ -146,30 +181,6 @@ export function ProjectSettingsPage() {
           <KnowledgeBasePanel projectId={projectId!} />
           <TokenUsagePanel projectId={projectId!} />
         </div>
-      </div>
-
-      {/* Save applies to the two general cards above — pinned to the bottom
-          so it's always reachable and clearly page-level. */}
-      <div className="settings-actions">
-        <button
-          type="button"
-          className="button-primary"
-          disabled={!name.trim() || !isDirty || updateProject.isPending}
-          onClick={handleSave}
-        >
-          {updateProject.isPending && <span className="spinner" aria-hidden="true" />}
-          {updateProject.isPending
-            ? t("projectSettings.saving")
-            : t("projectSettings.saveButton")}
-        </button>
-        {isDirty && (
-          <span className="dirty-hint">{t("projectSettings.unsavedChanges")}</span>
-        )}
-        {updateProject.isError && (
-          <span className="error-text">
-            {translateApiError(updateProject.error, t)}
-          </span>
-        )}
       </div>
 
       {blocker.state === "blocked" && (

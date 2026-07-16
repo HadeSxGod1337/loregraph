@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Entity } from "../../api/types";
+import { useDismiss } from "../../hooks/useDismiss";
 import { Icon } from "../ui/Icon";
 
 const DEPTH_OPTIONS = [1, 2, 3] as const;
@@ -22,6 +23,9 @@ interface GraphControlsProps {
   onViewModeChange: (mode: GraphViewMode) => void;
 }
 
+/** Horizontal dock anchored at the bottom of the canvas, next to the create
+ * button — previously a tall card pinned top-left, which visually collided
+ * with the sidebar's project switcher popover opening in the same corner. */
 export function GraphControls({
   entities,
   rootId,
@@ -35,8 +39,17 @@ export function GraphControls({
   onViewModeChange,
 }: GraphControlsProps) {
   const { t } = useTranslation();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersRef = useRef<HTMLDivElement>(null);
+  useDismiss(filtersOpen, filtersRef, () => setFiltersOpen(false));
+
+  const hasFilterableSettings = viewMode === "focused" || availableEdgeTypes.length > 0;
+  // Depth has a sensible default the moment you enter Focused mode, so it
+  // doesn't count as "filtered" on its own — edge-type selection does.
+  const hasActiveFilters = edgeTypes.length > 0;
+
   return (
-    <div className="graph-controls">
+    <div className="graph-dock">
       <div
         className="segmented graph-view-mode-toggle"
         role="group"
@@ -58,60 +71,88 @@ export function GraphControls({
         </button>
       </div>
 
-      <label>
-        {t(viewMode === "all" ? "graph.activeEntity" : "graph.rootEntity")}
-        <RootCombobox entities={entities} rootId={rootId} onRootChange={onRootChange} />
-      </label>
+      <div className="graph-dock-divider" />
 
-      <div className="graph-controls-row">
-        {viewMode === "focused" && (
-          <label>
-            {t("graph.depth")}
-            <div className="segmented" role="group" aria-label={t("graph.depth")}>
-              {DEPTH_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  className={depth === option ? "active" : ""}
-                  onClick={() => onDepthChange(option)}
-                >
-                  {option}
-                </button>
-              ))}
+      <RootCombobox
+        entities={entities}
+        rootId={rootId}
+        onRootChange={onRootChange}
+        label={t(viewMode === "all" ? "graph.activeEntity" : "graph.rootEntity")}
+      />
+
+      {hasFilterableSettings && (
+        <div className="graph-dock-trigger" ref={filtersRef}>
+          <button
+            type="button"
+            className="graph-dock-trigger-btn"
+            aria-haspopup="dialog"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((v) => !v)}
+          >
+            <Icon name="filter" size={13} />
+            <span className="graph-dock-value">{t("graph.filters")}</span>
+            {hasActiveFilters && <span className="graph-filter-badge" aria-hidden="true" />}
+          </button>
+
+          {filtersOpen && (
+            <div className="graph-dock-popover graph-filters-popover">
+              {viewMode === "focused" && (
+                <div className="graph-filter-block">
+                  <span className="graph-filter-label">{t("graph.depth")}</span>
+                  <div className="segmented" role="group" aria-label={t("graph.depth")}>
+                    {DEPTH_OPTIONS.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        className={depth === option ? "active" : ""}
+                        onClick={() => onDepthChange(option)}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {availableEdgeTypes.length > 0 && (
+                <div className="graph-filter-block">
+                  <span className="graph-filter-label">{t("graph.edgeTypesLabel")}</span>
+                  <EdgeTypeChecklist
+                    available={availableEdgeTypes}
+                    selected={edgeTypes}
+                    onChange={onEdgeTypesChange}
+                  />
+                </div>
+              )}
             </div>
-          </label>
-        )}
-
-        {availableEdgeTypes.length > 0 && (
-          <label style={{ flex: 1, minWidth: 0 }}>
-            {t("graph.edgeTypesLabel")}
-            <EdgeTypeMultiselect
-              available={availableEdgeTypes}
-              selected={edgeTypes}
-              onChange={onEdgeTypesChange}
-            />
-          </label>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 /** Searchable entity picker — a native select over hundreds of entities is
- * unusable; this filters as you type. */
+ * unusable; this filters as you type. Packaged as a trigger + popover (not
+ * an always-visible input) to fit the dock, and opens upward since the dock
+ * sits at the bottom of the canvas. */
 function RootCombobox({
   entities,
   rootId,
   onRootChange,
+  label,
 }: {
   entities: Entity[];
   rootId: string;
   onRootChange: (id: string) => void;
+  label: string;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useDismiss(open, rootRef, () => setOpen(false));
 
   const selectedTitle = entities.find((e) => e.id === rootId)?.title ?? "";
 
@@ -124,64 +165,64 @@ function RootCombobox({
   }, [entities, query]);
 
   useEffect(() => {
-    if (!open) return;
-    function onPointerDown(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+    if (open) {
+      setQuery("");
+      inputRef.current?.focus();
     }
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
-    };
   }, [open]);
 
   return (
-    <div className="combobox" ref={rootRef}>
-      <input
-        role="combobox"
+    <div className="graph-dock-trigger combobox" ref={rootRef}>
+      <button
+        type="button"
+        className="graph-dock-trigger-btn"
+        aria-haspopup="listbox"
         aria-expanded={open}
-        placeholder={t("graph.rootSearchPlaceholder")}
-        value={open ? query : selectedTitle}
-        onFocus={() => {
-          setQuery("");
-          setOpen(true);
-        }}
-        onChange={(e) => setQuery(e.target.value)}
-      />
+        title={label}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <Icon name="target" size={13} />
+        <span className="graph-dock-value">{selectedTitle || t("graph.selectPlaceholder")}</span>
+        <Icon name="chevron-down" size={12} />
+      </button>
+
       {open && (
-        <ul className="combobox-list">
-          {options.map((entity) => (
-            <li key={entity.id}>
-              <button
-                type="button"
-                onClick={() => {
-                  onRootChange(entity.id);
-                  setOpen(false);
-                }}
-              >
-                <span>{entity.title}</span>
-                <span className="combobox-option-type">{entity.type}</span>
-              </button>
-            </li>
-          ))}
-          {options.length === 0 && (
-            <li className="combobox-empty">{t("entityLink.noMatches")}</li>
-          )}
-        </ul>
+        <div className="graph-dock-popover combobox-popover">
+          <input
+            ref={inputRef}
+            className="combobox-search"
+            placeholder={t("graph.rootSearchPlaceholder")}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <ul className="combobox-list">
+            {options.map((entity) => (
+              <li key={entity.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRootChange(entity.id);
+                    setOpen(false);
+                  }}
+                >
+                  <span>{entity.title}</span>
+                  <span className="combobox-option-type">{entity.type}</span>
+                </button>
+              </li>
+            ))}
+            {options.length === 0 && (
+              <li className="combobox-empty">{t("entityLink.noMatches")}</li>
+            )}
+          </ul>
+        </div>
       )}
     </div>
   );
 }
 
-/** Checkbox dropdown over the edge types that actually exist in this world —
- * replaces the old comma-separated text input. Empty selection = all types. */
-function EdgeTypeMultiselect({
+/** Plain checkbox list — lives inside the Filters popover, so it doesn't
+ * need its own trigger/popover the way the old EdgeTypeMultiselect did. */
+function EdgeTypeChecklist({
   available,
   selected,
   onChange,
@@ -190,28 +231,6 @@ function EdgeTypeMultiselect({
   selected: string[];
   onChange: (types: string[]) => void;
 }) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
   function toggle(type: string) {
     onChange(
       selected.includes(type)
@@ -221,33 +240,17 @@ function EdgeTypeMultiselect({
   }
 
   return (
-    <div className="multiselect" ref={rootRef}>
-      <button
-        type="button"
-        className="multiselect-toggle"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        {selected.length === 0
-          ? t("graph.edgeTypesAll")
-          : t("graph.edgeTypesSelected", { count: selected.length })}
-        <Icon name="chevron-down" size={14} />
-      </button>
-      {open && (
-        <div className="multiselect-list" role="listbox">
-          {available.map((type) => (
-            <label key={type}>
-              <input
-                type="checkbox"
-                checked={selected.includes(type)}
-                onChange={() => toggle(type)}
-              />
-              {type}
-            </label>
-          ))}
-        </div>
-      )}
+    <div className="graph-filter-checks">
+      {available.map((type) => (
+        <label key={type}>
+          <input
+            type="checkbox"
+            checked={selected.includes(type)}
+            onChange={() => toggle(type)}
+          />
+          {type}
+        </label>
+      ))}
     </div>
   );
 }
