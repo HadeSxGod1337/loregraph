@@ -364,7 +364,9 @@
   position: absolute;
   bottom: 0;
   left: calc(100% + 8px);
-  width: 300px;
+  width: max-content;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 32px));
   z-index: 30;
   background: var(--surface);
   border: 1px solid var(--border-strong);
@@ -397,9 +399,9 @@
 }
 
 .theme-mode-toggle {
-  display: flex;
+  display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   overflow: hidden;
 }
 
