@@ -1406,6 +1406,10 @@
   word-break: break-word;
 }
 
+/* Wide banner framing — deliberately NOT the same aspect as the small square
+   thumbnails (list avatar, graph node): those crop the center of this same
+   file down to a square via object-fit, but the panel gets to show the
+   wider composition the user actually chose in ImageCropModal (ICON_CROP_ASPECT). */
 .portrait {
   width: 100%;
   max-height: 160px;
@@ -2507,6 +2511,35 @@
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
+}
+
+.image-crop-dialog {
+  width: 480px;
+}
+
+/* react-easy-crop's <Cropper> absolutely-positions itself to fill its
+   nearest positioned ancestor — this is that ancestor, matched to
+   ICON_CROP_ASPECT (ImageCropModal.tsx) so the crop window's proportions
+   are what the user actually sees composed here. */
+.image-crop-area {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2;
+  background: var(--bg);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+
+.image-crop-zoom {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.image-crop-zoom input {
+  accent-color: var(--accent);
 }
 
 /* ---------- Toasts ---------- */

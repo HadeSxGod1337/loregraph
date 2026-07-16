@@ -1,10 +1,11 @@
-import { useRef, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { API_URL } from "../../api/client";
 import type { AttachmentRef } from "../../api/types";
 import { useClearEntityIcon, useSetEntityIcon } from "../../hooks/useEntity";
 import { useUploadAttachment } from "../../hooks/useAttachments";
+import { ImageCropModal } from "./ImageCropModal";
 
 interface IconPickerProps {
   projectId: string;
@@ -18,13 +19,34 @@ export function IconPicker({ projectId, entityId, icon }: IconPickerProps) {
   const upload = useUploadAttachment(entityId ?? "");
   const setIcon = useSetEntityIcon(projectId, entityId ?? "");
   const clearIcon = useClearEntityIcon(projectId, entityId ?? "");
+  // Object URL for whatever file was just picked, held only long enough to
+  // crop it — revoked as soon as the crop dialog closes either way.
+  const [pendingImageSrc, setPendingImageSrc] = useState<string | null>(null);
 
-  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+  useEffect(() => {
+    return () => {
+      if (pendingImageSrc) URL.revokeObjectURL(pendingImageSrc);
+    };
+  }, [pendingImageSrc]);
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !entityId) return;
-    const attachment = await upload.mutateAsync(file);
+    setPendingImageSrc(URL.createObjectURL(file));
+  }
+
+  async function handleCropped(blob: Blob) {
+    if (pendingImageSrc) URL.revokeObjectURL(pendingImageSrc);
+    setPendingImageSrc(null);
+    const croppedFile = new File([blob], "icon.jpg", { type: "image/jpeg" });
+    const attachment = await upload.mutateAsync(croppedFile);
     setIcon.mutate(attachment.id);
+  }
+
+  function handleCropCancel() {
+    if (pendingImageSrc) URL.revokeObjectURL(pendingImageSrc);
+    setPendingImageSrc(null);
   }
 
   if (!entityId) {
@@ -60,8 +82,15 @@ export function IconPicker({ projectId, entityId, icon }: IconPickerProps) {
         type="file"
         accept="image/*"
         hidden
-        onChange={(e) => void handleFileChange(e)}
+        onChange={handleFileChange}
       />
+      {pendingImageSrc && (
+        <ImageCropModal
+          imageSrc={pendingImageSrc}
+          onCropped={(blob) => void handleCropped(blob)}
+          onCancel={handleCropCancel}
+        />
+      )}
     </div>
   );
 }

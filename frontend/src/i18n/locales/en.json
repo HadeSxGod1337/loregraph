@@ -149,7 +149,9 @@
   },
   "icon": {
     "saveFirst": "Save the entity first to set an icon.",
-    "noIcon": "no icon"
+    "noIcon": "no icon",
+    "cropTitle": "Crop image",
+    "cropZoom": "Zoom"
   },
   "richText": {
     "insertImage": "Insert image",
