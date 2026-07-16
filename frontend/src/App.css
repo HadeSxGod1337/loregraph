@@ -934,11 +934,41 @@
   color: var(--text-muted);
 }
 
+.graph-reset-layout-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.graph-reset-layout-button:hover {
+  background: var(--bg-subtle);
+}
+
 /* React Flow's own theming hook — controls both the edge line and the
-   arrowhead marker consistently (see @xyflow/react/dist/style.css). */
+   arrowhead marker consistently (see @xyflow/react/dist/style.css). The
+   library ships a `.dark` class variant of these tokens, but this app
+   doesn't toggle that class — it drives its own theme through --bg/--surface/
+   etc., so those are what these tokens are pinned to instead. */
 .graph-canvas .react-flow {
   --xy-edge-stroke-default: var(--border-strong);
   --xy-edge-stroke-selected-default: var(--accent);
+  --xy-minimap-background-color-default: var(--surface);
+  --xy-minimap-mask-background-color-default: color-mix(in srgb, var(--bg) 60%, transparent);
+}
+
+.graph-canvas .react-flow__minimap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
 }
 
 /* floating-edge label (custom EdgeLabelRenderer div, not React Flow's
@@ -988,6 +1018,32 @@
 .entity-node-selected {
   background: var(--accent-soft);
   border-color: var(--accent);
+}
+
+/* Zoomed-out level-of-detail mode — toggled by a single class on the
+   .react-flow root (see GraphCanvas.tsx's `isLod`/useStore zoom tracking),
+   not per-node: every .entity-node already in the DOM just gets restyled by
+   the cascade instead of hundreds of nodes each independently subscribing to
+   zoom and swapping their own JSX tree in the same frame (measurably janky
+   at a few hundred nodes). Drops clip-path and hides icon/badge/preview —
+   the expensive-to-paint parts, and illegible at this zoom anyway. */
+.react-flow-lod .entity-node {
+  clip-path: none;
+  width: auto;
+  max-width: 160px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  box-shadow: none;
+}
+
+.react-flow-lod .entity-node-icon-slot,
+.react-flow-lod .entity-type-badge,
+.react-flow-lod .entity-node-preview {
+  display: none;
+}
+
+.react-flow-lod .entity-node-title {
+  font-size: 11px;
 }
 
 /* handle dots are only needed while dragging a connection — hide them at
@@ -1112,6 +1168,16 @@
 .panel-head h2 {
   font-size: 17px;
   margin: 8px 0 0;
+}
+
+.panel-head-nav {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.panel-head-nav .button-sm {
+  border-color: var(--border-strong);
 }
 
 .panel-close {
@@ -2747,6 +2813,27 @@
   pointer-events: auto;
 }
 
+/* Overlays the canvas top-center — unlike .graph-overlay-left it must not
+   take up flex space, since it appears alongside (not instead of) the
+   canvas. */
+.graph-large-world-notice {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  padding: 8px 12px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  color: var(--text);
+}
+
 /* ---------- Graph controls widgets ---------- */
 
 .graph-controls-row {
@@ -2786,6 +2873,20 @@
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 600;
+}
+
+/* The Focused/All switch is the first, most consequential control in the
+   panel (it changes what the rest of the panel even shows) — full-width and
+   evenly split reads as a primary toggle, not just another compact filter
+   like the depth segmented control it otherwise shares styling with. */
+.graph-view-mode-toggle {
+  width: 100%;
+}
+
+.graph-view-mode-toggle button {
+  flex: 1;
+  justify-content: center;
+  padding: 8px 14px;
 }
 
 /* ---------- Combobox (searchable entity picker) ---------- */

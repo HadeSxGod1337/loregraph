@@ -35,6 +35,9 @@ export interface Entity {
   title: string;
   fields: EntityField[];
   icon: AttachmentRef | null;
+  /** NULL = auto-layout should place this node; set = the user dragged it. */
+  pos_x: number | null;
+  pos_y: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -106,6 +109,8 @@ export interface ProjectExport {
     title: string;
     fields: EntityField[];
     icon_attachment_id: string | null;
+    pos_x: number | null;
+    pos_y: number | null;
   }[];
   edges: {
     source_entity_id: string;

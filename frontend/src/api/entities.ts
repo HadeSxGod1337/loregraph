@@ -1,6 +1,12 @@
 import { apiClient } from "./client";
 import type { Entity, EntityCreate, EntityUpdate } from "./types";
 
+export interface PositionEntry {
+  entity_id: string;
+  pos_x: number;
+  pos_y: number;
+}
+
 export const entitiesApi = {
   list: (projectId: string, type?: string) =>
     apiClient.get<Entity[]>(`/api/projects/${projectId}/entities`, { type }),
@@ -18,4 +24,9 @@ export const entitiesApi = {
     }),
   clearIcon: (projectId: string, id: string) =>
     apiClient.delete<Entity>(`/api/projects/${projectId}/entities/${id}/icon`),
+  updatePositions: (projectId: string, positions: PositionEntry[]) =>
+    apiClient.put<Entity[]>(
+      `/api/projects/${projectId}/entities/positions`,
+      positions,
+    ),
 };

@@ -20,17 +20,29 @@ const SUGGESTED_EDGE_TYPES = ["contains", "ally_of", "family_of", "enemy_of"];
 interface EntityDetailPanelProps {
   projectId: string;
   entityId: string | null;
+  /** Currently active/root entity — lets the panel disable "Set as root"
+   * when this entity already is it. */
+  rootId: string;
   onClose: () => void;
   onNavigate: (entityId: string) => void;
   onDeleted?: (entityId: string) => void;
+  /** Makes this entity the graph's root/active entity (Focused mode:
+   * re-centers the BFS neighborhood; All mode: just moves the camera). */
+  onSetRoot: (entityId: string) => void;
+  /** Centers the camera on this entity without changing root — for looking
+   * at something while browsing without abandoning the current context. */
+  onFocusCamera: (entityId: string) => void;
 }
 
 export function EntityDetailPanel({
   projectId,
   entityId,
+  rootId,
   onClose,
   onNavigate,
   onDeleted,
+  onSetRoot,
+  onFocusCamera,
 }: EntityDetailPanelProps) {
   const { t } = useTranslation();
   const { data: entity } = useEntity(projectId, entityId ?? undefined);
@@ -125,6 +137,27 @@ export function EntityDetailPanel({
           </button>
           <span className="entity-type-badge">{entity.type}</span>
           <h2>{entity.title}</h2>
+          <div className="panel-head-nav">
+            <button
+              type="button"
+              className="button-sm"
+              onClick={() => onSetRoot(entityId)}
+              disabled={entityId === rootId}
+              title={t("entityDetail.setAsRoot")}
+            >
+              <Icon name="target" size={13} />
+              {t("entityDetail.setAsRoot")}
+            </button>
+            <button
+              type="button"
+              className="button-sm button-ghost"
+              onClick={() => onFocusCamera(entityId)}
+              title={t("entityDetail.focusCamera")}
+            >
+              <Icon name="expand" size={13} />
+              {t("entityDetail.focusCamera")}
+            </button>
+          </div>
         </div>
 
         <div className="panel-body">

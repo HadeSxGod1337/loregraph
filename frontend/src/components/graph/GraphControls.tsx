@@ -7,15 +7,19 @@ import { Icon } from "../ui/Icon";
 const DEPTH_OPTIONS = [1, 2, 3] as const;
 const MAX_COMBOBOX_OPTIONS = 50;
 
+export type GraphViewMode = "focused" | "all";
+
 interface GraphControlsProps {
   entities: Entity[];
   rootId: string;
   depth: number;
   edgeTypes: string[];
   availableEdgeTypes: string[];
+  viewMode: GraphViewMode;
   onRootChange: (rootId: string) => void;
   onDepthChange: (depth: number) => void;
   onEdgeTypesChange: (types: string[]) => void;
+  onViewModeChange: (mode: GraphViewMode) => void;
 }
 
 export function GraphControls({
@@ -24,34 +28,59 @@ export function GraphControls({
   depth,
   edgeTypes,
   availableEdgeTypes,
+  viewMode,
   onRootChange,
   onDepthChange,
   onEdgeTypesChange,
+  onViewModeChange,
 }: GraphControlsProps) {
   const { t } = useTranslation();
   return (
     <div className="graph-controls">
+      <div
+        className="segmented graph-view-mode-toggle"
+        role="group"
+        aria-label={t("graph.viewMode")}
+      >
+        <button
+          type="button"
+          className={viewMode === "all" ? "active" : ""}
+          onClick={() => onViewModeChange("all")}
+        >
+          {t("graph.viewModeAll")}
+        </button>
+        <button
+          type="button"
+          className={viewMode === "focused" ? "active" : ""}
+          onClick={() => onViewModeChange("focused")}
+        >
+          {t("graph.viewModeFocused")}
+        </button>
+      </div>
+
       <label>
-        {t("graph.rootEntity")}
+        {t(viewMode === "all" ? "graph.activeEntity" : "graph.rootEntity")}
         <RootCombobox entities={entities} rootId={rootId} onRootChange={onRootChange} />
       </label>
 
       <div className="graph-controls-row">
-        <label>
-          {t("graph.depth")}
-          <div className="segmented" role="group" aria-label={t("graph.depth")}>
-            {DEPTH_OPTIONS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                className={depth === option ? "active" : ""}
-                onClick={() => onDepthChange(option)}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </label>
+        {viewMode === "focused" && (
+          <label>
+            {t("graph.depth")}
+            <div className="segmented" role="group" aria-label={t("graph.depth")}>
+              {DEPTH_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={depth === option ? "active" : ""}
+                  onClick={() => onDepthChange(option)}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </label>
+        )}
 
         {availableEdgeTypes.length > 0 && (
           <label style={{ flex: 1, minWidth: 0 }}>

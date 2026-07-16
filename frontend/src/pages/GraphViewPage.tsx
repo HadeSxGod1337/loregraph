@@ -11,8 +11,8 @@ import { EntityNavigationContext } from "../components/EntityNavigationContext";
 import { EdgeEditPopover } from "../components/graph/EdgeEditPopover";
 import { EdgeQuickForm } from "../components/graph/EdgeQuickForm";
 import { EntityDetailPanel } from "../components/graph/EntityDetailPanel";
-import { GraphCanvas } from "../components/graph/GraphCanvas";
-import { GraphControls } from "../components/graph/GraphControls";
+import { GraphCanvas, type CameraFocusRequest } from "../components/graph/GraphCanvas";
+import { GraphControls, type GraphViewMode } from "../components/graph/GraphControls";
 import { GraphCreateEntityButton } from "../components/graph/GraphCreateEntityButton";
 import { useEntities } from "../hooks/useEntities";
 import { useSubgraph } from "../hooks/useSubgraph";
@@ -22,6 +22,10 @@ interface PendingConnection {
   targetId: string;
 }
 
+// Above this, "All entities" mode shows a dismissible nudge toward Focused
+// mode — not a hard cap, just a hint once a world gets large.
+const LARGE_WORLD_NOTICE_THRESHOLD = 500;
+
 export function GraphViewPage() {
   const { t } = useTranslation();
   const { projectId } = useParams<{ projectId: string }>();
@@ -29,7 +33,10 @@ export function GraphViewPage() {
   const [rootId, setRootId] = useState("");
   const [depth, setDepth] = useState(2);
   const [edgeTypes, setEdgeTypes] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<GraphViewMode>("all");
+  const [largeWorldNoticeDismissed, setLargeWorldNoticeDismissed] = useState(false);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const [focusRequest, setFocusRequest] = useState<CameraFocusRequest | null>(null);
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   // Newly created entities that aren't yet connected to the graph via edges.
@@ -59,6 +66,8 @@ export function GraphViewPage() {
     setSelectedEntityId(null);
     setSelectedEdgeId(null);
     setTempEntities([]);
+    setViewMode("all");
+    setLargeWorldNoticeDismissed(false);
   }, [projectId]);
 
   // If the current root was deleted, fall back to auto-picking a new one.
@@ -93,27 +102,48 @@ export function GraphViewPage() {
     if (id) localStorage.setItem(`loregraph:last-root:${projectId}`, id);
   }
 
+  // "Focus camera" — centers the viewport on an entity without touching
+  // root. `nonce` guarantees the request is seen as new even when the user
+  // asks to re-focus the entity they're already centered on.
+  function focusCameraOn(id: string) {
+    setFocusRequest({ entityId: id, nonce: Date.now() });
+  }
+
   const availableEdgeTypes = useMemo(
     () => [...new Set((allEdges ?? []).map((edge) => edge.type))].sort(),
     [allEdges],
   );
 
+  // Only queried in Focused mode — "All" renders straight from `entities` /
+  // `allEdges`, both already fetched unconditionally above.
   const { data: subgraph, isLoading } = useSubgraph(
     projectId!,
-    rootId || undefined,
+    viewMode === "focused" ? rootId || undefined : undefined,
     depth,
     edgeTypes.length > 0 ? edgeTypes : undefined,
   );
 
   // Merge subgraph nodes with temp (newly created, not yet connected) entities.
-  const visibleNodes = useMemo(() => {
+  const focusedNodes = useMemo(() => {
     if (!subgraph) return tempEntities;
     const ids = new Set(subgraph.nodes.map((n) => n.id));
     const orphans = tempEntities.filter((e) => !ids.has(e.id));
     return orphans.length > 0 ? [...subgraph.nodes, ...orphans] : subgraph.nodes;
   }, [subgraph, tempEntities]);
 
-  const selectedEdge = subgraph?.edges.find((e) => e.id === selectedEdgeId) ?? null;
+  // "All" mode needs no BFS/tempEntities merge — `entities` already includes
+  // every entity in the project regardless of whether it has any edges yet.
+  const allModeEdges = useMemo(() => {
+    if (edgeTypes.length === 0) return allEdges ?? [];
+    return (allEdges ?? []).filter((edge) => edgeTypes.includes(edge.type));
+  }, [allEdges, edgeTypes]);
+
+  const visibleNodes = viewMode === "all" ? (entities ?? []) : focusedNodes;
+  const visibleEdges = viewMode === "all" ? allModeEdges : (subgraph?.edges ?? []);
+  const isLargeWorld =
+    viewMode === "all" && (entities?.length ?? 0) > LARGE_WORLD_NOTICE_THRESHOLD;
+
+  const selectedEdge = visibleEdges.find((e) => e.id === selectedEdgeId) ?? null;
 
   return (
     // On the graph page, "go to entity" re-points the detail panel instead of
@@ -121,13 +151,31 @@ export function GraphViewPage() {
     <EntityNavigationContext.Provider value={setSelectedEntityId}>
       <div className="graph-view-page">
       <div className="graph-canvas-area">
-        {!rootId && !isEmptyWorld && (
+        {viewMode === "focused" && !rootId && !isEmptyWorld && (
           <p className="graph-empty-state">{t("graph.pickRoot")}</p>
         )}
         {isEmptyWorld && (
           <p className="graph-empty-state">{t("graph.emptyWorld")}</p>
         )}
-        {rootId && isLoading && <p className="graph-empty-state">{t("common.loading")}</p>}
+        {viewMode === "focused" && rootId && isLoading && (
+          <p className="graph-empty-state">{t("common.loading")}</p>
+        )}
+        {viewMode === "all" && entities === undefined && (
+          <p className="graph-empty-state">{t("common.loading")}</p>
+        )}
+        {isLargeWorld && !largeWorldNoticeDismissed && (
+          <div className="graph-large-world-notice">
+            <span>{t("graph.largeWorldNotice")}</span>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={t("graph.closeAssistant")}
+              onClick={() => setLargeWorldNoticeDismissed(true)}
+            >
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+        )}
 
         {/* Controls, assistant toggle and drawer share one flex column, so
             each element starts right below the previous one regardless of
@@ -139,9 +187,11 @@ export function GraphViewPage() {
             depth={depth}
             edgeTypes={edgeTypes}
             availableEdgeTypes={availableEdgeTypes}
+            viewMode={viewMode}
             onRootChange={changeRoot}
             onDepthChange={setDepth}
             onEdgeTypesChange={setEdgeTypes}
+            onViewModeChange={setViewMode}
           />
 
           {!assistantVisible && (
@@ -177,20 +227,25 @@ export function GraphViewPage() {
             </aside>
           )}
         </div>
-        {rootId && subgraph && (
+        {(viewMode === "all" ? entities !== undefined : rootId && subgraph) && (
           <GraphCanvas
+            projectId={projectId!}
             nodes={visibleNodes}
-            edges={subgraph.edges}
+            edges={visibleEdges}
             rootId={rootId}
+            depth={depth}
+            viewMode={viewMode}
             selectedEntityId={selectedEntityId}
+            focusRequest={focusRequest}
             onNodeSelect={setSelectedEntityId}
+            onNodeSetRoot={changeRoot}
             onConnectNodes={(sourceId, targetId) => setPendingConnection({ sourceId, targetId })}
             onEdgeSelect={setSelectedEdgeId}
             onPaneClick={() => setSelectedEntityId(null)}
           />
         )}
 
-        {rootId && (
+        {(viewMode === "all" || rootId) && (
           <GraphCreateEntityButton
             projectId={projectId!}
             onCreated={(entity) => {
@@ -204,12 +259,15 @@ export function GraphViewPage() {
           key={selectedEntityId}
           projectId={projectId!}
           entityId={selectedEntityId}
+          rootId={rootId}
           onClose={() => setSelectedEntityId(null)}
           onNavigate={setSelectedEntityId}
           onDeleted={(id) => {
             setTempEntities((prev) => prev.filter((e) => e.id !== id));
             setSelectedEntityId(null);
           }}
+          onSetRoot={changeRoot}
+          onFocusCamera={focusCameraOn}
         />
       </div>
 

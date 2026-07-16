@@ -2,6 +2,8 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { CSSProperties } from "react";
 
 import { typeColor, typeSoftBackground } from "../../lib/typeColor";
+import { useActiveRoot } from "./ActiveRootContext";
+import { useSelectedEntity } from "./SelectedEntityContext";
 
 export interface PreviewField {
   key: string;
@@ -11,16 +13,25 @@ export interface PreviewField {
 export interface EntityNodeData extends Record<string, unknown> {
   label: string;
   entityType: string;
-  isRoot: boolean;
-  isSelected: boolean;
   iconUrl?: string | null;
   previewFields: PreviewField[];
 }
 
-export function EntityNode({ data }: NodeProps) {
-  const { label, entityType, isRoot, isSelected, iconUrl, previewFields } =
-    data as EntityNodeData;
+// Zoomed-out simplification (hiding icon/badge/preview, dropping the
+// clip-path) is applied via the `.react-flow-lod` ancestor class in App.css,
+// not here — a single class toggle on the canvas root is far cheaper than
+// every node independently subscribing to zoom and re-rendering a different
+// JSX tree in the same frame (that was tried and measurably janky at a few
+// hundred nodes; see GraphCanvas.tsx).
+export function EntityNode({ id, data }: NodeProps) {
+  const { label, entityType, iconUrl, previewFields } = data as EntityNodeData;
+  const isSelected = useSelectedEntity() === id;
+  // Same rationale as isSelected: read from context, not `data`, so changing
+  // root only re-renders the two affected nodes instead of rebuilding the
+  // whole array (see GraphCanvas.tsx's useSyncedFlowNodes).
+  const isRoot = useActiveRoot() === id;
   const color = typeColor(entityType);
+
   return (
     <div
       className={`entity-node${isRoot ? " entity-node-root" : ""}${isSelected ? " entity-node-selected" : ""}`}
