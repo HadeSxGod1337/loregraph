@@ -38,6 +38,11 @@ class EntityRow(Base):
     icon: Mapped["AttachmentRow | None"] = relationship(
         foreign_keys=[icon_attachment_id], lazy="joined", viewonly=True
     )
+    # NULL = auto-layout should place this node; set = the user dragged it.
+    # Global per-entity (not per root/depth view) so a position survives
+    # root/depth changes in the graph view.
+    pos_x: Mapped[float | None] = mapped_column(default=None)
+    pos_y: Mapped[float | None] = mapped_column(default=None)
     created_at: Mapped[datetime]
     updated_at: Mapped[datetime]
 

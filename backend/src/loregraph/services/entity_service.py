@@ -1,7 +1,12 @@
 import logging
 
 from loregraph.exceptions import EntityNotFoundError
-from loregraph.schemas.entity import EntityCreate, EntityOut, EntityUpdate
+from loregraph.schemas.entity import (
+    EntityCreate,
+    EntityOut,
+    EntityPositionEntry,
+    EntityUpdate,
+)
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.protocols import EntityStore
 
@@ -67,6 +72,15 @@ class EntityService:
     ) -> EntityOut:
         await self.get_in_project(project_id, entity_id)
         return await self._store.set_icon(entity_id, attachment_id)
+
+    async def update_positions(
+        self, project_id: str, positions: list[EntityPositionEntry]
+    ) -> list[EntityOut]:
+        # Same project-scoping guarantee as update()/set_icon(): every entity
+        # in the batch must belong to this project before any write happens.
+        for entry in positions:
+            await self.get_in_project(project_id, entry.entity_id)
+        return await self._store.update_positions(positions)
 
     async def _index_safely(self, entity: EntityOut) -> None:
         # The index is derived data — never fail the committed SQL write over

@@ -15,6 +15,7 @@ from loregraph.schemas.entity import (
     EntityCreate,
     EntityFieldOut,
     EntityOut,
+    EntityPositionEntry,
     EntityUpdate,
 )
 from loregraph.storage.sqlite.attachment_store import attachment_url
@@ -101,6 +102,22 @@ class SqliteEntityStore:
         await self._session.refresh(row, attribute_names=["icon"])
         return _row_to_out(row)
 
+    async def update_positions(
+        self, positions: Sequence[EntityPositionEntry]
+    ) -> list[EntityOut]:
+        # One commit for the whole batch, not one per row — drag-end saves a
+        # single node, but "Reset Layout" can touch every node in view.
+        rows: list[EntityRow] = []
+        for entry in positions:
+            row = await self._session.get(EntityRow, entry.entity_id)
+            if row is None:
+                raise EntityNotFoundError(entry.entity_id)
+            row.pos_x = entry.pos_x
+            row.pos_y = entry.pos_y
+            rows.append(row)
+        await self._session.commit()
+        return [_row_to_out(row) for row in rows]
+
 
 def _row_to_out(row: EntityRow) -> EntityOut:
     icon = (
@@ -115,6 +132,8 @@ def _row_to_out(row: EntityRow) -> EntityOut:
         title=row.title,
         fields=[EntityFieldOut.model_validate(f) for f in row.fields],
         icon=icon,
+        pos_x=row.pos_x,
+        pos_y=row.pos_y,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )

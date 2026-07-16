@@ -79,9 +79,17 @@ class EntityOut(BaseModel):
     title: str
     fields: list[EntityFieldOut]
     icon: AttachmentRef | None = None
+    pos_x: float | None = None
+    pos_y: float | None = None
     created_at: datetime
     updated_at: datetime
 
 
 class EntityIconSet(BaseModel):
     attachment_id: str
+
+
+class EntityPositionEntry(BaseModel):
+    entity_id: str
+    pos_x: float
+    pos_y: float

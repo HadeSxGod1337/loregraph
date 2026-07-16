@@ -9,6 +9,7 @@ from loregraph.schemas.entity import (
     EntityCreate,
     EntityFieldIn,
     EntityFieldOut,
+    EntityPositionEntry,
     EntityUpdate,
     FieldType,
 )
@@ -68,6 +69,8 @@ async def export_project(
                 title=entity.title,
                 fields=entity.fields,
                 icon_attachment_id=entity.icon.attachment_id if entity.icon else None,
+                pos_x=entity.pos_x,
+                pos_y=entity.pos_y,
             )
         )
 
@@ -122,6 +125,16 @@ async def import_project(
             project.id,
         )
         entity_id_map[entity.id] = created_entity.id
+
+    positioned = [
+        EntityPositionEntry(
+            entity_id=entity_id_map[entity.id], pos_x=entity.pos_x, pos_y=entity.pos_y
+        )
+        for entity in data.entities
+        if entity.pos_x is not None and entity.pos_y is not None
+    ]
+    if positioned:
+        await entity_store.update_positions(positioned)
 
     for edge in data.edges:
         new_source = entity_id_map.get(edge.source_entity_id)

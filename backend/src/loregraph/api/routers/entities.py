@@ -7,6 +7,7 @@ from loregraph.schemas.entity import (
     EntityCreate,
     EntityIconSet,
     EntityOut,
+    EntityPositionEntry,
     EntityUpdate,
 )
 
@@ -27,6 +28,17 @@ async def create_entity(
     project_id: str, data: EntityCreate, service: EntityServiceDep
 ) -> EntityOut:
     return await service.create(data, project_id)
+
+
+@router.put("/positions", response_model=list[EntityOut])
+async def update_positions(
+    project_id: str, positions: list[EntityPositionEntry], service: EntityServiceDep
+) -> list[EntityOut]:
+    """Batch-save node positions (drag-end, or "Reset Layout" touching many
+    nodes at once). Registered before `/{entity_id}` on purpose — Starlette
+    matches routes in registration order, and `/{entity_id}` would otherwise
+    swallow requests to `/positions` first."""
+    return await service.update_positions(project_id, positions)
 
 
 @router.get("/{entity_id}", response_model=EntityOut)

@@ -8,7 +8,12 @@ from loregraph.schemas.agent import (
 )
 from loregraph.schemas.attachment import AttachmentOut
 from loregraph.schemas.edge import EdgeCreate, EdgeOut, EdgeUpdate
-from loregraph.schemas.entity import EntityCreate, EntityOut, EntityUpdate
+from loregraph.schemas.entity import (
+    EntityCreate,
+    EntityOut,
+    EntityPositionEntry,
+    EntityUpdate,
+)
 from loregraph.schemas.knowledge import KnowledgeSourceOut
 from loregraph.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
 from loregraph.schemas.usage import UsageEvent, UsageRollupRow
@@ -38,6 +43,9 @@ class EntityStore(Protocol):
     async def set_icon(
         self, entity_id: str, attachment_id: str | None
     ) -> EntityOut: ...
+    async def update_positions(
+        self, positions: Sequence[EntityPositionEntry]
+    ) -> list[EntityOut]: ...
 
 
 @runtime_checkable

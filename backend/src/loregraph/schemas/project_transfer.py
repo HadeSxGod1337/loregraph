@@ -20,6 +20,8 @@ class ProjectExportEntity(BaseModel):
     title: str
     fields: list[EntityFieldOut]
     icon_attachment_id: str | None = None
+    pos_x: float | None = None
+    pos_y: float | None = None
 
 
 class ProjectExportEdge(BaseModel):
