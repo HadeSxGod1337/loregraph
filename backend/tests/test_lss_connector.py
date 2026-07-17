@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +12,14 @@ from loregraph.schemas.entity import FieldType
 
 CHAR_ID = "69209705346bb5b024d5c110"
 SHARE_URL = f"https://longstoryshort.app/characters/digital/{CHAR_ID}/"
+
+# Real export file produced by longstoryshort.app ("Экспорт" on a sheet) —
+# the canonical native-format fixture.
+NATIVE_EXPORT_PATH = (
+    Path(__file__).parent.parent
+    / "lss_format_json_example"
+    / "Виктория Виндель — Long Story Short.json"
+)
 
 # Golden fixture: flat shape (also the documented manual-JSON-paste format).
 FLAT_SHEET = {
@@ -57,6 +67,81 @@ def test_parse_nested_sheet() -> None:
 def test_parse_without_name_raises() -> None:
     with pytest.raises(ExternalDataParseError):
         parse_character({"level": 3}, None)
+
+
+def _pm_node_types(node: Any) -> set[str]:
+    types: set[str] = set()
+    if isinstance(node, dict):
+        node_type = node.get("type")
+        if isinstance(node_type, str):
+            types.add(node_type)
+        for child in node.get("content", []):
+            types |= _pm_node_types(child)
+    return types
+
+
+def test_parse_native_export_file() -> None:
+    """The real 'Виктория Виндель — Long Story Short.json' export: wrapper
+    with a JSON-string `data` payload, {value:…} facts, TipTap text blocks."""
+    data = json.loads(NATIVE_EXPORT_PATH.read_text(encoding="utf-8"))
+    name, fields = parse_character(data, SHARE_URL)
+    assert name == "Виктория Виндель"
+    by_key = {f.key: f for f in fields}
+
+    assert by_key["class"].value == "Воин 6 / Плут 1 (Мастер боевых искусств)"
+    assert by_key["ancestry"].value == "Человек"
+    assert by_key["background"].value == "Благородный"
+    assert by_key["alignment"].value == "Хаотично-добрый"
+    assert by_key["level"].value == 7
+    assert by_key["experience"].value == 16800
+    assert by_key["proficiency"].value == 3
+    assert by_key["hp"].value == 36
+    assert by_key["max_hp"].value == 69
+    assert by_key["ac"].value == 17
+    assert by_key["speed"].value == 30
+    assert by_key["str"].value == 14
+    assert by_key["dex"].value == 18
+    assert by_key["cha"].value == 13
+    assert by_key["avatar_url"].value.startswith("https://hotbox.longstoryshort")
+    assert by_key["character_sheet_url"].value == SHARE_URL
+
+    # Narrative TipTap blocks land as RICH_TEXT…
+    for key in ("backstory", "personality", "ideals", "bonds", "flaws", "allies"):
+        assert by_key[key].field_type is FieldType.RICH_TEXT, key
+    backstory_json = json.dumps(by_key["backstory"].value, ensure_ascii=False)
+    assert "Виктория Виндель из семьи спартанцев" in backstory_json
+    # …sanitized: LSS's custom "resource" nodes must never reach the editor.
+    for key in ("backstory", "personality", "ideals", "bonds", "flaws", "allies"):
+        assert "resource" not in _pm_node_types(by_key[key].value), key
+    # Mechanical blocks stay out on purpose (sheet is the source of truth).
+    assert "attacks" not in by_key
+    assert "traits" not in by_key
+
+
+def test_import_native_export_through_api(
+    client: TestClient, project_id: str
+) -> None:
+    connection_id = _make_connection(client, project_id)
+    raw = NATIVE_EXPORT_PATH.read_text(encoding="utf-8")
+    result = client.post(
+        f"/api/projects/{project_id}/connections/{connection_id}/import",
+        json={"payload": {"raw_json": raw, "share_url": SHARE_URL}},
+    ).json()
+    assert result["created"] == 1, result
+
+    entities = client.get(f"/api/projects/{project_id}/entities").json()
+    victoria = next(e for e in entities if e["title"] == "Виктория Виндель")
+    assert victoria["type"] == "party_member"
+    by_key = {f["key"]: f for f in victoria["fields"]}
+    assert by_key["level"]["value"] == 7
+    assert by_key["backstory"]["field_type"] == "rich_text"
+
+    # Re-import of the same file refreshes in place (provenance by char id).
+    again = client.post(
+        f"/api/projects/{project_id}/connections/{connection_id}/import",
+        json={"payload": {"raw_json": raw, "share_url": SHARE_URL}},
+    ).json()
+    assert again["updated"] == 1 and again["created"] == 0
 
 
 def test_share_url_regex_extracts_24_hex_id() -> None:
