@@ -25,8 +25,20 @@ TEXT_LIKE_SUFFIXES = frozenset(
 
 # Chunk target size / overlap for the knowledge base's vector index — plain
 # named constants, not literals inline (CLAUDE.md, "Без магии").
-KB_CHUNK_MAX_CHARS = 1500
-KB_CHUNK_OVERLAP = 200
+#
+# Sized against the default local embedder's real budget, not a round
+# number: paraphrase-multilingual-MiniLM-L12-v2 (llm/embeddings.py) silently
+# truncates its input to 128 tokens — anything past that is dropped before
+# embedding, never an error. Measured empirically (fastembed 0.8, EN and RU
+# prose alike) at ~3.8 chars/token, so the old 1500-char default only ever
+# embedded its first ~480 chars; the rest, including this module's own
+# overlap tail, was invisible to search. 350 chars stays under ~92 tokens,
+# leaving headroom for tokenizer/script variance. embedding_provider=openai/
+# cohere/etc. (config.Settings) have far larger real budgets, but this
+# module stays model-agnostic by design (see module docstring) — chunk_text
+# still accepts max_chars/overlap overrides for a caller that knows better.
+KB_CHUNK_MAX_CHARS = 350
+KB_CHUNK_OVERLAP = 60
 
 
 def extract_text(content: bytes, content_type: str, filename: str) -> str:
@@ -58,6 +70,27 @@ def _extract_pdf_text(content: bytes, filename: str) -> str:
     return "\n\n".join(pages)
 
 
+def _split_long_paragraph(paragraph: str, max_chars: int) -> list[str]:
+    """Hard-splits a single paragraph that alone exceeds max_chars.
+
+    Cuts at the nearest earlier space so a piece never ends mid-word; falls
+    back to a raw character cut only when the window has no space at all
+    (e.g. one long unbroken token/URL), matching the old behavior for that
+    case.
+    """
+    pieces: list[str] = []
+    remaining = paragraph
+    while len(remaining) > max_chars:
+        cut = remaining.rfind(" ", 0, max_chars)
+        if cut <= 0:
+            cut = max_chars
+        pieces.append(remaining[:cut])
+        remaining = remaining[cut:].lstrip(" ")
+    if remaining:
+        pieces.append(remaining)
+    return pieces
+
+
 def chunk_text(
     text: str,
     *,
@@ -67,9 +100,10 @@ def chunk_text(
     """Splits text into overlapping chunks, preferring paragraph boundaries.
 
     Paragraphs (blank-line separated) are packed greedily up to `max_chars`;
-    a paragraph longer than `max_chars` is hard-split. `overlap` chars from
-    the tail of each chunk are repeated at the head of the next one so a
-    retrieval hit near a boundary doesn't lose surrounding context.
+    a paragraph longer than `max_chars` is hard-split on word boundaries
+    (see _split_long_paragraph). `overlap` chars from the tail of each chunk
+    are repeated at the head of the next one so a retrieval hit near a
+    boundary doesn't lose surrounding context.
     """
     normalized = text.strip()
     if not normalized:
@@ -81,10 +115,7 @@ def chunk_text(
         if len(paragraph) <= max_chars:
             units.append(paragraph)
         else:
-            units.extend(
-                paragraph[i : i + max_chars]
-                for i in range(0, len(paragraph), max_chars)
-            )
+            units.extend(_split_long_paragraph(paragraph, max_chars))
 
     chunks: list[str] = []
     current = ""

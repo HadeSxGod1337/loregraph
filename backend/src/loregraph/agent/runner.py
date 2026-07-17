@@ -273,6 +273,7 @@ class AgentRunner:
                     warnings=state.warnings,
                     input_tokens=state.input_tokens,
                     output_tokens=state.output_tokens,
+                    grounding_hallucination_rate=state.grounding_hallucination_rate,
                 ),
             )
         if state.draft_committed:

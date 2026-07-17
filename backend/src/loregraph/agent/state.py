@@ -55,6 +55,11 @@ class AgentState(BaseModel):
     entity_edit_draft: EntityEditDraft | None = None
     pending_edit_entity_id: str = ""
     warnings: list[AgentWarning] = Field(default_factory=list)
+    # Set by verify_grounding's LLM-as-judge tier (agent/nodes/verify_
+    # grounding.py); None when that tier didn't run (no lore to check
+    # against, or out of budget) — additive field with a default, safe for
+    # pre-existing checkpoints (STATE_VERSION unchanged).
+    grounding_hallucination_rate: float | None = None
     attempts: int = 0
     retry_feedback: str = ""
     draft_committed: bool = False

@@ -72,10 +72,25 @@ class EntityEditDraft(BaseModel):
 
 
 class GroundingReport(BaseModel):
-    """LLM-as-judge output — free text in the lore's language, not a UI
-    string. Wrapped into AgentWarning(code="llm_text") before it reaches the
-    review payload; see agent/nodes/verify_grounding.py."""
+    """LLM-as-judge output. `warnings` is free text in the lore's language,
+    not a UI string — wrapped into AgentWarning(code="llm_text") before it
+    reaches the review payload. `claims_checked`/`claims_flagged` are the
+    structured counterpart (CLAUDE.md, "Структурированный вывод, не парсинг
+    текста"): verify_grounding.py turns them into a numeric hallucination
+    rate instead of only a free-text list, so the guard's quality can be
+    tracked/regressed over time, not just read per-run.
+    See agent/nodes/verify_grounding.py."""
 
+    claims_checked: int = Field(
+        default=0,
+        description="Total number of claims in the draft about EXISTING "
+        "world elements that were checked against existing_lore.",
+    )
+    claims_flagged: int = Field(
+        default=0,
+        description="How many of claims_checked are NOT supported by "
+        "existing_lore — must equal the number of warnings below.",
+    )
     warnings: list[str] = Field(default_factory=list)
 
 
@@ -100,6 +115,10 @@ class AgentReviewPayload(BaseModel):
     warnings: list[AgentWarning] = Field(default_factory=list)
     input_tokens: int = 0
     output_tokens: int = 0
+    # Numeric counterpart to `warnings`' llm_text entries — None when the
+    # LLM-as-judge grounding tier didn't run (see agent/nodes/verify_
+    # grounding.py, agent/state.py's grounding_hallucination_rate).
+    grounding_hallucination_rate: float | None = None
 
     @field_validator("warnings", mode="before")
     @classmethod

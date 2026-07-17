@@ -32,6 +32,7 @@ dependencies = [
     "pydantic-settings>=2.14.2",
     "pypdf>=6.14.2",
     "python-multipart>=0.0.32",
+    "rank-bm25>=0.2.2",
     "sqlalchemy>=2.0.51",
     "uvicorn[standard]>=0.51.0",
 ]
@@ -70,6 +71,12 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+# rank-bm25 ships no py.typed marker / stubs — narrowly scoped, not a
+# blanket relaxation of strict mode.
+[[tool.mypy.overrides]]
+module = "rank_bm25"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"

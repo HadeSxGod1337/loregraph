@@ -117,6 +117,25 @@ def test_chunk_text_hard_splits_a_paragraph_longer_than_max_chars() -> None:
     assert all(len(chunk) <= 100 for chunk in chunks)
 
 
+def test_chunk_text_hard_split_never_breaks_a_word() -> None:
+    words = [f"word{i}" for i in range(100)]
+    long_paragraph = " ".join(words)
+    chunks = chunk_text(long_paragraph, max_chars=50, overlap=0)
+    assert all(len(chunk) <= 50 for chunk in chunks)
+    reassembled: list[str] = []
+    for chunk in chunks:
+        reassembled.extend(chunk.split())
+    assert reassembled == words
+
+
+def test_chunk_text_hard_split_falls_back_to_char_cut_without_spaces() -> None:
+    # No word boundary anywhere in the window — must still respect max_chars,
+    # same as the old pure character-slice behavior.
+    long_paragraph = "x" * 500
+    chunks = chunk_text(long_paragraph, max_chars=100, overlap=0)
+    assert "".join(chunks) == long_paragraph
+
+
 def test_chunk_text_overlap_repeats_tail_of_previous_chunk() -> None:
     paragraphs = [
         f"Paragraph {i} with some extra text to pad it out." for i in range(6)

@@ -11,3 +11,7 @@ Hard rules:
 3. Each warning is one short sentence naming the unsupported claim, in the
    same language as the draft.
 4. If everything checks out, return an empty warnings list.
+5. Report claims_checked: the total number of claims about existing world
+   elements you evaluated (supported or not). Report claims_flagged: how
+   many of those are unsupported — this must equal the number of warnings
+   you return. If there is nothing to check, both are 0.

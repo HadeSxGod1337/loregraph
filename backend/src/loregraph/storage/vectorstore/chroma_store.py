@@ -11,11 +11,23 @@ from chromadb.config import Settings as ChromaSettings
 from chromadb.errors import NotFoundError
 
 from loregraph.llm.embeddings import EmbeddingProvider
+from loregraph.storage.vectorstore.hybrid_search import (
+    bm25_rank,
+    reciprocal_rank_fusion,
+)
 from loregraph.storage.vectorstore.protocols import LoreChunk, RetrievedChunk
 
 logger = logging.getLogger(__name__)
 
 _MODEL_METADATA_KEY = "embedding_model"
+
+# How many dense-similarity candidates to pull before lexical (BM25) rank
+# fusion picks the final top-k — wide enough that a strong exact/near-exact
+# term match which dense similarity alone ranked outside k still gets a shot
+# at surfacing (the en_dragon_threat gap from the retrieval eval), bounded so
+# a query against a large project stays O(pool), not O(collection).
+HYBRID_POOL_MULTIPLIER = 4
+HYBRID_POOL_MIN_CANDIDATES = 20
 
 
 class ChromaVectorStore:
@@ -79,28 +91,48 @@ class ChromaVectorStore:
     async def query(
         self, project_id: str, text: str, k: int = 5
     ) -> list[RetrievedChunk]:
-        embedding = (await self._embedder.embed([text]))[0]
+        """Hybrid retrieval: dense (embedding) similarity and BM25 lexical
+        match over the same candidate pool, merged by reciprocal rank fusion
+        (see storage/vectorstore/hybrid_search.py). Pure dense search misses
+        exact-term/name matches a much smaller local embedder ranks poorly —
+        BM25 catches those without any language-specific analysis."""
         collection = await asyncio.to_thread(self._collection_sync, project_id)
+        count = await asyncio.to_thread(collection.count)
+        if count == 0:
+            return []
+        pool_size = min(
+            count, max(k * HYBRID_POOL_MULTIPLIER, HYBRID_POOL_MIN_CANDIDATES)
+        )
+
+        embedding = (await self._embedder.embed([text]))[0]
         result = await asyncio.to_thread(
             collection.query,
             query_embeddings=cast(Any, [embedding]),
-            n_results=k,
+            n_results=pool_size,
             include=["documents", "distances"],
         )
-        ids = result["ids"][0]
+        dense_ids = result["ids"][0]
         documents = (result.get("documents") or [[]])[0] or []
         distances = (result.get("distances") or [[]])[0] or []
+        # Chroma returns a distance (lower = closer); keep a similarity-like
+        # score (higher = closer) for the final RetrievedChunk, same
+        # semantics as before hybrid fusion was added.
+        texts_by_id = dict(zip(dense_ids, documents, strict=True))
+        similarity_by_id = {
+            entity_id: 1.0 - distance
+            for entity_id, distance in zip(dense_ids, distances, strict=True)
+        }
+
+        lexical_ids = bm25_rank(texts_by_id, text)
+        fused_ids = reciprocal_rank_fusion([dense_ids, lexical_ids])[:k]
+
         return [
             RetrievedChunk(
                 entity_id=entity_id,
-                text=document or "",
-                # Chroma returns a distance (lower = closer); expose a
-                # similarity-like score (higher = closer) to callers.
-                score=1.0 - distance,
+                text=texts_by_id.get(entity_id, ""),
+                score=similarity_by_id.get(entity_id, 0.0),
             )
-            for entity_id, document, distance in zip(
-                ids, documents, distances, strict=True
-            )
+            for entity_id in fused_ids
         ]
 
     async def drop_project(self, project_id: str) -> None:

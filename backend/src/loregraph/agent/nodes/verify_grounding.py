@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from loregraph.agent.state import NO_LORE_SENTINEL, AgentState
@@ -6,6 +7,8 @@ from loregraph.llm.structured import StructuredGenerator
 from loregraph.prompts import render
 from loregraph.schemas.agent import AgentWarning, GroundingReport, LoreDraft
 from loregraph.storage.protocols import UsageStore
+
+logger = logging.getLogger(__name__)
 
 NODE = "verify_grounding"
 
@@ -92,6 +95,23 @@ async def verify_grounding(
         )
         update["input_tokens"] = state.input_tokens + result.usage.input_tokens
         update["output_tokens"] = state.output_tokens + result.usage.output_tokens
+
+        # Numeric counterpart to the free-text warnings above (CLAUDE.md,
+        # "LLM для творчества, Python для арифметики"): the LLM judges which
+        # claims are unsupported, Python turns that into a rate that can be
+        # tracked/regressed across runs — clamped defensively since nothing
+        # about the model's own count is schema-enforced to be consistent.
+        checked = max(result.value.claims_checked, 0)
+        flagged = min(max(result.value.claims_flagged, 0), checked)
+        if checked:
+            rate = flagged / checked
+            logger.info(
+                "verify_grounding hallucination_rate=%.3f (%d/%d claims flagged)",
+                rate,
+                flagged,
+                checked,
+            )
+            update["grounding_hallucination_rate"] = rate
 
     update["warnings"] = [*state.warnings, *warnings]
     return update

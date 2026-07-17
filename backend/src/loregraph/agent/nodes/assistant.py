@@ -176,6 +176,7 @@ def begin_proposal(state: AgentState) -> dict[str, Any]:
         "draft": None,
         "entity_edit_draft": None,
         "warnings": [],
+        "grounding_hallucination_rate": None,
         "attempts": 0,
         "retry_feedback": "",
         "draft_committed": False,

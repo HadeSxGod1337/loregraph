@@ -1,5 +1,6 @@
 import asyncio
 import threading
+from importlib.metadata import version as _pkg_version
 from typing import Protocol, runtime_checkable
 
 from fastembed import TextEmbedding
@@ -36,10 +37,18 @@ class FastEmbedProvider:
         # Startup warmup and the first user request may race to initialize;
         # a plain threading lock (we run in to_thread) keeps it single-shot.
         self._init_lock = threading.Lock()
+        # fastembed itself can change a model's actual behavior (pooling
+        # strategy, preprocessing) across its own package versions without
+        # the model *name* changing at all — observed firsthand as a
+        # UserWarning on upgrade. Folding the installed fastembed version
+        # into model_id means ChromaVectorStore's existing model-mismatch
+        # reindex trigger (storage/vectorstore/chroma_store.py) catches that
+        # case too, not just an explicit model_name change.
+        self._model_id = f"{model_name}@fastembed-{_pkg_version('fastembed')}"
 
     @property
     def model_id(self) -> str:
-        return self._model_name
+        return self._model_id
 
     def _embed_sync(self, texts: list[str]) -> list[list[float]]:
         with self._init_lock:
