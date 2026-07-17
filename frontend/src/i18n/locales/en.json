@@ -13,7 +13,8 @@
     "moreActions": "More actions",
     "leaveTitle": "Leave without saving?",
     "leaveBody": "Unsaved changes will be lost.",
-    "leaveButton": "Leave"
+    "leaveButton": "Leave",
+    "close": "Close"
   },
   "nav": {
     "entities": "Entities",
@@ -325,6 +326,65 @@
     "entity_updated": "Updated entity '{{title}}'.",
     "edit_failed": "Edit failed: {{reason}}"
   },
+  "integrations": {
+    "heading": "Integrations",
+    "hint": "Connect external tools (Obsidian vault, Foundry VTT, LongStoryShort) to push and pull content between Loregraph and your other apps.",
+    "noConnections": "No connections yet. Add one to get started.",
+    "addButton": "Add connection",
+    "addTitle": "New connection",
+    "editTitle": "Edit connection",
+    "typeLabel": "Type",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. \"My Vault\", \"Game World\"",
+    "grounding": "Use for grounding",
+    "autoPush": "Auto-push after commit",
+    "test": "Test connection",
+    "testOk": "Connected",
+    "export": "Export",
+    "import": "Import",
+    "saved": "Connection saved",
+    "created": "Connection created",
+    "deleted": "Connection deleted",
+    "deleteTitle": "Delete connection?",
+    "deleteBody": "The connection \"{{name}}\" will be removed. External data is not affected.",
+    "config": {
+      "vaultPath": "Vault path",
+      "subfolder": "Subfolder",
+      "mcpCommand": "MCP server command",
+      "mcpArgs": "MCP server args (comma-separated)",
+      "timeout": "Timeout (seconds)"
+    },
+    "probe": {
+      "vault_ok": "Vault accessible",
+      "vault_path_missing": "Vault path not found",
+      "vault_not_directory": "Path is not a directory",
+      "vault_not_writable": "Vault is not writable",
+      "foundry_ok": "Foundry connected",
+      "foundry_unreachable": "Foundry bridge unreachable"
+    },
+    "exportTitle": "Export preview",
+    "exportNothing": "Nothing to export — all entities are already up to date or none are selected.",
+    "exportConfirm": "Export now",
+    "exportRunning": "Exporting…",
+    "exportDone": "Export complete: {{created}} created, {{updated}} updated, {{skipped}} skipped.",
+    "previewEntity": "Entity",
+    "previewAction": "Action",
+    "previewTarget": "Target",
+    "action": {
+      "create": "Create",
+      "update": "Update",
+      "skip": "Up to date"
+    },
+    "importTitle": "Import",
+    "importHint": "Import will read from the configured source and create or update entities.",
+    "importShareUrl": "Share URL",
+    "importRawJson": "Or paste JSON directly",
+    "importOr": "— or —",
+    "importConfirm": "Import now",
+    "importRunning": "Importing…",
+    "importDone": "Import complete: {{created}} created, {{updated}} updated, {{skipped}} skipped.",
+    "importInvalidJson": "Invalid JSON — check the syntax and try again."
+  },
   "errors": {
     "project_not_found": "Project not found.",
     "entity_not_found": "Entity not found.",
@@ -342,6 +402,12 @@
     "generation": "The AI model didn't return a usable result — try again.",
     "awaiting_review_conflict": "A draft is awaiting review — approve, reject or request changes before sending new messages.",
     "not_awaiting_review": "This conversation isn't waiting on a review decision.",
-    "timeout": "The assistant took too long to respond — try again."
+    "timeout": "The assistant took too long to respond — try again.",
+    "connection_not_found": "Connection not found.",
+    "unknown_connector_type": "Unknown connector type.",
+    "connector_config_invalid": "Invalid configuration for this connector.",
+    "connector_unavailable": "The external tool is unreachable — check the connection settings.",
+    "unsupported_connector_capability": "This connector doesn't support this operation.",
+    "external_data_parse": "Failed to parse data from the external source."
   }
 }

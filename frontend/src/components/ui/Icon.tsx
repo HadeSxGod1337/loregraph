@@ -14,6 +14,7 @@ export type IconName =
   | "more"
   | "network"
   | "paperclip"
+  | "plug"
   | "plus"
   | "refresh"
   | "search"
@@ -94,6 +95,14 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
   paperclip: (
     <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+  ),
+  plug: (
+    <>
+      <path d="M12 22v-5" />
+      <path d="M9 8V2" />
+      <path d="M15 8V2" />
+      <path d="M18 8v5a6 6 0 0 1-6 6v0a6 6 0 0 1-6-6V8Z" />
+    </>
   ),
   plus: (
     <>

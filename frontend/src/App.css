@@ -848,6 +848,142 @@
   opacity: 1;
 }
 
+/* ---------- Integrations / Connections ---------- */
+
+.integrations-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.integrations-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.connection-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.connection-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.connection-card-type {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+}
+
+.connection-card-name {
+  flex: 1;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.connection-card-toggles {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.connection-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.connection-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+}
+
+.connection-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.export-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 10px 0;
+}
+
+.export-preview-table th,
+.export-preview-table td {
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.export-preview-table th {
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.export-action-create {
+  color: var(--color-success, #22c55e);
+}
+
+.export-action-update {
+  color: var(--color-warning, #eab308);
+}
+
+.export-action-skip {
+  color: var(--text-muted);
+}
+
+.export-target-cell {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.export-result-summary p {
+  margin: 0 0 8px;
+}
+
+.export-error-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.import-or-divider {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 6px 0;
+}
+
+.dialog-toggle {
+  margin: 4px 0;
+}
+
 .icon-picker {
   display: flex;
   align-items: center;

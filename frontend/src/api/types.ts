@@ -163,3 +163,65 @@ export interface UsageRollupRow {
   cache_creation_tokens: number;
 }
 
+// --- Integrations / Connections ---
+
+export interface ConnectorType {
+  connector_type: string;
+  capabilities: string[];
+}
+
+export interface Connection {
+  id: string;
+  project_id: string;
+  connector_type: string;
+  name: string;
+  config: Record<string, unknown>;
+  use_for_grounding: boolean;
+  auto_push_after_commit: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ConnectionCreate = Pick<
+  Connection,
+  "connector_type" | "name" | "config" | "use_for_grounding" | "auto_push_after_commit"
+>;
+
+export type ConnectionUpdate = Pick<
+  Connection,
+  "name" | "config" | "use_for_grounding" | "auto_push_after_commit"
+>;
+
+export interface ExportPreviewItem {
+  entity_id: string;
+  title: string;
+  action: "create" | "update" | "skip";
+  target: string;
+  rendered: string | null;
+}
+
+export interface ExportPreview {
+  items: ExportPreviewItem[];
+}
+
+export interface ItemError {
+  ref: string;
+  code: string;
+  detail: string;
+}
+
+export interface ExportResult {
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: ItemError[];
+}
+
+export type ImportResult = ExportResult;
+
+export interface ProbeResult {
+  ok: boolean;
+  detail_code: string;
+  info: Record<string, string>;
+}
+
