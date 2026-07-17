@@ -719,6 +719,12 @@
   color: var(--text-muted);
 }
 
+.entity-edit-page .checkbox-wrapper {
+  display: inline-flex;
+  flex-direction: row;
+  margin-bottom: 0;
+}
+
 .entity-edit-page input,
 .entity-edit-page select {
   color: var(--text);
@@ -763,6 +769,12 @@
   margin-bottom: 12px;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+.project-settings-page .checkbox-wrapper {
+  display: inline-flex;
+  flex-direction: row;
+  margin-bottom: 0;
 }
 
 .project-settings-page label:last-child {
@@ -901,21 +913,10 @@
 
 .connection-card-toggles {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 6px;
   font-size: 12px;
   color: var(--text-muted);
-}
-
-.connection-toggle {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-}
-
-.connection-toggle input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
 }
 
 .connection-card-actions {
@@ -980,24 +981,6 @@
   margin: 6px 0;
 }
 
-.import-file-dropzone {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.import-file-name {
-  font-size: 12px;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 180px;
-}
-
-.dialog-toggle {
-  margin: 4px 0;
-}
 
 .icon-picker {
   display: flex;
@@ -1321,21 +1304,6 @@
   flex-shrink: 0;
 }
 
-.field-row-card-toggle {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.field-row-card-toggle input {
-  padding: 0;
-  width: auto;
-}
-
 .field-type-picker {
   display: flex;
   gap: 8px;
@@ -1639,7 +1607,7 @@
   overflow-y: auto;
 }
 
-.graph-filter-checks label {
+.graph-filter-checks .checkbox-wrapper {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1650,13 +1618,8 @@
   cursor: pointer;
 }
 
-.graph-filter-checks label:hover {
+.graph-filter-checks .checkbox-wrapper:hover {
   background: var(--bg-subtle);
-}
-
-.graph-filter-checks input {
-  padding: 0;
-  width: auto;
 }
 
 .graph-canvas {
@@ -3265,6 +3228,11 @@
 
 .dialog input {
   width: 100%;
+}
+
+.dialog input[type="checkbox"],
+.dialog input[type="radio"] {
+  width: auto;
 }
 
 .dialog-actions {

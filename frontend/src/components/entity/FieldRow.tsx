@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import type { EntityField, ProseMirrorDoc } from "../../api/types";
+import { Checkbox } from "../ui/Checkbox";
 import { RichTextField } from "./RichTextField";
 
 // rich_text/attachment values aren't useful as a compact card preview, so
@@ -29,14 +30,12 @@ export function FieldRow({ field, entityId, onChange, onRemove }: FieldRowProps)
       </div>
       <div className="field-row-actions">
         {CARD_ELIGIBLE_TYPES.has(field.field_type) && (
-          <label className="field-row-card-toggle" title={t("fields.showOnCardTitle")}>
-            <input
-              type="checkbox"
-              checked={field.show_on_card}
-              onChange={(e) => onChange({ ...field, show_on_card: e.target.checked })}
-            />
-            {t("fields.showOnCard")}
-          </label>
+          <Checkbox
+            label={t("fields.showOnCard")}
+            checked={field.show_on_card}
+            onChange={(e) => onChange({ ...field, show_on_card: e.target.checked })}
+            title={t("fields.showOnCardTitle")}
+          />
         )}
         <button
           type="button"
