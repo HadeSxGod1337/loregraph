@@ -7,6 +7,7 @@ import {
   useUpdateConnection,
 } from "../../hooks/useConnections";
 import { translateApiError } from "../../i18n/eventText";
+import { Checkbox } from "../ui/Checkbox";
 import { useToast } from "../ui/Toast";
 
 /** Hardcoded config field definitions per connector type.  No JSON-schema
@@ -186,22 +187,16 @@ export function ConnectionFormDialog({
             </label>
           ))}
 
-          <label className="connection-toggle dialog-toggle">
-            <input
-              type="checkbox"
-              checked={useForGrounding}
-              onChange={(e) => setUseForGrounding(e.target.checked)}
-            />
-            {t("integrations.grounding")}
-          </label>
-          <label className="connection-toggle dialog-toggle">
-            <input
-              type="checkbox"
-              checked={autoPush}
-              onChange={(e) => setAutoPush(e.target.checked)}
-            />
-            {t("integrations.autoPush")}
-          </label>
+          <Checkbox
+            label={t("integrations.grounding")}
+            checked={useForGrounding}
+            onChange={(e) => setUseForGrounding(e.target.checked)}
+          />
+          <Checkbox
+            label={t("integrations.autoPush")}
+            checked={autoPush}
+            onChange={(e) => setAutoPush(e.target.checked)}
+          />
 
           {(create.isError || update.isError) && (
             <p className="error-text">

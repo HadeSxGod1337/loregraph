@@ -906,20 +906,6 @@
   color: var(--text-muted);
 }
 
-.connection-toggle {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-}
-
-.connection-toggle input {
-  padding: 0;
-  width: auto;
-  margin: 0;
-}
-
 .connection-card-actions {
   display: flex;
   gap: 6px;
@@ -980,10 +966,6 @@
   font-size: 12px;
   color: var(--text-muted);
   margin: 6px 0;
-}
-
-.dialog-toggle {
-  margin: 4px 0;
 }
 
 .icon-picker {
@@ -1308,21 +1290,6 @@
   flex-shrink: 0;
 }
 
-.field-row-card-toggle {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.field-row-card-toggle input {
-  padding: 0;
-  width: auto;
-}
-
 .field-type-picker {
   display: flex;
   gap: 8px;
@@ -1626,7 +1593,7 @@
   overflow-y: auto;
 }
 
-.graph-filter-checks label {
+.graph-filter-checks .checkbox-wrapper {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1637,13 +1604,8 @@
   cursor: pointer;
 }
 
-.graph-filter-checks label:hover {
+.graph-filter-checks .checkbox-wrapper:hover {
   background: var(--bg-subtle);
-}
-
-.graph-filter-checks input {
-  padding: 0;
-  width: auto;
 }
 
 .graph-canvas {

@@ -8,6 +8,7 @@ import {
   useUpdateConnection,
 } from "../../hooks/useConnections";
 import { translateApiError } from "../../i18n/eventText";
+import { Checkbox } from "../ui/Checkbox";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Icon } from "../ui/Icon";
 import { KebabMenu } from "../ui/KebabMenu";
@@ -94,22 +95,16 @@ export function ConnectionCard({
       </div>
 
       <div className="connection-card-toggles">
-        <label className="connection-toggle">
-          <input
-            type="checkbox"
-            checked={connection.use_for_grounding}
-            onChange={() => handleToggle("use_for_grounding")}
-          />
-          {t("integrations.grounding")}
-        </label>
-        <label className="connection-toggle">
-          <input
-            type="checkbox"
-            checked={connection.auto_push_after_commit}
-            onChange={() => handleToggle("auto_push_after_commit")}
-          />
-          {t("integrations.autoPush")}
-        </label>
+        <Checkbox
+          label={t("integrations.grounding")}
+          checked={connection.use_for_grounding}
+          onChange={() => handleToggle("use_for_grounding")}
+        />
+        <Checkbox
+          label={t("integrations.autoPush")}
+          checked={connection.auto_push_after_commit}
+          onChange={() => handleToggle("auto_push_after_commit")}
+        />
       </div>
 
       <div className="connection-card-actions">

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { Entity } from "../../api/types";
 import { useDismiss } from "../../hooks/useDismiss";
+import { Checkbox } from "../ui/Checkbox";
 import { Icon } from "../ui/Icon";
 
 const DEPTH_OPTIONS = [1, 2, 3] as const;
@@ -242,14 +243,12 @@ function EdgeTypeChecklist({
   return (
     <div className="graph-filter-checks">
       {available.map((type) => (
-        <label key={type}>
-          <input
-            type="checkbox"
-            checked={selected.includes(type)}
-            onChange={() => toggle(type)}
-          />
-          {type}
-        </label>
+        <Checkbox
+          key={type}
+          label={type}
+          checked={selected.includes(type)}
+          onChange={() => toggle(type)}
+        />
       ))}
     </div>
   );
