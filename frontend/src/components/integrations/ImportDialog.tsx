@@ -1,15 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Connection, ImportResult } from "../../api/types";
 import { useRunImport } from "../../hooks/useConnections";
 import { translateApiError } from "../../i18n/eventText";
+import { Icon } from "../ui/Icon";
 import { useToast } from "../ui/Toast";
 
 type Phase = "input" | "running" | "done";
-
-/** Regex for LongStoryShort share URLs — 24-hex character id. */
-const LSS_URL_RE = /longstoryshort\.app\/characters\/digital\/([0-9a-f]{24})/;
 
 export function ImportDialog({
   projectId,
@@ -23,13 +21,31 @@ export function ImportDialog({
   const { t } = useTranslation();
   const toast = useToast();
   const runImport = useRunImport(projectId);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [phase, setPhase] = useState<Phase>("input");
   const [shareUrl, setShareUrl] = useState("");
   const [rawJson, setRawJson] = useState("");
+  const [fileName, setFileName] = useState("");
   const [result, setResult] = useState<ImportResult | null>(null);
 
   const isLss = connection.connector_type === "longstoryshort";
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result;
+      if (typeof text === "string") {
+        setRawJson(text);
+        setShareUrl("");
+      }
+    };
+    reader.readAsText(file);
+  }
 
   function handleImport() {
     setPhase("running");
@@ -39,13 +55,16 @@ export function ImportDialog({
       if (shareUrl.trim()) {
         payload.share_url = shareUrl.trim();
       } else if (rawJson.trim()) {
+        // Validate JSON syntax client-side, but send the raw string —
+        // the backend's LssImportPayload.raw_json expects str, not object.
         try {
-          payload.raw_json = JSON.parse(rawJson);
+          JSON.parse(rawJson);
         } catch {
           toast(t("integrations.importInvalidJson"));
           setPhase("input");
           return;
         }
+        payload.raw_json = rawJson.trim();
       }
     }
 
@@ -71,6 +90,10 @@ export function ImportDialog({
     );
   }
 
+  const hasInput = isLss
+    ? !!(shareUrl.trim() || rawJson.trim())
+    : true;
+
   return (
     <div className="dialog-backdrop" onClick={onClose}>
       <div
@@ -91,9 +114,36 @@ export function ImportDialog({
                   <input
                     type="url"
                     value={shareUrl}
-                    onChange={(e) => setShareUrl(e.target.value)}
+                    onChange={(e) => {
+                      setShareUrl(e.target.value);
+                      setRawJson("");
+                      setFileName("");
+                    }}
                     placeholder="https://longstoryshort.app/characters/digital/..."
                   />
+                </label>
+                <div className="import-or-divider">
+                  {t("integrations.importOr")}
+                </div>
+                <label className="import-file-dropzone">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileChange}
+                    style={{ display: "none" }}
+                  />
+                  <button
+                    type="button"
+                    className="button-ghost"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Icon name="upload" size={14} />
+                    {t("integrations.importFile")}
+                  </button>
+                  {fileName && (
+                    <span className="import-file-name">{fileName}</span>
+                  )}
                 </label>
                 <div className="import-or-divider">
                   {t("integrations.importOr")}
@@ -103,7 +153,10 @@ export function ImportDialog({
                   <textarea
                     rows={5}
                     value={rawJson}
-                    onChange={(e) => setRawJson(e.target.value)}
+                    onChange={(e) => {
+                      setRawJson(e.target.value);
+                      setFileName("");
+                    }}
                     placeholder='{"name": "...", "level": 3, ...}'
                   />
                 </label>
@@ -147,10 +200,7 @@ export function ImportDialog({
             <button
               type="button"
               className="button-primary"
-              disabled={
-                runImport.isPending ||
-                (isLss && !shareUrl.trim() && !rawJson.trim())
-              }
+              disabled={runImport.isPending || !hasInput}
               onClick={handleImport}
             >
               {t("integrations.importConfirm")}

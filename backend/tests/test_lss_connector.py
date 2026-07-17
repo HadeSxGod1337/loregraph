@@ -94,9 +94,7 @@ def test_import_from_raw_json_creates_party_member(
     entities = client.get(f"/api/projects/{project_id}/entities").json()
     member = next(e for e in entities if e["type"] == "party_member")
     assert member["title"] == "Талия Ветрокрылая"
-    sheet_url = next(
-        f for f in member["fields"] if f["key"] == "character_sheet_url"
-    )
+    sheet_url = next(f for f in member["fields"] if f["key"] == "character_sheet_url")
     assert sheet_url["value"] == SHARE_URL
 
     # Re-import (refresh): updates the same entity via provenance, and DM's
@@ -123,9 +121,7 @@ def test_import_from_raw_json_creates_party_member(
     ).json()
     assert again["updated"] == 1 and again["created"] == 0
 
-    updated = client.get(
-        f"/api/projects/{project_id}/entities/{member['id']}"
-    ).json()
+    updated = client.get(f"/api/projects/{project_id}/entities/{member['id']}").json()
     by_key = {f["key"]: f for f in updated["fields"]}
     assert by_key["level"]["value"] == 6
     assert by_key["dm_secret"]["value"] == "cursed"
@@ -143,12 +139,46 @@ def test_import_with_invalid_payload_is_422(
     assert resp.json()["code"] == "external_data_parse"
 
 
-def test_import_with_bad_share_url_is_422(
-    client: TestClient, project_id: str
-) -> None:
+def test_import_with_bad_share_url_is_422(client: TestClient, project_id: str) -> None:
     connection_id = _make_connection(client, project_id)
     resp = client.post(
         f"/api/projects/{project_id}/connections/{connection_id}/import",
         json={"payload": {"share_url": "https://example.com/nope"}},
     )
     assert resp.status_code == 422
+
+
+def test_import_array_wrapped_json(client: TestClient, project_id: str) -> None:
+    """Batch export where the top level is an array of character objects."""
+    connection_id = _make_connection(client, project_id)
+    resp = client.post(
+        f"/api/projects/{project_id}/connections/{connection_id}/import",
+        json={
+            "payload": {
+                "raw_json": json.dumps([FLAT_SHEET]),
+            }
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["created"] == 1
+
+
+def test_import_nested_wrapper_json(client: TestClient, project_id: str) -> None:
+    """LSS export wrapped in a metadata envelope: {\"characters\": [...]}."""
+    connection_id = _make_connection(client, project_id)
+    resp = client.post(
+        f"/api/projects/{project_id}/connections/{connection_id}/import",
+        json={
+            "payload": {
+                "raw_json": json.dumps({"characters": [FLAT_SHEET], "version": 2}),
+            }
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["created"] == 1
+
+
+def test_parse_character_error_includes_top_level_keys() -> None:
+    """When name is not found, the error lists the top-level keys for debugging."""
+    with pytest.raises(ExternalDataParseError, match="top-level keys"):
+        parse_character({"foo": 1, "bar": 2}, None)

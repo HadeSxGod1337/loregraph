@@ -58,10 +58,12 @@ def parse_character(
     when no name can be located anywhere in the document."""
     name = _first_string(data, _NAME_PATHS)
     if name is None:
+        keys = ", ".join(sorted(data.keys())) if data else "(empty dict)"
         raise ExternalDataParseError(
             "longstoryshort",
-            "character name not found (looked under: name, "
-            "characterName, character.name, info.name, data.name)",
+            f"character name not found (looked under: name, "
+            f"characterName, character.name, info.name, data.name; "
+            f"top-level keys: {keys})",
         )
 
     fields: list[EntityFieldIn] = []

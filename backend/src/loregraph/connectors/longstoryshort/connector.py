@@ -260,9 +260,33 @@ def _parse_raw_json(raw: str) -> dict[str, Any]:
         data = json.loads(raw)
     except json.JSONDecodeError as e:
         raise ExternalDataParseError("longstoryshort", f"invalid JSON: {e}") from e
+
+    # Handle arrays — take the first element (batch exports).
+    if isinstance(data, list):
+        if not data:
+            raise ExternalDataParseError("longstoryshort", "JSON array is empty")
+        data = data[0]
+
     if not isinstance(data, dict):
         raise ExternalDataParseError(
-            "longstoryshort", "expected a JSON object at the top level"
+            "longstoryshort",
+            f"expected a JSON object, got {type(data).__name__}",
+        )
+
+    # Unwrap common wrapper shapes: {"characters": [...]}, {"data": {...}},
+    # {"character": {...}}, {"sheet": {...}}, {"result": {...}}.
+    for wrapper_key in ("characters", "data", "character", "sheet", "result"):
+        inner = data.get(wrapper_key)
+        if isinstance(inner, list):
+            if inner:
+                data = inner[0] if isinstance(inner[0], dict) else data
+        elif isinstance(inner, dict):
+            data = inner
+
+    if not isinstance(data, dict):
+        raise ExternalDataParseError(
+            "longstoryshort",
+            f"expected a character object after unwrapping, got {type(data).__name__}",
         )
     return data
 

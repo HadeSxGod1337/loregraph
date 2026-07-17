@@ -980,6 +980,21 @@
   margin: 6px 0;
 }
 
+.import-file-dropzone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.import-file-name {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
 .dialog-toggle {
   margin: 4px 0;
 }
@@ -4106,4 +4121,222 @@
 
 .usage-row-numbers .numbers-breakdown {
   font-family: var(--font-mono);
+}
+
+/* ---------- Tooltip ---------- */
+
+.tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.tooltip-anchor > .tooltip-anchor,
+.tooltip-anchor > .help-icon {
+  display: inline-flex;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 100;
+  max-width: 260px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow);
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+/* Positioning — centered on the anchor, offset outward. */
+.tooltip-top {
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+.tooltip-bottom {
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+.tooltip-left {
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+.tooltip-right {
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Show on hover or keyboard focus. */
+.tooltip-anchor:hover > .tooltip,
+.tooltip-anchor:focus-within > .tooltip {
+  opacity: 1;
+}
+
+/* ---------- Help icon ---------- */
+
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: help;
+  flex-shrink: 0;
+  transition: color 0.12s;
+}
+
+.help-icon:hover,
+.help-icon:focus-visible {
+  color: var(--accent);
+}
+
+/* Help link in sidebar — separate from the nav items */
+.sidebar-help-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.12s;
+}
+
+.sidebar-help-link:hover {
+  color: var(--text);
+}
+
+.sidebar-help-link .help-icon {
+  color: inherit;
+}
+
+.sidebar-help-link.collapsed {
+  justify-content: center;
+  padding: 7px 0;
+}
+
+/* ---------- Markdown view (for Help page) ---------- */
+
+.markdown-view {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.markdown-view h1 {
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+
+.markdown-view h2 {
+  font-size: 18px;
+  margin: 32px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown-view h3 {
+  font-size: 15px;
+  margin: 24px 0 6px;
+  color: var(--text-muted);
+}
+
+.markdown-view p {
+  margin: 0 0 12px;
+}
+
+.markdown-view ul,
+.markdown-view ol {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.markdown-view li {
+  margin-bottom: 4px;
+}
+
+.markdown-view code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+
+.markdown-view pre {
+  padding: 12px 14px;
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  margin: 0 0 12px;
+}
+
+.markdown-view pre code {
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.markdown-view a {
+  color: var(--accent);
+}
+
+.markdown-view strong {
+  font-weight: 600;
+}
+
+.markdown-view blockquote {
+  margin: 0 0 12px;
+  padding: 8px 14px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+}
+
+/* ---------- Help page ---------- */
+
+.help-page {
+  max-width: 740px;
+  padding: 32px 24px 64px;
+}
+
+.help-page h1 {
+  margin-bottom: 24px;
+}
+
+.help-page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 28px;
+}
+
+.help-page-nav a {
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: none;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.help-page-nav a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
