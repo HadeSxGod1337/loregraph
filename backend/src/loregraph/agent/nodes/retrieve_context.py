@@ -105,9 +105,7 @@ async def retrieve_context(
         subgraph = subgraph_task.result()
     if knowledge_task is not None:
         kb_chunks = knowledge_task.result()
-    external_chunks = [
-        chunk for task in external_tasks for chunk in task.result()
-    ]
+    external_chunks = [chunk for task in external_tasks for chunk in task.result()]
 
     context_ids: list[str] = list(
         dict.fromkeys(
@@ -123,9 +121,7 @@ async def retrieve_context(
     # Compact title→id map from retrieved entities only — bounded by
     # RETRIEVAL_K, enough for the LLM to create valid [[wikilinks]].
     # Full entity list is NOT dumped into the prompt (token-efficient).
-    available_links = "\n".join(
-        f'{entity.title} → {entity.id}' for entity in entities
-    )
+    available_links = "\n".join(f"{entity.title} → {entity.id}" for entity in entities)
     if subgraph is not None:
         lore_lines.extend(
             f'<relationship source="graph_store">'
@@ -178,8 +174,7 @@ async def _query_external_safely(
         raise
     except Exception:
         logger.warning(
-            "External grounding source %s unavailable; generation proceeds "
-            "without it.",
+            "External grounding source %s unavailable; generation proceeds without it.",
             entry.name,
             exc_info=True,
         )

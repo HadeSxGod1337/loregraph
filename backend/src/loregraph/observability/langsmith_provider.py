@@ -38,8 +38,7 @@ class LangSmithLifecycle:
             import langsmith  # noqa: F401
         except ImportError as e:
             raise ConfigurationError(
-                "langsmith package not installed. "
-                "Run: uv sync --extra langsmith"
+                "langsmith package not installed. Run: uv sync --extra langsmith"
             ) from e
         os.environ["LANGSMITH_TRACING"] = "true"
         os.environ["LANGSMITH_API_KEY"] = self._api_key

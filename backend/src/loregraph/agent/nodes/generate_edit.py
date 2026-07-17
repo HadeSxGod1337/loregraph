@@ -71,12 +71,10 @@ async def generate_edit(
 
     # Build compact available_links from recent entities (bounded, token-efficient)
     all_entities = await entity_store.list_entities(state.project_id)
-    recent_entities = sorted(
-        all_entities, key=lambda e: e.updated_at, reverse=True
-    )[:20]  # small bound — edit only needs a few link candidates
-    available_links = "\n".join(
-        f'{e.title} → {e.id}' for e in recent_entities
-    )
+    recent_entities = sorted(all_entities, key=lambda e: e.updated_at, reverse=True)[
+        :20
+    ]  # small bound — edit only needs a few link candidates
+    available_links = "\n".join(f"{e.title} → {e.id}" for e in recent_entities)
 
     result = await creative.generate(
         EntityEditDraft,

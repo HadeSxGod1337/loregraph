@@ -127,9 +127,7 @@ def test_resolve_entity_link_ids_fills_known_titles_only() -> None:
     doc = markdown_to_prosemirror("[[Known]] and [[Unknown]]")
     resolve_entity_link_ids(doc, {"known": "id-1"})
     links = [
-        node
-        for node in doc["content"][0]["content"]
-        if node["type"] == "entityLink"
+        node for node in doc["content"][0]["content"] if node["type"] == "entityLink"
     ]
     assert links[0]["attrs"]["entityId"] == "id-1"
     # Unresolved stays empty — rendered as a broken link, never guessed.

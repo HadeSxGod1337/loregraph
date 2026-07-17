@@ -158,9 +158,7 @@ async def commit(
 
     # ── Entity-edit path ──────────────────────────────────────────────────────
     if state.entity_edit_draft is not None:
-        return await _commit_edit(
-            state, entity_service=entity_service
-        )
+        return await _commit_edit(state, entity_service=entity_service)
 
     # ── Batch-create path (propose_lore) ─────────────────────────────────────
     if state.decision_action != "approve" or state.draft is None:

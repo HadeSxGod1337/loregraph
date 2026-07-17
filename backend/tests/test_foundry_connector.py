@@ -1,7 +1,7 @@
 """Foundry connector against a fake MCP client (the real bridge needs a live
 Foundry — that's the manual E2E check, not CI's job)."""
 
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,7 +13,7 @@ from loregraph.exceptions import ConnectorUnavailableError
 class FakeFoundryMcpClient:
     """Stands in for FoundryMcpClient: records calls, serves canned data."""
 
-    instances: "list[FakeFoundryMcpClient]" = []
+    instances: ClassVar[list["FakeFoundryMcpClient"]] = []
     fail_all = False
 
     def __init__(self, **kwargs: Any) -> None:
@@ -102,9 +102,7 @@ def test_probe_returns_world_info(client: TestClient, project_id: str) -> None:
     assert probe["info"]["title"] == "Barovia"
 
 
-def test_probe_degrades_when_bridge_down(
-    client: TestClient, project_id: str
-) -> None:
+def test_probe_degrades_when_bridge_down(client: TestClient, project_id: str) -> None:
     FakeFoundryMcpClient.fail_all = True
     connection_id = _make_connection(client, project_id)
     probe = client.post(
@@ -160,9 +158,7 @@ def test_import_pulls_actors_with_provenance_dedupe(
     assert len(entities_after) == len(entities)
 
 
-def test_export_while_bridge_down_is_502(
-    client: TestClient, project_id: str
-) -> None:
+def test_export_while_bridge_down_is_502(client: TestClient, project_id: str) -> None:
     _create_entity(client, project_id, "Ireena")
     FakeFoundryMcpClient.fail_all = True
     connection_id = _make_connection(client, project_id)

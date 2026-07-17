@@ -4,12 +4,9 @@ import { useTranslation } from "react-i18next";
 import type { Connection, ExportPreviewItem, ExportResult } from "../../api/types";
 import { useExportPreview, useRunExport } from "../../hooks/useConnections";
 import { translateApiError } from "../../i18n/eventText";
-import { Icon } from "../ui/Icon";
 import { useToast } from "../ui/Toast";
 
 type Phase = "preview" | "confirm" | "running" | "done";
-
-const ACTION_LABELS: Record<string, () => string> = {};
 
 export function ExportDialog({
   projectId,

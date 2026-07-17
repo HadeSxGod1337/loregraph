@@ -1,6 +1,5 @@
 """Tests for [[label]] wikilink → ProseMirror conversion in commit.py."""
 
-
 from loregraph.agent.nodes.commit import _wikilinks_to_prosemirror
 
 

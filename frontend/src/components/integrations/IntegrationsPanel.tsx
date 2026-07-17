@@ -30,7 +30,7 @@ export function IntegrationsPanel({ projectId }: { projectId: string }) {
 
       <ul className="integrations-list">
         {connections?.map((conn) => (
-          <ConnectionCard key={conn.id} connection={conn} projectId={projectId} />
+          <ConnectionCard key={conn.id} connection={conn} projectId={projectId} connectorTypes={types ?? []} />
         ))}
       </ul>
 

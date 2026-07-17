@@ -113,9 +113,7 @@ def test_export_writes_markdown_with_wikilinks(
         "\n"
         "- member_of → [[Smith Guild]] — founding member\n"
     )
-    guild_note = (vault / "Loregraph" / "Faction" / "Smith Guild.md").read_text(
-        "utf-8"
-    )
+    guild_note = (vault / "Loregraph" / "Faction" / "Smith Guild.md").read_text("utf-8")
     assert "- member_of ← [[Mira Kuznetz]] — founding member" in guild_note
 
     # Second export is an update, not a duplicate.

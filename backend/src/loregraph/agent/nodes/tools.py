@@ -135,7 +135,8 @@ async def _query_external_source(
         raise
     except (ConnectorError, TimeoutError) as e:
         logger.warning(
-            "External source %s unavailable during chat query", entry.name,
+            "External source %s unavailable during chat query",
+            entry.name,
             exc_info=True,
         )
         return (

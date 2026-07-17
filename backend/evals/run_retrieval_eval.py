@@ -57,9 +57,7 @@ async def run(model_name: str) -> list[tuple[str, dict[str, float]]]:
     try:
         store = ChromaVectorStore(tmp / "chroma", FastEmbedProvider(model_name))
         index = VectorIndex(store)
-        return [
-            (case.case_id, await _run_case(index, case)) for case in GOLDEN_QUERIES
-        ]
+        return [(case.case_id, await _run_case(index, case)) for case in GOLDEN_QUERIES]
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

@@ -61,7 +61,6 @@ class ScriptedChatModel(BaseChatModel):
         return "scripted"
 
 
-
 class FakeGenerator:
     def __init__(self, results: list[BaseModel]) -> None:
         self._results = deque(results)
@@ -128,9 +127,9 @@ def edit_call(entity_id: str, brief: str) -> AIMessage:
 def state_values(graph: Any) -> dict[str, Any]:
     import asyncio
 
-    result: dict[str, Any] = asyncio.get_event_loop().run_until_complete(
-        graph.aget_state(CONFIG)
-    ).values
+    result: dict[str, Any] = (
+        asyncio.get_event_loop().run_until_complete(graph.aget_state(CONFIG)).values
+    )
     return result
 
 
@@ -191,7 +190,7 @@ async def test_edit_approve_updates_entity(db_session: AsyncSession) -> None:
     edit_draft = EntityEditDraft(
         entity_id=entity.id,
         type="npc",
-        title="Мира Молот",          # title changed
+        title="Мира Молот",  # title changed
         summary="Переименована в Молот.",
         edit_reason="Имя изменено по просьбе ДМа.",
     )

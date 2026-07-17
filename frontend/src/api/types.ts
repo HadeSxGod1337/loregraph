@@ -219,6 +219,10 @@ export interface ExportResult {
 
 export type ImportResult = ExportResult;
 
+export type ExportRequest = Record<string, never>;
+
+export type ImportRequest = Record<string, never>;
+
 export interface ProbeResult {
   ok: boolean;
   detail_code: string;

@@ -139,9 +139,7 @@ class ConnectionEntityLinkStore(Protocol):
     async def list_for_entity(
         self, connection_id: str, entity_id: str
     ) -> list[ConnectionEntityLinkOut]: ...
-    async def delete_for_entity(
-        self, connection_id: str, entity_id: str
-    ) -> None: ...
+    async def delete_for_entity(self, connection_id: str, entity_id: str) -> None: ...
 
 
 @runtime_checkable

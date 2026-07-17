@@ -39,8 +39,7 @@ class LangFuseLifecycle:
             )
         except ImportError as e:
             raise ConfigurationError(
-                "langfuse package not installed. "
-                "Run: uv sync --extra langfuse"
+                "langfuse package not installed. Run: uv sync --extra langfuse"
             ) from e
         self._handler = CallbackHandler(
             public_key=self._settings.langfuse_public_key,

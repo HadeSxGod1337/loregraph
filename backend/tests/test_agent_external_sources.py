@@ -34,17 +34,13 @@ class FakeLiveSource:
         self.chunks = chunks or []
         self.queries: list[str] = []
 
-    async def query(
-        self, query: str, kind: str | None = None
-    ) -> list[ExternalChunk]:
+    async def query(self, query: str, kind: str | None = None) -> list[ExternalChunk]:
         self.queries.append(query)
         return self.chunks
 
 
 class OfflineLiveSource:
-    async def query(
-        self, query: str, kind: str | None = None
-    ) -> list[ExternalChunk]:
+    async def query(self, query: str, kind: str | None = None) -> list[ExternalChunk]:
         raise ConnectorUnavailableError("My Foundry", "connection refused")
 
 
@@ -77,9 +73,7 @@ def _tool_call_state(source: str) -> AgentState:
         "args": {"source": source, "query": "vampire"},
         "id": "call-1",
     }
-    return AgentState(
-        project_id="p1", messages=[AIMessage("", tool_calls=[call])]
-    )
+    return AgentState(project_id="p1", messages=[AIMessage("", tool_calls=[call])])
 
 
 @pytest_asyncio.fixture
@@ -223,4 +217,4 @@ def test_assistant_prompt_omits_block_without_sources() -> None:
     )
     # The block with the note attribute should be absent when there are no
     # sources — rule 7 in the prose may still reference the concept by name.
-    assert '<external_sources note=' not in rendered
+    assert "<external_sources note=" not in rendered

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Connection } from "../../api/types";
+import type { Connection, ConnectorType } from "../../api/types";
 import {
   useDeleteConnection,
   useTestConnection,
@@ -26,15 +26,17 @@ const CONNECTOR_LABELS: Record<string, string> = {
 export function ConnectionCard({
   connection,
   projectId,
+  connectorTypes,
 }: {
   connection: Connection;
   projectId: string;
+  connectorTypes: ConnectorType[];
 }) {
   const { t } = useTranslation();
   const toast = useToast();
   const testConn = useTestConnection(projectId);
   const toggleGrounding = useUpdateConnection(projectId);
-  const toggleAutoPush = useUpdateConnection(projectId);
+
   const deleteConn = useDeleteConnection(projectId);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -87,6 +89,7 @@ export function ConnectionCard({
         <span className="connection-card-type">{typeLabel}</span>
         <span className="connection-card-name">{connection.name}</span>
         <KebabMenu
+          label={t("common.actions")}
           items={[
             { label: t("common.edit"), onClick: () => setEditOpen(true) },
             { label: t("common.delete"), onClick: () => setDeleteOpen(true), danger: true },
@@ -138,6 +141,7 @@ export function ConnectionCard({
       {editOpen && (
         <ConnectionFormDialog
           projectId={projectId}
+          connectorTypes={connectorTypes}
           connection={connection}
           onClose={() => setEditOpen(false)}
         />

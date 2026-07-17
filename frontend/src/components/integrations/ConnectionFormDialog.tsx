@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Connection, ConnectionCreate, ConnectorType } from "../../api/types";
+import type { Connection, ConnectorType } from "../../api/types";
 import {
   useCreateConnection,
   useUpdateConnection,
