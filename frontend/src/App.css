@@ -909,13 +909,14 @@
 .connection-toggle {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   cursor: pointer;
 }
 
-.connection-toggle input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
+.connection-toggle input {
+  padding: 0;
+  width: auto;
+  margin: 0;
 }
 
 .connection-card-actions {
