@@ -719,6 +719,12 @@
   color: var(--text-muted);
 }
 
+.entity-edit-page .checkbox-wrapper {
+  display: inline-flex;
+  flex-direction: row;
+  margin-bottom: 0;
+}
+
 .entity-edit-page input,
 .entity-edit-page select {
   color: var(--text);
@@ -763,6 +769,12 @@
   margin-bottom: 12px;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+.project-settings-page .checkbox-wrapper {
+  display: inline-flex;
+  flex-direction: row;
+  margin-bottom: 0;
 }
 
 .project-settings-page label:last-child {
@@ -901,7 +913,8 @@
 
 .connection-card-toggles {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 6px;
   font-size: 12px;
   color: var(--text-muted);
 }
