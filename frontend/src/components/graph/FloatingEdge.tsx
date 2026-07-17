@@ -1,4 +1,5 @@
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, type EdgeProps } from "@xyflow/react";
+import { memo } from "react";
 
 import { getEdgeParams, getOffsetPath } from "./floatingEdgeUtils";
 
@@ -6,7 +7,10 @@ export interface FloatingEdgeData extends Record<string, unknown> {
   offset?: number;
 }
 
-export function FloatingEdge({
+// Memoized for the same reason as EntityNode — with hundreds/thousands of
+// edges on screen, an unmemoized custom edge re-renders on every store
+// change React Flow re-evaluates it for, not just when its own endpoints move.
+export const FloatingEdge = memo(function FloatingEdge({
   id,
   source,
   target,
@@ -42,4 +46,4 @@ export function FloatingEdge({
       )}
     </>
   );
-}
+});

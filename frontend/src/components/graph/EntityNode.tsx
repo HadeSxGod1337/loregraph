@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import type { CSSProperties } from "react";
+import { memo, type CSSProperties } from "react";
 
 import { typeColor, typeSoftBackground } from "../../lib/typeColor";
 import { useActiveRoot } from "./ActiveRootContext";
@@ -23,7 +23,13 @@ export interface EntityNodeData extends Record<string, unknown> {
 // every node independently subscribing to zoom and re-rendering a different
 // JSX tree in the same frame (that was tried and measurably janky at a few
 // hundred nodes; see GraphCanvas.tsx).
-export function EntityNode({ id, data }: NodeProps) {
+//
+// Memoized: with hundreds/thousands of nodes on screen, an unmemoized custom
+// node component re-renders on every store change React Flow's node wrapper
+// re-evaluates (panning, other nodes' drags, selection elsewhere) even when
+// this node's own `id`/`data` didn't change — React Flow's own performance
+// guide calls this out explicitly for custom node/edge components.
+export const EntityNode = memo(function EntityNode({ id, data }: NodeProps) {
   const { label, entityType, iconUrl, previewFields } = data as EntityNodeData;
   const isSelected = useSelectedEntity() === id;
   // Same rationale as isSelected: read from context, not `data`, so changing
@@ -37,9 +43,20 @@ export function EntityNode({ id, data }: NodeProps) {
       className={`entity-node${isRoot ? " entity-node-root" : ""}${isSelected ? " entity-node-selected" : ""}`}
       style={{ "--type-color": color } as CSSProperties}
     >
-      <Handle type="target" position={Position.Top} id="target-top" isConnectable />
-      <Handle type="target" position={Position.Left} id="target-left" isConnectable />
-      <Handle type="target" position={Position.Right} id="target-right" isConnectable />
+      {/* FloatingEdge computes its path from the nodes' measured bounds, not
+          from handle position (see floatingEdgeUtils.ts) — so a single
+          source + target pair (rather than one per side) draws identical
+          edges regardless of which side of the card they sit on. Split
+          top/bottom rather than stacked on the same spot purely for looks —
+          one lone dot read oddly, two on opposite edges reads like a normal
+          connectable node. Kept small and centered, NOT stretched over the
+          card: React Flow tags every handle with its own `nodrag` class, so
+          a handle covering the whole node would swallow the mousedown
+          that's supposed to start repositioning the card (a bigger
+          regression than the DOM savings are worth — dragging nodes is the
+          exact interaction this pass is meant to keep smooth). */}
+      <Handle type="target" position={Position.Top} className="entity-node-handle" isConnectable />
+      <Handle type="source" position={Position.Bottom} className="entity-node-handle" isConnectable />
       {iconUrl && (
         <div className="entity-node-icon-slot">
           <img className="entity-node-icon" src={iconUrl} alt="" />
@@ -68,9 +85,6 @@ export function EntityNode({ id, data }: NodeProps) {
           </div>
         )}
       </div>
-      <Handle type="source" position={Position.Bottom} id="source-bottom" isConnectable />
-      <Handle type="source" position={Position.Left} id="source-left" isConnectable />
-      <Handle type="source" position={Position.Right} id="source-right" isConnectable />
     </div>
   );
-}
+});

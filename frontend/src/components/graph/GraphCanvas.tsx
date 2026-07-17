@@ -50,6 +50,9 @@ function minimapNodeColor(node: FlowNode<EntityNodeData>): string {
 
 const nodeTypes = { entity: EntityNode };
 const edgeTypes = { floating: FloatingEdge };
+// Stable reference — an inline object literal here would give ReactFlow a
+// new prop identity every render (see React Flow's memoization guidance).
+const DEFAULT_EDGE_OPTIONS = { type: "floating" };
 
 export interface CameraFocusRequest {
   entityId: string;
@@ -336,7 +339,7 @@ function GraphCanvasInner({
           onPaneClick={onPaneClick}
           connectionRadius={120}
           connectOnClick
-          defaultEdgeOptions={{ type: "floating" }}
+          defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
           // Skips rendering nodes/edges outside the viewport — the "All
           // entities" mode can put hundreds of nodes on canvas at once.
           onlyRenderVisibleElements

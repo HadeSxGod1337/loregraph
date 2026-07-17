@@ -1655,8 +1655,11 @@
 
 /* handle dots are only needed while dragging a connection — hide them at
    rest and reveal on card hover so the card reads as a card, not a wired
-   diagram node. */
-.entity-node .react-flow__handle {
+   diagram node. One source + one target (stacked at the same point, see
+   EntityNode.tsx) instead of the previous 6 positioned dots — geometry
+   comes from the nodes' measured bounds (floatingEdgeUtils.ts), not handle
+   position, so which side they visually sit on doesn't matter. */
+.entity-node .entity-node-handle {
   opacity: 0;
   width: 14px;
   height: 14px;
@@ -1665,14 +1668,14 @@
   z-index: 1;
 }
 
-.entity-node:hover .react-flow__handle {
+.entity-node:hover .entity-node-handle {
   opacity: 1;
 }
 
 /* Enlarge the invisible hit area so the cursor doesn't have to land exactly
    on the small dot — React Flow's connectionRadius also helps, but this
    makes the handle itself more forgiving. */
-.entity-node .react-flow__handle::after {
+.entity-node .entity-node-handle::after {
   content: "";
   position: absolute;
   inset: -12px;
