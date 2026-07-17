@@ -6,6 +6,7 @@ import { IntegrationsPanel } from "../components/integrations/IntegrationsPanel"
 import { KnowledgeBasePanel } from "../components/knowledge/KnowledgeBasePanel";
 import { TokenUsagePanel } from "../components/usage/TokenUsagePanel";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { HelpIcon } from "../components/ui/Tooltip";
 import { useToast } from "../components/ui/Toast";
 import { useProject, useReindexProject, useUpdateProject } from "../hooks/useProjects";
 import { translateApiError } from "../i18n/eventText";
@@ -109,7 +110,10 @@ export function ProjectSettingsPage() {
               <div className="settings-editable-divider" />
 
               <div className="settings-card-head">
-                <h2>{t("projectSettings.agentHeading")}</h2>
+                <h2>
+                  {t("projectSettings.agentHeading")}
+                  <HelpIcon content={t("tooltips.agentInstructions")} side="right" />
+                </h2>
                 <p className="field-hint">{t("projectSettings.instructionsHint")}</p>
               </div>
 
@@ -153,7 +157,10 @@ export function ProjectSettingsPage() {
 
           <section className="settings-card">
             <div className="settings-card-head">
-              <h2>{t("projectSettings.maintenanceHeading")}</h2>
+              <h2>
+                {t("projectSettings.maintenanceHeading")}
+                <HelpIcon content={t("tooltips.reindex")} side="right" />
+              </h2>
               <p className="field-hint">{t("projectSettings.reindexHint")}</p>
             </div>
             <div className="settings-save-row">

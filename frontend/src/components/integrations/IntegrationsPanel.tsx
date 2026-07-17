@@ -5,6 +5,7 @@ import { useConnections, useConnectorTypes } from "../../hooks/useConnections";
 import { ConnectionCard } from "./ConnectionCard";
 import { ConnectionFormDialog } from "./ConnectionFormDialog";
 import { Icon } from "../ui/Icon";
+import { HelpIcon } from "../ui/Tooltip";
 
 export function IntegrationsPanel({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
@@ -18,6 +19,7 @@ export function IntegrationsPanel({ projectId }: { projectId: string }) {
         <h2>
           <Icon name="plug" size={16} />
           {t("integrations.heading")}
+          <HelpIcon content={t("integrations.hint")} side="right" />
         </h2>
         <p className="field-hint">{t("integrations.hint")}</p>
       </div>

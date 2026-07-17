@@ -6,6 +6,7 @@ import { AssistantPage } from "./pages/AssistantPage";
 import { EntityEditPage } from "./pages/EntityEditPage";
 import { EntityListPage } from "./pages/EntityListPage";
 import { GraphViewPage } from "./pages/GraphViewPage";
+import { HelpPage } from "./pages/HelpPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectSettingsPage } from "./pages/ProjectSettingsPage";
 
@@ -27,6 +28,7 @@ const router = createBrowserRouter([
       { path: "/projects/:projectId/graph", element: <GraphViewPage /> },
       { path: "/projects/:projectId/assistant", element: <AssistantPage /> },
       { path: "/projects/:projectId/settings", element: <ProjectSettingsPage /> },
+      { path: "/projects/:projectId/help", element: <HelpPage /> },
     ],
   },
 ]);

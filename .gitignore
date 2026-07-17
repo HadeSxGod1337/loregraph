@@ -1,5 +1,6 @@
 # data
 data/
+!frontend/src/data/
 *.sqlite3
 *.db
 

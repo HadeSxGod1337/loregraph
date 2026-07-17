@@ -11,6 +11,7 @@ import {
 } from "../../hooks/useKnowledge";
 import { translateApiError } from "../../i18n/eventText";
 import { Icon } from "../ui/Icon";
+import { HelpIcon } from "../ui/Tooltip";
 
 const ACCEPTED_EXTENSIONS =
   ".pdf,.txt,.md,.markdown,.json,.csv,.tsv,.yaml,.yml,.log";
@@ -57,7 +58,10 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
   return (
     <section className="settings-card knowledge-base-panel">
       <div className="settings-card-head">
-        <h2>{t("knowledge.heading")}</h2>
+        <h2>
+          {t("knowledge.heading")}
+          <HelpIcon content={t("tooltips.knowledgeUpload")} side="right" />
+        </h2>
         <p className="field-hint">{t("knowledge.hint")}</p>
       </div>
 

@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import type { EntityField, ProseMirrorDoc } from "../../api/types";
+import { HelpIcon } from "../ui/Tooltip";
 import { RichTextField } from "./RichTextField";
 
 // rich_text/attachment values aren't useful as a compact card preview, so
@@ -36,6 +37,7 @@ export function FieldRow({ field, entityId, onChange, onRemove }: FieldRowProps)
               onChange={(e) => onChange({ ...field, show_on_card: e.target.checked })}
             />
             {t("fields.showOnCard")}
+            <HelpIcon content={t("tooltips.showOnCard")} side="top" />
           </label>
         )}
         <button

@@ -6,11 +6,11 @@ import { Icon, type IconName } from "../ui/Icon";
 import { PreferencesPopover } from "./PreferencesPopover";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 
-const NAV_ITEMS: { to: string; icon: IconName; labelKey: string; end?: boolean }[] = [
-  { to: "entities", icon: "layers", labelKey: "nav.entities", end: true },
-  { to: "graph", icon: "network", labelKey: "nav.graph" },
-  { to: "assistant", icon: "sparkles", labelKey: "nav.assistant" },
-  { to: "settings", icon: "settings", labelKey: "nav.settings" },
+const NAV_ITEMS: { to: string; icon: IconName; labelKey: string; hintKey: string; end?: boolean }[] = [
+  { to: "entities", icon: "layers", labelKey: "nav.entities", hintKey: "nav.entitiesHint", end: true },
+  { to: "graph", icon: "network", labelKey: "nav.graph", hintKey: "nav.graphHint" },
+  { to: "assistant", icon: "sparkles", labelKey: "nav.assistant", hintKey: "nav.assistantHint" },
+  { to: "settings", icon: "settings", labelKey: "nav.settings", hintKey: "nav.settingsHint" },
 ];
 
 const COLLAPSE_STORAGE_KEY = "loregraph:sidebarCollapsed";
@@ -52,7 +52,7 @@ export function Sidebar() {
               to={`/projects/${projectId}/${item.to}`}
               end={item.end}
               className={({ isActive }) => "sidebar-nav-item" + (isActive ? " active" : "")}
-              title={collapsed ? t(item.labelKey) : undefined}
+              title={collapsed ? t(item.labelKey) : t(item.hintKey)}
             >
               <Icon name={item.icon} size={17} className="sidebar-nav-icon" />
               {!collapsed && <span className="sidebar-nav-label">{t(item.labelKey)}</span>}
@@ -64,6 +64,17 @@ export function Sidebar() {
       <div className="sidebar-spacer" />
 
       <div className="sidebar-foot">
+        {projectId && (
+          <NavLink
+            to={`/projects/${projectId}/help`}
+            className={({ isActive }) =>
+              `sidebar-help-link${isActive ? " active" : ""}${collapsed ? " collapsed" : ""}`
+            }
+          >
+            <Icon name="help" size={16} />
+            {!collapsed && <span>{t("nav.help")}</span>}
+          </NavLink>
+        )}
         <PreferencesPopover collapsed={collapsed} />
         <button type="button" className="sidebar-collapse-btn" onClick={toggleCollapsed}>
           <Icon name="chevron-down" size={16} className="sidebar-collapse-icon" />

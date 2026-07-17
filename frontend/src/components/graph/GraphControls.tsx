@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { Entity } from "../../api/types";
 import { useDismiss } from "../../hooks/useDismiss";
+import { HelpIcon } from "../ui/Tooltip";
 import { Icon } from "../ui/Icon";
 
 const DEPTH_OPTIONS = [1, 2, 3] as const;
@@ -98,7 +99,10 @@ export function GraphControls({
             <div className="graph-dock-popover graph-filters-popover">
               {viewMode === "focused" && (
                 <div className="graph-filter-block">
-                  <span className="graph-filter-label">{t("graph.depth")}</span>
+                  <span className="graph-filter-label">
+                    {t("graph.depth")}
+                    <HelpIcon content={t("tooltips.depth")} side="right" />
+                  </span>
                   <div className="segmented" role="group" aria-label={t("graph.depth")}>
                     {DEPTH_OPTIONS.map((option) => (
                       <button

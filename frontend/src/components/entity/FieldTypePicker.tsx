@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import type { FieldType } from "../../api/types";
+import { HelpIcon } from "../ui/Tooltip";
 
 const ADDABLE_TYPES: { value: FieldType; labelKey: string }[] = [
   { value: "text", labelKey: "fields.typeText" },
@@ -13,6 +14,7 @@ export function FieldTypePicker({ onAdd }: { onAdd: (fieldType: FieldType) => vo
   const { t } = useTranslation();
   return (
     <div className="field-type-picker">
+      <HelpIcon content={t("tooltips.fieldType")} side="top" />
       {ADDABLE_TYPES.map((entry) => (
         <button
           key={entry.value}

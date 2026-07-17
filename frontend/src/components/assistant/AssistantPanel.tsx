@@ -16,6 +16,7 @@ import { useFileDrop } from "../../hooks/useFileDrop";
 import { translateEvent, translateWarning } from "../../i18n/eventText";
 import { typeColor, typeSoftBackground } from "../../lib/typeColor";
 import { Icon } from "../ui/Icon";
+import { HelpIcon } from "../ui/Tooltip";
 import { DraftPreviewDrawer } from "./DraftPreviewDrawer";
 
 interface AssistantPanelProps {
@@ -270,6 +271,7 @@ function ChatInput({
         {entities.length > 0 && (
           <label className="assistant-context-label" title={t("assistant.anchorTitle")}>
             {t("assistant.contextLabel")}:
+            <HelpIcon content={t("tooltips.contextSelector")} side="top" />
             <select value={anchorId} onChange={(e) => setAnchorId(e.target.value)}>
               <option value="">{t("assistant.anchorWholeWorld")}</option>
               {entities.map((entity) => (
@@ -290,6 +292,7 @@ function ChatInput({
         >
           <Icon name="paperclip" />
         </button>
+        <HelpIcon content={t("tooltips.attachFile")} side="top" />
         <input
           ref={fileInputRef}
           type="file"
@@ -627,6 +630,7 @@ function ReviewCard({
       )}
 
       <div className="assistant-review-actions">
+        <HelpIcon content={t("tooltips.reviewApprove")} side="top" />
         <button
           type="button"
           className="assistant-approve"
@@ -635,6 +639,7 @@ function ReviewCard({
         >
           {t("assistant.review.approve", { count: keptCount })}
         </button>
+        <HelpIcon content={t("tooltips.reviewRequestChanges")} side="top" />
         <button
           type="button"
           className="assistant-request-changes"
@@ -643,6 +648,7 @@ function ReviewCard({
         >
           {t("assistant.review.requestChanges")}
         </button>
+        <HelpIcon content={t("tooltips.reviewReject")} side="top" />
         <button
           type="button"
           className="assistant-reject"
