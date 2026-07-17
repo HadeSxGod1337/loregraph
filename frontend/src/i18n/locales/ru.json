@@ -401,6 +401,12 @@
     "importDone": "Импорт завершён: создано {{created}}, обновлено {{updated}}, пропущено {{skipped}}.",
     "importInvalidJson": "Невалидный JSON — проверь синтаксис и попробуй снова."
   },
+  "characterSheet": {
+    "title": "Лист персонажа (Long Story Short)",
+    "show": "Показать лист персонажа",
+    "hide": "Скрыть лист персонажа",
+    "openInLss": "Открыть в Long Story Short"
+  },
   "errors": {
     "project_not_found": "Проект не найден.",
     "entity_not_found": "Сущность не найдена.",

@@ -9,6 +9,7 @@ import { useEntity, useDeleteEntity, useUpdateEntity } from "../../hooks/useEnti
 import { useCreateEdge, useDeleteEdge, useEdgesForEntity } from "../../hooks/useEdgesForEntity";
 import { EdgeEditPopover } from "../graph/EdgeEditPopover";
 import { EdgeList } from "../edges/EdgeList";
+import { CharacterSheetEmbed } from "../entity/CharacterSheetEmbed";
 import { FieldEditor } from "../entity/FieldEditor";
 import { IconPicker } from "../entity/IconPicker";
 import { RichTextView } from "../entity/RichTextView";
@@ -187,6 +188,8 @@ export function EntityDetailPanel({
                   </div>
                 ))}
               </div>
+
+              <CharacterSheetEmbed fields={fields} />
 
               <div className="panel-section">
                 <div className="rel-section-head">

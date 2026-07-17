@@ -385,6 +385,12 @@
     "importDone": "Import complete: {{created}} created, {{updated}} updated, {{skipped}} skipped.",
     "importInvalidJson": "Invalid JSON — check the syntax and try again."
   },
+  "characterSheet": {
+    "title": "Character sheet (Long Story Short)",
+    "show": "Show character sheet",
+    "hide": "Hide character sheet",
+    "openInLss": "Open in Long Story Short"
+  },
   "errors": {
     "project_not_found": "Project not found.",
     "entity_not_found": "Entity not found.",

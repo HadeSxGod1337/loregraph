@@ -981,6 +981,48 @@
   margin: 6px 0;
 }
 
+/* Live LSS character sheet embed (entity panel / editor) */
+.character-sheet-embed {
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.character-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg-subtle);
+}
+
+.character-sheet-head .rot-180 {
+  transform: rotate(180deg);
+}
+
+.character-sheet-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.character-sheet-link:hover {
+  color: var(--accent);
+}
+
+.character-sheet-iframe {
+  display: block;
+  width: 100%;
+  height: 560px;
+  border: 0;
+  background: #20222c; /* LSS sheet theme color — avoids a white flash */
+}
+
 
 .icon-picker {
   display: flex;

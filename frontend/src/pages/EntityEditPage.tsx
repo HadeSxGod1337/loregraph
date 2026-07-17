@@ -5,6 +5,7 @@ import { Link, useBlocker, useNavigate, useParams } from "react-router-dom";
 import type { EntityField } from "../api/types";
 import { DEFAULT_ENTITY_TYPES } from "../api/types";
 import { AttachmentUploader } from "../components/entity/AttachmentUploader";
+import { CharacterSheetEmbed } from "../components/entity/CharacterSheetEmbed";
 import { FieldEditor } from "../components/entity/FieldEditor";
 import { IconPicker } from "../components/entity/IconPicker";
 import { EdgeForm } from "../components/edges/EdgeForm";
@@ -137,6 +138,8 @@ export function EntityEditPage() {
       <IconPicker projectId={projectId!} entityId={id} icon={entity?.icon ?? null} />
 
       <FieldEditor fields={fields} entityId={id} onChange={setFields} />
+
+      {!isNew && <CharacterSheetEmbed fields={fields} />}
 
       {!isNew && id && (
         <>
