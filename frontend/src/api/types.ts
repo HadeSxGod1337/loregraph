@@ -219,9 +219,9 @@ export interface ExportResult {
 
 export type ImportResult = ExportResult;
 
-export type ExportRequest = Record<string, never>;
+export type ExportRequest = { entity_ids?: string[] };
 
-export type ImportRequest = Record<string, never>;
+export type ImportRequest = { payload?: Record<string, unknown> };
 
 export interface ProbeResult {
   ok: boolean;

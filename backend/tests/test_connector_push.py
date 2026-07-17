@@ -46,6 +46,18 @@ class FakeConnectionStore:
     async def list_for_project(self, project_id: str) -> list[ConnectionOut]:
         return [c for c in self._connections if c.project_id == project_id]
 
+    async def create(self, project_id: str, data: object) -> ConnectionOut:
+        raise NotImplementedError
+
+    async def get(self, connection_id: str) -> ConnectionOut:
+        raise NotImplementedError
+
+    async def update(self, connection_id: str, data: object) -> ConnectionOut:
+        raise NotImplementedError
+
+    async def delete(self, connection_id: str) -> None:
+        raise NotImplementedError
+
 
 def _connection(name: str, *, auto_push: bool) -> ConnectionOut:
     now = datetime.now(UTC)
