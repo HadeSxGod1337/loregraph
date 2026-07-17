@@ -907,7 +907,8 @@
 }
 
 .connection-toggle {
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
   align-items: center;
   gap: 4px;
   cursor: pointer;
@@ -3251,6 +3252,11 @@
 
 .dialog input {
   width: 100%;
+}
+
+.dialog input[type="checkbox"],
+.dialog input[type="radio"] {
+  width: auto;
 }
 
 .dialog-actions {
