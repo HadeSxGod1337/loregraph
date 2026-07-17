@@ -1,17 +1,26 @@
+import asyncio
+import logging
 from typing import Any
 
 from langchain_core.messages import AIMessage, ToolMessage
 
 from loregraph.agent.state import AgentState
+from loregraph.connectors.live import LiveSourceProvider
+from loregraph.exceptions import ConnectorError
 from loregraph.services.knowledge_index import KB_RETRIEVAL_K, KnowledgeIndex
 from loregraph.services.vector_index import VectorIndex, entity_to_text
 from loregraph.storage.protocols import EntityStore
+
+logger = logging.getLogger(__name__)
 
 SEARCH_K = 5
 # Tool outputs are prompt input on the next assistant call — keep them tight.
 DETAIL_TEXT_LIMIT = 800
 SEARCH_TEXT_LIMIT = 200
 KB_SEARCH_TEXT_LIMIT = 400
+EXTERNAL_TEXT_LIMIT = 400  # chars per external chunk
+EXTERNAL_CHUNK_LIMIT = 5
+EXTERNAL_QUERY_TIMEOUT_S = 12.0
 
 
 async def run_tools(
@@ -20,6 +29,7 @@ async def run_tools(
     vector_index: VectorIndex | None,
     knowledge_index: KnowledgeIndex | None,
     entity_store: EntityStore,
+    live_sources: LiveSourceProvider | None = None,
 ) -> dict[str, Any]:
     """Executes the assistant's read tools against the project's stores.
 
@@ -48,6 +58,14 @@ async def run_tools(
                     knowledge_index,
                     state.project_id,
                     str(call["args"].get("query", "")),
+                )
+            case "query_external_source":
+                kind = call["args"].get("kind")
+                content = await _query_external_source(
+                    live_sources,
+                    str(call["args"].get("source", "")),
+                    str(call["args"].get("query", "")),
+                    str(kind) if isinstance(kind, str) and kind else None,
                 )
             case unknown:
                 content = f"Unknown tool: {unknown}"
@@ -94,6 +112,43 @@ async def _entity_details(
     if not entities or entities[0].project_id != project_id:
         return f"Entity not found: {entity_id}"
     return entity_to_text(entities[0])[:DETAIL_TEXT_LIMIT]
+
+
+async def _query_external_source(
+    live_sources: LiveSourceProvider | None,
+    source_name: str,
+    query: str,
+    kind: str | None,
+) -> str:
+    """Never raises: an offline Foundry must produce a readable tool message
+    the assistant can relay, not an exception out of the node."""
+    if live_sources is None:
+        return "No external sources are connected to this project."
+    entry = live_sources.get(source_name)
+    if entry is None:
+        names = ", ".join(live_sources.names())
+        return f"Unknown external source: {source_name!r}. Available: {names}"
+    try:
+        async with asyncio.timeout(EXTERNAL_QUERY_TIMEOUT_S):
+            chunks = await entry.source.query(query, kind=kind)
+    except asyncio.CancelledError:
+        raise
+    except (ConnectorError, TimeoutError) as e:
+        logger.warning(
+            "External source %s unavailable during chat query", entry.name,
+            exc_info=True,
+        )
+        return (
+            f"External source '{entry.name}' is unavailable right now "
+            f"({type(e).__name__}). Tell the game master it may be offline."
+        )
+    if not chunks:
+        return f"'{entry.name}' returned nothing for this query."
+    lines = [
+        f"[{chunk.kind}] {chunk.title}: {chunk.text[:EXTERNAL_TEXT_LIMIT]}"
+        for chunk in chunks[:EXTERNAL_CHUNK_LIMIT]
+    ]
+    return "\n".join(lines)
 
 
 async def _search_knowledge_base(

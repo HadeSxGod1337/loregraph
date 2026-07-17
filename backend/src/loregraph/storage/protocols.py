@@ -7,6 +7,12 @@ from loregraph.schemas.agent import (
     AgentSessionStatus,
 )
 from loregraph.schemas.attachment import AttachmentOut
+from loregraph.schemas.connection import (
+    ConnectionCreate,
+    ConnectionEntityLinkOut,
+    ConnectionOut,
+    ConnectionUpdate,
+)
 from loregraph.schemas.edge import EdgeCreate, EdgeOut, EdgeUpdate
 from loregraph.schemas.entity import (
     EntityCreate,
@@ -100,6 +106,42 @@ class AttachmentStore(Protocol):
     ) -> AttachmentOut: ...
     async def list_for_entity(self, entity_id: str) -> list[AttachmentOut]: ...
     async def delete(self, attachment_id: str) -> None: ...
+
+
+@runtime_checkable
+class ConnectionStore(Protocol):
+    async def list_for_project(self, project_id: str) -> list[ConnectionOut]: ...
+    async def create(
+        self, project_id: str, data: ConnectionCreate
+    ) -> ConnectionOut: ...
+    async def get(self, connection_id: str) -> ConnectionOut: ...
+    async def update(
+        self, connection_id: str, data: ConnectionUpdate
+    ) -> ConnectionOut: ...
+    async def delete(self, connection_id: str) -> None: ...
+
+
+@runtime_checkable
+class ConnectionEntityLinkStore(Protocol):
+    async def upsert(
+        self,
+        connection_id: str,
+        entity_id: str,
+        external_id: str,
+        external_kind: str,
+    ) -> ConnectionEntityLinkOut: ...
+    async def list_for_connection(
+        self, connection_id: str
+    ) -> list[ConnectionEntityLinkOut]: ...
+    async def get_by_external(
+        self, connection_id: str, external_kind: str, external_id: str
+    ) -> ConnectionEntityLinkOut | None: ...
+    async def list_for_entity(
+        self, connection_id: str, entity_id: str
+    ) -> list[ConnectionEntityLinkOut]: ...
+    async def delete_for_entity(
+        self, connection_id: str, entity_id: str
+    ) -> None: ...
 
 
 @runtime_checkable

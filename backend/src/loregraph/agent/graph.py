@@ -24,6 +24,7 @@ from loregraph.agent.nodes.retrieve_context import retrieve_context
 from loregraph.agent.nodes.tools import run_tools
 from loregraph.agent.nodes.verify_grounding import verify_grounding
 from loregraph.agent.state import AgentState
+from loregraph.connectors.live import LiveSourceProvider
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
@@ -58,6 +59,9 @@ def build_agent_graph(
     assistant_model_name: str = "",
     generation_model_name: str = "",
     extraction_model_name: str = "",
+    # Live external sources (Foundry, LSS…) — None when the project has no
+    # live-capable connections; the assistant then never sees the tool.
+    live_sources: LiveSourceProvider | None = None,
 ) -> CompiledStateGraph[AgentState]:
     """Conversational assistant with a lore-proposal pipeline.
 
@@ -79,6 +83,7 @@ def build_agent_graph(
             project_store=project_store,
             usage_store=usage_store,
             model_name=assistant_model_name,
+            live_sources=live_sources,
         ),
     )
     builder.add_node(
@@ -88,6 +93,7 @@ def build_agent_graph(
             vector_index=vector_index,
             knowledge_index=knowledge_index,
             entity_store=entity_store,
+            live_sources=live_sources,
         ),
     )
     builder.add_node("begin_proposal", begin_proposal)
@@ -102,6 +108,7 @@ def build_agent_graph(
             knowledge_index=knowledge_index,
             entity_store=entity_store,
             edge_store=edge_store,
+            live_sources=live_sources,
         ),
     )
     builder.add_node(

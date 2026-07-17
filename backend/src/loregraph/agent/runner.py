@@ -21,6 +21,7 @@ from loregraph.schemas.agent import (
     AgentSessionStatus,
     ChatAttachment,
 )
+from loregraph.services.connector_push import ConnectorPushService
 from loregraph.storage.protocols import AgentSessionStore
 
 logger = logging.getLogger(__name__)
@@ -102,10 +103,12 @@ class AgentRunner:
         graph: CompiledStateGraph[AgentState],
         sessions: AgentSessionStore,
         tracing_config: TracingConfig | None = None,
+        push_service: ConnectorPushService | None = None,
     ) -> None:
         self._graph = graph
         self._sessions = sessions
         self._tracing_config = tracing_config
+        self._push_service = push_service
 
     async def stream_message(
         self,
@@ -159,7 +162,12 @@ class AgentRunner:
             "decision_action": None,
             "draft_committed": False,
         }
-        async for event in self._stream_turn(thread_id, graph_input, project_id):
+        async for event in self._stream_turn(
+            thread_id,
+            graph_input,
+            project_id,
+            prior_committed=frozenset(session.committed_entity_ids),
+        ):
             yield event
 
     async def stream_review(
@@ -176,7 +184,12 @@ class AgentRunner:
             }
             return
         command: Command[Any] = Command(resume=decision.model_dump(mode="json"))
-        async for event in self._stream_turn(thread_id, command, project_id):
+        async for event in self._stream_turn(
+            thread_id,
+            command,
+            project_id,
+            prior_committed=frozenset(session.committed_entity_ids),
+        ):
             yield event
 
     async def get_detail(self, project_id: str, thread_id: str) -> AgentSessionDetail:
@@ -193,6 +206,7 @@ class AgentRunner:
         thread_id: str,
         graph_input: dict[str, Any] | Command[Any],
         project_id: str = "",
+        prior_committed: frozenset[str] = frozenset(),
     ) -> AsyncIterator[AgentEvent]:
         config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
         if self._tracing_config is not None and project_id:
@@ -253,6 +267,22 @@ class AgentRunner:
         session = await self._finalize(thread_id)
         if session.status == "awaiting_review" and session.review is not None:
             yield {"type": "review", "payload": session.review.model_dump(mode="json")}
+        # Auto-push AFTER the commit is final (HITL already passed). Only the
+        # ids committed by THIS turn — earlier turns were pushed on their own.
+        if (
+            session.status == "committed"
+            and self._push_service is not None
+            and project_id
+        ):
+            new_ids = [
+                entity_id
+                for entity_id in session.committed_entity_ids
+                if entity_id not in prior_committed
+            ]
+            for push_event in await self._push_service.push_after_commit(
+                project_id, new_ids
+            ):
+                yield push_event
         yield {"type": "done", "session": session.model_dump(mode="json")}
 
     async def _finalize(self, thread_id: str) -> AgentSessionOut:

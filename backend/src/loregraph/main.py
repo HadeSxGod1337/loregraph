@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from loregraph.api.routers import (
     agent,
     attachments,
+    connections,
     edges,
     entities,
     graph,
@@ -22,21 +23,30 @@ from loregraph.api.routers import (
     usage,
 )
 from loregraph.config import Settings
+from loregraph.connectors.runtime import ConnectorRuntime
+from loregraph.connectors.setup import build_default_registry
 from loregraph.exceptions import (
     AgentSessionNotFoundError,
     AttachmentNotFoundError,
     CampaignError,
     ChatAttachmentLimitExceededError,
     ConfigurationError,
+    ConnectionNotFoundError,
+    ConnectorConfigInvalidError,
+    ConnectorUnavailableError,
     CrossProjectEdgeError,
     EdgeNotFoundError,
     EntityNotFoundError,
+    ExportConflictError,
+    ExternalDataParseError,
     GenerationError,
     InvalidEdgeReferenceError,
     InvalidIconReferenceError,
     KnowledgeSourceNotFoundError,
     ProjectNotFoundError,
+    UnknownConnectorTypeError,
     UnsupportedAttachmentTypeError,
+    UnsupportedConnectorCapabilityError,
     UnsupportedExportFormatError,
     error_code,
 )
@@ -49,6 +59,10 @@ from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.composition import StoreFactories
 from loregraph.storage.sqlite.agent_session_store import SqliteAgentSessionStore
 from loregraph.storage.sqlite.attachment_store import SqliteAttachmentStore
+from loregraph.storage.sqlite.connection_store import (
+    SqliteConnectionEntityLinkStore,
+    SqliteConnectionStore,
+)
 from loregraph.storage.sqlite.db import (
     create_engine_for,
     init_db,
@@ -135,7 +149,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 session, settings.knowledge_dir
             ),
             usage=SqliteUsageStore,
+            connection=SqliteConnectionStore,
+            connection_entity_link=SqliteConnectionEntityLinkStore,
         )
+        # External-tool connectors: the registry maps connector types to
+        # implementations; the runtime hosts long-lived clients (Foundry MCP
+        # sessions) for the app's lifetime and is closed with the lifespan.
+        app.state.connector_registry = build_default_registry()
+        app.state.connector_runtime = ConnectorRuntime()
         # Vector layer is optional derived data: None when embeddings are
         # disabled, and the manual editor must keep working either way.
         # knowledge_index reuses the SAME ChromaVectorStore instance as
@@ -180,6 +201,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 app.state.tracing_config = config
                 app.state.tracing_lifecycle = lifecycle
             yield
+            await app.state.connector_runtime.aclose()
             if hasattr(app.state, "tracing_lifecycle"):
                 app.state.tracing_lifecycle.stop()
             if warmup_task is not None and not warmup_task.done():
@@ -198,15 +220,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     _register_exception_handlers(app)
-
-    app.include_router(projects.router, prefix="/api")
-    app.include_router(entities.router, prefix="/api")
-    app.include_router(edges.router, prefix="/api")
-    app.include_router(graph.router, prefix="/api")
-    app.include_router(attachments.router, prefix="/api")
-    app.include_router(agent.router, prefix="/api")
-    app.include_router(knowledge.router, prefix="/api")
-    app.include_router(usage.router, prefix="/api")
+    _API_PREFIX = "/api"
+    app.include_router(projects.router, prefix=_API_PREFIX)
+    app.include_router(entities.router, prefix=_API_PREFIX)
+    app.include_router(edges.router, prefix=_API_PREFIX)
+    app.include_router(graph.router, prefix=_API_PREFIX)
+    app.include_router(attachments.router, prefix=_API_PREFIX)
+    app.include_router(agent.router, prefix=_API_PREFIX)
+    app.include_router(knowledge.router, prefix=_API_PREFIX)
+    app.include_router(usage.router, prefix=_API_PREFIX)
+    app.include_router(connections.types_router, prefix=_API_PREFIX)
+    app.include_router(connections.router, prefix=_API_PREFIX)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
@@ -236,6 +260,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
         AttachmentNotFoundError,
         AgentSessionNotFoundError,
         KnowledgeSourceNotFoundError,
+        ConnectionNotFoundError,
     )
     for exc_type in _not_found:
         app.add_exception_handler(exc_type, lambda _r, e: _error_response(404, e))
@@ -247,6 +272,10 @@ def _register_exception_handlers(app: FastAPI) -> None:
         InvalidIconReferenceError,
         UnsupportedAttachmentTypeError,
         ChatAttachmentLimitExceededError,
+        UnknownConnectorTypeError,
+        ConnectorConfigInvalidError,
+        UnsupportedConnectorCapabilityError,
+        ExternalDataParseError,
     )
     for unprocessable_type in _unprocessable:
         app.add_exception_handler(
@@ -255,6 +284,12 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
     app.add_exception_handler(ConfigurationError, lambda _r, e: _error_response(409, e))
     app.add_exception_handler(GenerationError, lambda _r, e: _error_response(502, e))
+    app.add_exception_handler(
+        ConnectorUnavailableError, lambda _r, e: _error_response(502, e)
+    )
+    app.add_exception_handler(
+        ExportConflictError, lambda _r, e: _error_response(409, e)
+    )
     # Fallback for every other CampaignError subclass (including the
     # HITL/session-state guards in api/routers/agent.py) — 400, code still
     # derived automatically from the concrete class.

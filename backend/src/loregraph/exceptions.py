@@ -143,3 +143,65 @@ class NotAwaitingReviewError(CampaignError):
     def __init__(self, status: str) -> None:
         super().__init__(f"Session is not awaiting review (status: {status}).")
         self.status = status
+
+
+class ConnectorError(CampaignError):
+    """Base class for external-tool connector errors (Obsidian, Foundry, …)."""
+
+
+class ConnectionNotFoundError(ConnectorError):
+    def __init__(self, connection_id: str) -> None:
+        super().__init__(f"Connection not found: {connection_id}")
+        self.connection_id = connection_id
+
+
+class UnknownConnectorTypeError(ConnectorError):
+    def __init__(self, connector_type: str) -> None:
+        super().__init__(f"Unknown connector type: {connector_type}")
+        self.connector_type = connector_type
+
+
+class ConnectorConfigInvalidError(ConnectorError):
+    """Connection config failed validation against the connector's config
+    model. Deliberately never includes config values in the message — they
+    may contain secrets."""
+
+    def __init__(self, connector_type: str, reason: str) -> None:
+        super().__init__(f"Invalid {connector_type} connection config: {reason}")
+        self.connector_type = connector_type
+        self.reason = reason
+
+
+class UnsupportedConnectorCapabilityError(ConnectorError):
+    def __init__(self, connector_type: str, capability: str) -> None:
+        super().__init__(
+            f"Connector {connector_type!r} does not support {capability!r}"
+        )
+        self.connector_type = connector_type
+        self.capability = capability
+
+
+class ConnectorUnavailableError(ConnectorError):
+    """The external tool is unreachable (Foundry off, vault path missing,
+    LSS not responding). Callers on the agent path must degrade, not fail."""
+
+    def __init__(self, connection_name: str, reason: str) -> None:
+        super().__init__(f"Connection {connection_name!r} unavailable: {reason}")
+        self.connection_name = connection_name
+        self.reason = reason
+
+
+class ExternalDataParseError(ConnectorError):
+    """External data didn't match the expected shape (LSS JSON, frontmatter…)."""
+
+    def __init__(self, source: str, reason: str) -> None:
+        super().__init__(f"Failed to parse external data from {source}: {reason}")
+        self.source = source
+        self.reason = reason
+
+
+class ExportConflictError(ConnectorError):
+    def __init__(self, target: str, reason: str) -> None:
+        super().__init__(f"Export conflict at {target!r}: {reason}")
+        self.target = target
+        self.reason = reason

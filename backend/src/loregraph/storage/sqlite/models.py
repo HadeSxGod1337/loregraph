@@ -131,6 +131,53 @@ class AttachmentRow(Base):
     created_at: Mapped[datetime]
 
 
+class ConnectionRow(Base):
+    """A configured link to an external DM tool (Obsidian vault, Foundry MCP
+    bridge, LongStoryShort…). Config is stored as plaintext JSON on purpose:
+    localhost single-user app whose DB already holds the whole campaign, and
+    .env already holds LLM keys the same way — the API layer masks secret
+    fields on the way out instead (see api/routers/connections.py)."""
+
+    __tablename__ = "connections"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    connector_type: Mapped[str] = mapped_column(index=True)
+    name: Mapped[str]
+    config_json: Mapped[str] = mapped_column(default="{}")
+    # Include this connection's live data as grounding context in the agent's
+    # lore-generation pipeline (retrieve_context), not just as a chat tool.
+    use_for_grounding: Mapped[bool] = mapped_column(default=False)
+    # Export freshly committed entities right after an approved agent run.
+    auto_push_after_commit: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
+
+
+class ConnectionEntityLinkRow(Base):
+    """Provenance mapping between a Loregraph entity and the external
+    document/record it corresponds to in one connection (vault file path,
+    Foundry actor id, LSS character id). Lets exports update-not-duplicate
+    and imports dedupe-not-clone."""
+
+    __tablename__ = "connection_entity_links"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    connection_id: Mapped[str] = mapped_column(
+        ForeignKey("connections.id", ondelete="CASCADE"), index=True
+    )
+    entity_id: Mapped[str] = mapped_column(
+        ForeignKey("entities.id", ondelete="CASCADE"), index=True
+    )
+    external_id: Mapped[str] = mapped_column(index=True)
+    # What kind of external object external_id names: "md_file", "actor",
+    # "journal", "lss_character", …
+    external_kind: Mapped[str]
+    last_synced_at: Mapped[datetime]
+
+
 class KnowledgeSourceRow(Base):
     """A reference document (rulebook, setting bible) uploaded to a project's
     knowledge base — grounding material for the agent, kept out of the
