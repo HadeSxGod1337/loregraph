@@ -11,6 +11,7 @@ const NAV_ITEMS: { to: string; icon: IconName; labelKey: string; end?: boolean }
   { to: "graph", icon: "network", labelKey: "nav.graph" },
   { to: "assistant", icon: "sparkles", labelKey: "nav.assistant" },
   { to: "settings", icon: "settings", labelKey: "nav.settings" },
+  { to: "help", icon: "help", labelKey: "nav.help" },
 ];
 
 const COLLAPSE_STORAGE_KEY = "loregraph:sidebarCollapsed";

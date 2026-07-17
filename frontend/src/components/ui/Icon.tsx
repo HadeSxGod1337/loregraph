@@ -11,6 +11,7 @@ export type IconName =
   | "external-link"
   | "filter"
   | "folder"
+  | "help"
   | "layers"
   | "more"
   | "network"
@@ -80,6 +81,13 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   folder: <path d="M3 7a2 2 0 0 1 2-2h4.2l1.6 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />,
+  help: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </>
+  ),
   layers: (
     <>
       <path d="M12 3 3 8l9 5 9-5-9-5Z" />

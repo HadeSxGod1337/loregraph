@@ -20,7 +20,8 @@
     "entities": "Entities",
     "graph": "Graph",
     "assistant": "AI Assistant",
-    "settings": "Settings"
+    "settings": "Settings",
+    "help": "Help"
   },
   "theme": {
     "light": "Light",
@@ -378,6 +379,7 @@
     "importTitle": "Import",
     "importHint": "Import will read from the configured source and create or update entities.",
     "importShareUrl": "Share URL",
+    "importFile": "Upload file",
     "importRawJson": "Or paste JSON directly",
     "importOr": "— or —",
     "importConfirm": "Import now",
@@ -415,5 +417,98 @@
     "connector_unavailable": "The external tool is unreachable — check the connection settings.",
     "unsupported_connector_capability": "This connector doesn't support this operation.",
     "external_data_parse": "Failed to parse data from the external source."
+  },
+  "help": {
+    "title": "Help",
+    "subtitle": "A quick tour of how Loregraph is put together and how to work with it.",
+    "tocLabel": "Help sections",
+    "basics": {
+      "title": "Basics",
+      "lead": "Projects, entities and their fields — the building blocks of every world.",
+      "projects": {
+        "title": "Projects",
+        "body": "A project is a separate world or campaign: its own entities, relationships, knowledge base and assistant settings. Switch between projects from the sidebar header."
+      },
+      "entities": {
+        "title": "Entities",
+        "body": "NPCs, locations, factions, items, sessions — any piece of lore. Every entity has a type, a title, and a free-form set of fields."
+      },
+      "fields": {
+        "title": "Fields",
+        "body": "Text, rich text, number or tags — the field type is up to you. Mark a field \"on card\" to show it right on the entity's graph card."
+      },
+      "icons": {
+        "title": "Icons",
+        "body": "Upload an image and crop it right in the editor — the icon shows up on the entity's card in the graph and the list."
+      }
+    },
+    "graph": {
+      "title": "Graph",
+      "lead": "The visual map of your world and its connections.",
+      "modes": {
+        "title": "Focused vs. All",
+        "body": "Focused mode shows one root entity's neighborhood up to a chosen depth — easier to read for large worlds. All mode draws the entire graph at once."
+      },
+      "navigating": {
+        "title": "Navigating",
+        "body": "Click a node to open its detail panel. Double-click or \"Set as root\" moves the graph's focus onto that entity."
+      },
+      "filters": {
+        "title": "Filters",
+        "body": "Limit the visible relationship types and traversal depth from the filter dock at the bottom — it keeps dense graphs readable."
+      }
+    },
+    "assistant": {
+      "title": "AI Assistant",
+      "lead": "A co-author that answers questions about your world and proposes new lore.",
+      "setup": {
+        "title": "Setup",
+        "body": "The assistant needs a configured LLM provider (an API key) in the backend configuration — without one, the panel shows setup instructions."
+      },
+      "chat": {
+        "title": "Chat",
+        "body": "Ask questions about the world, attach files, or pick an entity as context — the assistant answers grounded in the lore that already exists."
+      },
+      "review": {
+        "title": "Draft review",
+        "body": "New lore always comes up for approval: accept it, send it back with feedback, or reject the draft before it ever lands in the world."
+      }
+    },
+    "knowledge": {
+      "title": "Knowledge base",
+      "lead": "Reference material the assistant draws on.",
+      "upload": {
+        "title": "Uploading documents",
+        "body": "Upload PDF, markdown or plain-text files (rulebooks, setting bibles) in project settings — the assistant uses them as reference context."
+      }
+    },
+    "integrations": {
+      "title": "Integrations",
+      "lead": "Exchanging content with external DM tools.",
+      "obsidian": {
+        "title": "Obsidian",
+        "body": "Export entities to a markdown vault with relationships as [[wikilinks]], or import notes back into the project."
+      },
+      "foundry": {
+        "title": "Foundry VTT",
+        "body": "Connects via the Foundry MCP bridge: export entities as journals/actors, or let the assistant use the live world state as context."
+      },
+      "lss": {
+        "title": "Long Story Short",
+        "body": "Import a character sheet by share link or export file — the entity gets a live embedded view of the sheet."
+      }
+    },
+    "settings": {
+      "title": "Project settings",
+      "lead": "Fine-tuning the assistant's behavior and project maintenance.",
+      "instructions": {
+        "title": "Assistant instructions",
+        "body": "Free-form notes on style, tone and format — blended into the lore-generation and chat system prompts for this project."
+      },
+      "reindex": {
+        "title": "Reindexing",
+        "body": "Rebuilds the lore search vector index from the current entity state — useful after a bulk import."
+      }
+    }
   }
 }
