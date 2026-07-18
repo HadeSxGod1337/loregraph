@@ -55,7 +55,7 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
   const { isDragging, dropHandlers } = useFileDrop(uploadFiles);
 
   return (
-    <section className="settings-card knowledge-base-panel">
+    <section className="knowledge-base-panel">
       <div className="settings-card-head">
         <h2>{t("knowledge.heading")}</h2>
         <p className="field-hint">{t("knowledge.hint")}</p>

@@ -206,7 +206,16 @@
     "reindexed_one": "Готово — проиндексирована {{count}} сущность",
     "reindexed_few": "Готово — проиндексировано {{count}} сущности",
     "reindexed_many": "Готово — проиндексировано {{count}} сущностей",
-    "reindexed_other": "Готово — проиндексировано {{count}} сущности"
+    "reindexed_other": "Готово — проиндексировано {{count}} сущности",
+    "navGeneral": "Основное",
+    "navKnowledge": "База знаний",
+    "navIntegrations": "Интеграции",
+    "navUsage": "Использование",
+    "navDanger": "Опасная зона",
+    "dangerHeading": "Опасная зона",
+    "dangerHint": "Необратимые действия с проектом.",
+    "deleteProjectLabel": "Удалить проект",
+    "deleteProjectHint": "Удалит все сущности, связи, документы базы знаний и вложения проекта безвозвратно."
   },
   "usage": {
     "heading": "Использование токенов",
@@ -228,6 +237,7 @@
     "nodes": {
       "assistant": "AI-ассистент",
       "generate_lore": "Генерация лора",
+      "generate_edit": "Генерация правки",
       "verify_grounding": "Проверка заземления"
     }
   },

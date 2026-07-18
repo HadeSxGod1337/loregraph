@@ -727,32 +727,112 @@
 /* project settings */
 
 .project-settings-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   max-width: 1040px;
   width: 100%;
   margin: 0 auto;
   padding: 24px;
-  display: flex;
-  flex-direction: column;
   gap: 20px;
 }
 
-.project-settings-columns {
+.project-settings-page > h1 {
+  flex: none;
+  margin: 0;
+}
+
+/* Nav + single visible panel, replacing the old two-column card grid: with
+   uneven card heights side by side, unrelated sections (Maintenance next to
+   Name/Description, Usage next to Integrations) read as randomly stacked.
+   Picking a section on the left now shows just that section, so height
+   differences between sections never show up as layout. */
+.settings-shell {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 28px;
   align-items: start;
 }
 
-.project-settings-column {
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-nav-item svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.settings-nav-item:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.settings-nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.settings-nav-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 10px 6px;
+}
+
+.settings-nav-item.danger:hover {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+}
+
+.settings-nav-item.danger.active {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+.settings-panel {
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  min-width: 0;
+  padding-right: 4px;
 }
 
 @media (max-width: 760px) {
-  .project-settings-columns {
+  .settings-shell {
     grid-template-columns: 1fr;
+  }
+  .settings-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-nav-divider {
+    display: none;
   }
 }
 
@@ -776,6 +856,12 @@
   width: 100%;
 }
 
+/* Grows vertically only — horizontal resize lets the textarea spill past
+   the card's own width, breaking the layout around it. */
+.project-settings-page textarea {
+  resize: vertical;
+}
+
 .field-hint {
   font-size: 12px;
   color: var(--text-muted);
@@ -784,7 +870,35 @@
 /* knowledge base */
 
 .knowledge-base-panel {
+  display: flex;
+  flex-direction: column;
   gap: 14px;
+}
+
+/* Reindexing rebuilds the same search index the knowledge base feeds, so it
+   lives inside the same card as a footer strip instead of its own separate
+   box stacked underneath — one card per topic, not two that happen to be
+   related. */
+.reindex-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.reindex-row .reindex-label {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.reindex-row .field-hint {
+  margin: 0;
+  max-width: 46ch;
 }
 
 .knowledge-source-list {
@@ -1183,6 +1297,30 @@
   border: 1px solid var(--border);
   padding: 2px 8px;
   border-radius: var(--radius-pill);
+}
+
+.settings-card.danger-zone {
+  border-color: var(--danger);
+}
+
+.settings-card.danger-zone .settings-card-head h2 {
+  color: var(--danger);
+}
+
+.danger-zone-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.danger-zone-copy p {
+  margin: 0;
+}
+
+.danger-zone-copy .field-hint {
+  margin-top: 2px;
+  max-width: 46ch;
 }
 
 /* ---------- Editable settings group ----------
@@ -4440,6 +4578,9 @@ label.checkbox-wrapper.checkbox-disabled {
 }
 
 .help-hero h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0;
   font-size: 26px;
   color: var(--text);
@@ -4484,13 +4625,30 @@ label.checkbox-wrapper.checkbox-disabled {
 .help-toc-item {
   display: flex;
   align-items: center;
+  /* The global `button` rule in index.css sets justify-content: center for
+     its centered-icon-button look; override it here or every TOC item's
+     icon+label centers itself within the full-width button instead of
+     sitting flush left. */
+  justify-content: flex-start;
   gap: 9px;
+  width: 100%;
   padding: 8px 10px;
+  border: none;
   border-radius: var(--radius-control);
+  background: none;
+  font: inherit;
   font-size: 13px;
+  text-align: left;
   color: var(--text-muted);
   text-decoration: none;
+  cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
+}
+
+@media (max-width: 760px) {
+  .help-toc-item {
+    width: auto;
+  }
 }
 
 .help-toc-item svg {
@@ -4524,7 +4682,6 @@ label.checkbox-wrapper.checkbox-disabled {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  scroll-margin-top: 24px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 16px;

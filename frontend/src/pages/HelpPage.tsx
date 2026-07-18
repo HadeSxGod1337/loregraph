@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icon, type IconName } from "../components/ui/Icon";
@@ -85,64 +85,75 @@ const SECTIONS: HelpSection[] = [
   },
 ];
 
-/** In-app manual: a sticky table of contents on the left tracks scroll
- * position (IntersectionObserver, no libraries) while the right column
- * reads as a sequence of short, scannable cards — one per topic, not one
- * wall of text per section. */
+// The special "show everything" entry — not a real section, so it isn't
+// part of SECTIONS; the content pane falls back to rendering all of them
+// whenever this id is active.
+const OVERVIEW_ID = "overview";
+
+/** In-app manual: a table of contents on the left picks what the right
+ * column shows. "Справка" (the first entry) renders every section back to
+ * back for a skim-everything read; clicking any other entry narrows the
+ * content pane down to just that one section.
+ *
+ * This used to be a single long page with scroll-position tracking
+ * (IntersectionObserver, then a manual scroll listener) driving the active
+ * highlight — it fought the fixed top bar for scroll-margin, required a
+ * padded dead zone at the bottom so the last section could ever become
+ * "active", and needed sub-pixel slack to match its own anchor jumps.
+ * Selection-driven content (click sets what's rendered, not where the page
+ * scrolls to) has none of that: the active item is exactly the one that
+ * was clicked, always. */
 export function HelpPage() {
   const { t } = useTranslation();
-  const [activeId, setActiveId] = useState(SECTIONS[0].id);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const [activeId, setActiveId] = useState<string>(OVERVIEW_ID);
 
+  // Switching sections swaps the content pane's height; start the reader
+  // at its top rather than leaving them wherever the previous pane's
+  // scroll position happened to land.
   useEffect(() => {
-    const root = contentRef.current;
-    if (!root) return;
-    const headings = Array.from(root.querySelectorAll("[data-section-heading]"));
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) {
-          setActiveId((visible[0].target as HTMLElement).dataset.sectionHeading!);
-        }
-      },
-      { rootMargin: "-15% 0px -70% 0px", threshold: 0 },
-    );
-    headings.forEach((h) => observer.observe(h));
-    return () => observer.disconnect();
-  }, []);
+    window.scrollTo({ top: 0 });
+  }, [activeId]);
+
+  const activeSection = SECTIONS.find((section) => section.id === activeId);
+  const visibleSections = activeSection ? [activeSection] : SECTIONS;
 
   return (
     <div className="help-page">
       <header className="help-hero">
-        <Icon name="sparkles" size={28} />
-        <h1>{t("help.title")}</h1>
+        <h1>
+          <Icon name="help" size={24} />
+          {t("help.title")}
+        </h1>
         <p>{t("help.subtitle")}</p>
       </header>
 
       <div className="help-layout">
         <nav className="help-toc" aria-label={t("help.tocLabel")}>
+          <button
+            type="button"
+            className={"help-toc-item" + (activeId === OVERVIEW_ID ? " active" : "")}
+            onClick={() => setActiveId(OVERVIEW_ID)}
+          >
+            <Icon name="help" size={15} />
+            {t("help.title")}
+          </button>
           {SECTIONS.map((section) => (
-            <a
+            <button
+              type="button"
               key={section.id}
-              href={`#${section.id}`}
               className={"help-toc-item" + (activeId === section.id ? " active" : "")}
+              onClick={() => setActiveId(section.id)}
             >
               <Icon name={section.icon} size={15} />
               {t(section.titleKey)}
-            </a>
+            </button>
           ))}
         </nav>
 
-        <div className="help-content" ref={contentRef}>
-          {SECTIONS.map((section) => (
+        <div className="help-content">
+          {visibleSections.map((section) => (
             <section key={section.id} className="help-section">
-              <div
-                className="help-section-heading"
-                id={section.id}
-                data-section-heading={section.id}
-              >
+              <div className="help-section-heading">
                 <span className="help-section-icon">
                   <Icon name={section.icon} size={18} />
                 </span>

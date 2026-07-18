@@ -198,7 +198,16 @@
     "reindexButton": "Rebuild search index",
     "reindexing": "Rebuilding…",
     "reindexed_one": "Done — {{count}} entity indexed",
-    "reindexed_other": "Done — {{count}} entities indexed"
+    "reindexed_other": "Done — {{count}} entities indexed",
+    "navGeneral": "General",
+    "navKnowledge": "Knowledge base",
+    "navIntegrations": "Integrations",
+    "navUsage": "Usage",
+    "navDanger": "Danger zone",
+    "dangerHeading": "Danger zone",
+    "dangerHint": "Irreversible actions on this project.",
+    "deleteProjectLabel": "Delete project",
+    "deleteProjectHint": "Permanently deletes all entities, relationships, knowledge base documents and attachments in this project."
   },
   "usage": {
     "heading": "Token usage",
@@ -218,6 +227,7 @@
     "nodes": {
       "assistant": "AI Assistant",
       "generate_lore": "Lore generation",
+      "generate_edit": "Edit generation",
       "verify_grounding": "Grounding verification"
     }
   },

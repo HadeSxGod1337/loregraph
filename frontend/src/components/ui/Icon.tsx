@@ -4,6 +4,7 @@ export type IconName =
   | "alert"
   | "appearance"
   | "arrow-left"
+  | "bar-chart"
   | "check"
   | "chevron-down"
   | "download"
@@ -49,6 +50,7 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M19 12H5" />
     </>
   ),
+  "bar-chart": <path d="M4 20V10M12 20V4M20 20v-7" />,
   check: <path d="M20 6 9 17l-5-5" />,
   "chevron-down": <path d="m6 9 6 6 6-6" />,
   download: (
