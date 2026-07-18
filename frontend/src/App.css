@@ -2090,6 +2090,7 @@
 
 .panel-body {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 16px;
   display: flex;
@@ -2145,6 +2146,11 @@
   color: var(--text-muted);
   width: 84px;
   flex-shrink: 0;
+}
+
+.field-line .v {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .field-line:has(.v-rich-text) {
