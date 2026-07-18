@@ -1621,12 +1621,18 @@
   min-height: 0;
 }
 
+/* Absolutely positioned (not flex:1) so it overlays rather than competing
+   for width with .graph-canvas — both can be mounted at once (empty-world
+   state still renders GraphCanvas with zero nodes), and as flex siblings
+   in a row they'd each get squeezed to half the container. */
 .graph-empty-state {
-  flex: 1;
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
+  pointer-events: none;
 }
 
 /* ---------- Graph dock ----------
