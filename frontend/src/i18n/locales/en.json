@@ -142,7 +142,8 @@
     "editRelationship": "Edit relationship",
     "removeTitle": "Remove this relationship",
     "noRelationships": "No relationships yet.",
-    "relationshipsHeading": "Relationships"
+    "relationshipsHeading": "Relationships",
+    "swapDirection": "Swap relationship direction"
   },
   "fields": {
     "namePlaceholder": "field name",

@@ -113,6 +113,28 @@ def test_update_edge_changes_type_and_label(
     assert body["label"] == "sister"
 
 
+def test_update_edge_reverse_swaps_source_and_target(
+    client: TestClient, project_id: str
+) -> None:
+    a, b = (
+        _create_entity(client, project_id, "A"),
+        _create_entity(client, project_id, "B"),
+    )
+    edge = client.post(
+        f"/api/projects/{project_id}/edges",
+        json={"source_entity_id": a, "target_entity_id": b, "type": "owner_of"},
+    ).json()
+
+    resp = client.put(
+        f"/api/projects/{project_id}/edges/{edge['id']}",
+        json={"type": "owner_of", "reverse": True},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["source_entity_id"] == b
+    assert body["target_entity_id"] == a
+
+
 def test_update_unknown_edge_is_404(client: TestClient, project_id: str) -> None:
     resp = client.put(
         f"/api/projects/{project_id}/edges/missing", json={"type": "ally_of"}

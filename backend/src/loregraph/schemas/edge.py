@@ -13,6 +13,9 @@ class EdgeCreate(BaseModel):
 class EdgeUpdate(BaseModel):
     type: str
     label: str | None = None
+    # Swaps source_entity_id/target_entity_id; this schema has no way to
+    # retarget an edge to a different entity, only flip its direction.
+    reverse: bool = False
 
 
 class EdgeOut(BaseModel):

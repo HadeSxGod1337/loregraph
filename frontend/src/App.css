@@ -2406,6 +2406,55 @@
   font-size: 12.5px;
 }
 
+.edge-direction {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+
+.edge-direction-entity {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.edge-direction-entity:last-child {
+  text-align: right;
+}
+
+.edge-direction-swap {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  transition: transform 0.2s, color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.edge-direction-swap:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.edge-direction-swap.is-reversed {
+  color: var(--accent-text);
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: rotate(180deg);
+}
+
 /* ---------- Entity wikilinks ---------- */
 
 .entity-link-wrapper {

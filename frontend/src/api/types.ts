@@ -70,6 +70,7 @@ export interface EdgeCreate {
 export interface EdgeUpdate {
   type: string;
   label?: string | null;
+  reverse?: boolean;
 }
 
 export interface Subgraph {

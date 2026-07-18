@@ -148,7 +148,8 @@
     "editRelationship": "Редактирование связи",
     "removeTitle": "Удалить эту связь",
     "noRelationships": "Связей пока нет.",
-    "relationshipsHeading": "Связи"
+    "relationshipsHeading": "Связи",
+    "swapDirection": "Поменять направление связи"
   },
   "fields": {
     "namePlaceholder": "название поля",

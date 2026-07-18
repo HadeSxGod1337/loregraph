@@ -58,6 +58,11 @@ class SqliteEdgeStore:
             raise EdgeNotFoundError(edge_id)
         row.type = data.type
         row.label = data.label
+        if data.reverse:
+            row.source_entity_id, row.target_entity_id = (
+                row.target_entity_id,
+                row.source_entity_id,
+            )
         await self._session.commit()
         return _row_to_out(row)
 
