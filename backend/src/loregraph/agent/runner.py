@@ -22,6 +22,15 @@ from loregraph.schemas.agent import (
     ChatAttachment,
 )
 from loregraph.services.connector_push import ConnectorPushService
+from loregraph.services.event_bus import (
+    EVENT_CHAT_DONE,
+    EVENT_CHAT_ERROR,
+    EVENT_CHAT_STATUS,
+    EVENT_CHAT_TOKEN,
+    EVENT_REVIEW_REQUESTED,
+    EVENT_WORLD_ENTITY_COMMITTED,
+    EventBus,
+)
 from loregraph.storage.protocols import AgentSessionStore
 
 logger = logging.getLogger(__name__)
@@ -104,11 +113,18 @@ class AgentRunner:
         sessions: AgentSessionStore,
         tracing_config: TracingConfig | None = None,
         push_service: ConnectorPushService | None = None,
+        event_bus: EventBus | None = None,
     ) -> None:
         self._graph = graph
         self._sessions = sessions
         self._tracing_config = tracing_config
         self._push_service = push_service
+        # Optional: publishing is an additional notification channel for the
+        # WebSocket-based frontend (see services/event_bus.py) — the SSE
+        # events yielded below remain the source of truth for this HTTP
+        # response either way, so a caller without a bus (e.g. existing
+        # tests) behaves exactly as before.
+        self._event_bus = event_bus
 
     async def stream_message(
         self,
@@ -234,6 +250,12 @@ class AgentRunner:
                     if mode == "updates" and isinstance(payload, dict):
                         for node_name in payload:
                             if node_name != "__interrupt__":
+                                self._publish(
+                                    project_id,
+                                    EVENT_CHAT_STATUS,
+                                    thread_id=thread_id,
+                                    node=node_name,
+                                )
                                 yield {"type": "status", "node": node_name}
                     elif mode == "messages":
                         message_chunk, metadata = cast(
@@ -246,44 +268,84 @@ class AgentRunner:
                         ):
                             token = _message_text(message_chunk)
                             if token:
+                                self._publish(
+                                    project_id,
+                                    EVENT_CHAT_TOKEN,
+                                    thread_id=thread_id,
+                                    text=token,
+                                )
                                 yield {"type": "token", "text": token}
         except asyncio.CancelledError:
             await self._sessions.update(thread_id, status="failed")
             raise
         except TimeoutError:
             await self._sessions.update(thread_id, status="failed")
-            yield {
-                "type": "error",
-                "code": "timeout",
-                "detail": f"Agent run timed out after {AGENT_RUN_TIMEOUT_SECONDS}s",
-            }
+            detail = f"Agent run timed out after {AGENT_RUN_TIMEOUT_SECONDS}s"
+            self._publish(
+                project_id,
+                EVENT_CHAT_ERROR,
+                thread_id=thread_id,
+                code="timeout",
+                detail=detail,
+            )
+            yield {"type": "error", "code": "timeout", "detail": detail}
             return
         except Exception as exc:
             await self._sessions.update(thread_id, status="failed")
             logger.error("Agent turn failed", exc_info=True)
+            self._publish(
+                project_id,
+                EVENT_CHAT_ERROR,
+                thread_id=thread_id,
+                code=error_code(exc),
+                detail=str(exc),
+            )
             yield {"type": "error", "code": error_code(exc), "detail": str(exc)}
             return
 
         session = await self._finalize(thread_id)
         if session.status == "awaiting_review" and session.review is not None:
-            yield {"type": "review", "payload": session.review.model_dump(mode="json")}
+            review_payload = session.review.model_dump(mode="json")
+            self._publish(
+                project_id,
+                EVENT_REVIEW_REQUESTED,
+                thread_id=thread_id,
+                payload=review_payload,
+            )
+            yield {"type": "review", "payload": review_payload}
         # Auto-push AFTER the commit is final (HITL already passed). Only the
         # ids committed by THIS turn — earlier turns were pushed on their own.
+        new_ids = [
+            entity_id
+            for entity_id in session.committed_entity_ids
+            if entity_id not in prior_committed
+        ]
+        if session.status == "committed" and project_id:
+            for entity_id in new_ids:
+                self._publish(
+                    project_id,
+                    EVENT_WORLD_ENTITY_COMMITTED,
+                    thread_id=thread_id,
+                    entity_id=entity_id,
+                )
         if (
             session.status == "committed"
             and self._push_service is not None
             and project_id
         ):
-            new_ids = [
-                entity_id
-                for entity_id in session.committed_entity_ids
-                if entity_id not in prior_committed
-            ]
             for push_event in await self._push_service.push_after_commit(
                 project_id, new_ids
             ):
                 yield push_event
-        yield {"type": "done", "session": session.model_dump(mode="json")}
+        session_payload = session.model_dump(mode="json")
+        self._publish(
+            project_id, EVENT_CHAT_DONE, thread_id=thread_id, session=session_payload
+        )
+        yield {"type": "done", "session": session_payload}
+
+    def _publish(self, project_id: str, type_: str, **payload: Any) -> None:
+        if self._event_bus is not None and project_id:
+            self._event_bus.publish(project_id, type_, **payload)
 
     async def _finalize(self, thread_id: str) -> AgentSessionOut:
         """Reconcile the registry with the graph state after a turn."""

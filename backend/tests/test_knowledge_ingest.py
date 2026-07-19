@@ -7,6 +7,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from loregraph.schemas.project import ProjectCreate
+from loregraph.services.event_bus import EventBus
 from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.knowledge_ingest import ingest_source
 from loregraph.storage.sqlite.db import create_engine_for, init_db, make_session_factory
@@ -70,6 +71,39 @@ async def test_ingest_source_happy_path_marks_ready(
     assert updated.chunk_count == 1
     hits = await index.query(project.id, "setting notes", k=5)
     assert hits
+
+
+@pytest.mark.asyncio
+async def test_ingest_source_publishes_status_events(
+    db_session: AsyncSession, tmp_path: Path
+) -> None:
+    project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
+    store = SqliteKnowledgeSourceStore(db_session, tmp_path / "knowledge")
+    source = await store.create(
+        project_id=project.id,
+        original_filename="notes.txt",
+        content_type="text/plain",
+        content=b"Some setting notes.",
+    )
+    index = KnowledgeIndex(ChromaVectorStore(tmp_path / "chroma", FakeEmbedder()))
+    event_bus = EventBus()
+
+    await ingest_source(
+        source.id,
+        project.id,
+        b"Some setting notes.",
+        "text/plain",
+        "notes.txt",
+        source_store=store,
+        knowledge_index=index,
+        event_bus=event_bus,
+    )
+
+    channel = event_bus._channel(project.id)
+    statuses = [e.payload["status"] for e in channel._buffer]
+    assert statuses == ["processing", "ready"]
+    assert channel._buffer[-1].payload["chunk_count"] == 1
+    assert all(e.payload["source_id"] == source.id for e in channel._buffer)
 
 
 @pytest.mark.asyncio

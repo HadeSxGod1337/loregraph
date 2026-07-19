@@ -21,6 +21,7 @@ from loregraph.schemas.connection import ConnectionOut
 from loregraph.services.connector_push import ConnectorPushService
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
+from loregraph.services.event_bus import EventBus
 from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.composition import StoreFactories
@@ -108,6 +109,13 @@ def get_vector_index(request: Request) -> VectorIndex | None:
 
 
 VectorIndexDep = Annotated[VectorIndex | None, Depends(get_vector_index)]
+
+
+def get_event_bus(request: Request) -> EventBus:
+    return cast(EventBus, request.app.state.event_bus)
+
+
+EventBusDep = Annotated[EventBus, Depends(get_event_bus)]
 
 
 def get_knowledge_index(request: Request) -> KnowledgeIndex | None:
@@ -291,6 +299,7 @@ async def get_agent_runner(
     usage_store: UsageStoreDep,
     live_sources: LiveSourceProviderDep,
     push_service: ConnectorPushServiceDep,
+    event_bus: EventBusDep,
 ) -> AgentRunner:
     """Builds the per-request agent graph: services are session-scoped, so
     the graph is compiled per request against the shared checkpointer (state
@@ -335,6 +344,7 @@ async def get_agent_runner(
         agent_sessions,
         tracing_config=tracing_config,
         push_service=push_service,
+        event_bus=event_bus,
     )
 
 

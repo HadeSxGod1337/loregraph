@@ -20,6 +20,7 @@ from loregraph.api.routers import (
     graph,
     knowledge,
     projects,
+    realtime,
     usage,
 )
 from loregraph.config import Settings
@@ -53,6 +54,7 @@ from loregraph.exceptions import (
 from loregraph.llm.embeddings import EmbeddingProvider, get_embedding_provider
 from loregraph.observability import create_tracing
 from loregraph.schemas.project_transfer import ProjectExport
+from loregraph.services.event_bus import EventBus
 from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.project_transfer import import_project
 from loregraph.services.vector_index import VectorIndex
@@ -134,6 +136,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.settings = settings
         app.state.engine = engine
         app.state.session_factory = make_session_factory(engine)
+        # Realtime pub/sub for the whole app lifetime — in-process, one
+        # channel per project, created lazily (see services/event_bus.py).
+        app.state.event_bus = EventBus()
         # Composition root: the only place that maps storage Protocols to
         # concrete SQLite classes. api/deps.py depends only on this bundle
         # and on the Protocol types, never on loregraph.storage.sqlite.*.
@@ -231,6 +236,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(usage.router, prefix=_API_PREFIX)
     app.include_router(connections.types_router, prefix=_API_PREFIX)
     app.include_router(connections.router, prefix=_API_PREFIX)
+    app.include_router(realtime.router, prefix=_API_PREFIX)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

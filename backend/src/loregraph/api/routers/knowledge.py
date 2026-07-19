@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile
 
 from loregraph.api.deps import (
+    EventBusDep,
     KnowledgeIndexDep,
     KnowledgeSourceStoreDep,
     ProjectStoreDep,
@@ -16,7 +17,7 @@ router = APIRouter(tags=["knowledge"])
 
 # Local self-hosted tool, no upload proxy in front of it — cap file size here
 # so one oversized upload can't stall ingestion or blow up the Chroma index.
-MAX_KNOWLEDGE_FILE_BYTES = 50 * 1024 * 1024
+MAX_KNOWLEDGE_FILE_BYTES = 100 * 1024 * 1024
 
 
 @router.post(
@@ -31,6 +32,7 @@ async def upload_knowledge_source(
     project_store: ProjectStoreDep,
     source_store: KnowledgeSourceStoreDep,
     knowledge_index: KnowledgeIndexDep,
+    event_bus: EventBusDep,
 ) -> KnowledgeSourceOut:
     await project_store.get(project_id)  # 404 for unknown projects, not an
     # unhandled FK-constraint IntegrityError from the insert below.
@@ -63,6 +65,7 @@ async def upload_knowledge_source(
         filename,
         source_store=source_store,
         knowledge_index=knowledge_index,
+        event_bus=event_bus,
     )
     return source
 
