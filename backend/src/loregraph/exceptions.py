@@ -136,6 +136,40 @@ class AwaitingReviewConflictError(CampaignError):
         )
 
 
+class ImportJobNotFoundError(CampaignError):
+    def __init__(self, job_id: str) -> None:
+        super().__init__(f"Import job not found: {job_id}")
+        self.job_id = job_id
+
+
+class ImportJobNotIdleError(CampaignError):
+    """Raised when a new import job is requested for a project that already
+    has one in progress — one active bulk import per project at a time."""
+
+    def __init__(self, job_id: str, status: str) -> None:
+        super().__init__(
+            f"An import job is already in progress for this project "
+            f"({job_id}, status: {status})."
+        )
+        self.job_id = job_id
+        self.status = status
+
+
+class ImportJobNotAwaitingReviewError(CampaignError):
+    def __init__(self, status: str) -> None:
+        super().__init__(f"Import job is not awaiting review (status: {status}).")
+        self.status = status
+
+
+class KnowledgeSourceNotReadyError(CampaignError):
+    def __init__(self, source_id: str, status: str) -> None:
+        super().__init__(
+            f"Knowledge source {source_id} is not ready for import (status: {status})."
+        )
+        self.source_id = source_id
+        self.status = status
+
+
 class UnknownSkillError(CampaignError):
     """Raised when a direct skill run (see agent/skills/registry.py) names a
     skill that either doesn't exist or has no entry_node (a "read" skill —

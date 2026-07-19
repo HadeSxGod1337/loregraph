@@ -1,5 +1,5 @@
 import type { ChangeEvent, KeyboardEvent } from "react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { KnowledgeSource, KnowledgeSourceStatus } from "../../api/types";
@@ -11,6 +11,7 @@ import {
 } from "../../hooks/useKnowledge";
 import { translateApiError } from "../../i18n/eventText";
 import { Icon } from "../ui/Icon";
+import { ImportJobDialog } from "./ImportJobDialog";
 
 const ACCEPTED_EXTENSIONS =
   ".pdf,.txt,.md,.markdown,.json,.csv,.tsv,.yaml,.yml,.log";
@@ -31,6 +32,7 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
   const upload = useUploadKnowledgeSource(projectId);
   const remove = useDeleteKnowledgeSource(projectId);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importSource, setImportSource] = useState<KnowledgeSource | null>(null);
 
   function uploadFiles(files: File[]) {
     // Each file is its own upload — react-query's mutation state (pending/
@@ -105,9 +107,19 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
             key={source.id}
             source={source}
             onRemove={() => remove.mutate(source.id)}
+            onImport={() => setImportSource(source)}
           />
         ))}
       </ul>
+
+      {importSource && (
+        <ImportJobDialog
+          projectId={projectId}
+          sourceId={importSource.id}
+          sourceFilename={importSource.original_filename}
+          onClose={() => setImportSource(null)}
+        />
+      )}
     </section>
   );
 }
@@ -115,9 +127,11 @@ export function KnowledgeBasePanel({ projectId }: { projectId: string }) {
 function KnowledgeSourceRow({
   source,
   onRemove,
+  onImport,
 }: {
   source: KnowledgeSource;
   onRemove: () => void;
+  onImport: () => void;
 }) {
   const { t } = useTranslation();
   const statusLabels: Record<KnowledgeSourceStatus, string> = {
@@ -151,6 +165,17 @@ function KnowledgeSourceRow({
           </span>
         )}
       </span>
+      {source.status === "ready" && (
+        <button
+          type="button"
+          className="icon-button icon-button-accent knowledge-source-import"
+          onClick={onImport}
+          title={t("import.button")}
+          aria-label={t("import.button")}
+        >
+          <Icon name="sparkles" size={14} />
+        </button>
+      )}
       <button
         type="button"
         className="icon-button icon-button-danger knowledge-source-remove"

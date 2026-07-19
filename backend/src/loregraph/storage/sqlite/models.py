@@ -93,6 +93,34 @@ class AgentSessionRow(Base):
     updated_at: Mapped[datetime]
 
 
+class ImportJobRow(Base):
+    """Catalog of bulk-import jobs (see agent/import_graph.py). Same split
+    as AgentSessionRow: the ImportState checkpointer owns the graph state,
+    this table owns the listing/progress so the UI never has to enumerate
+    checkpoint threads."""
+
+    __tablename__ = "import_jobs"
+
+    job_id: Mapped[str] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    source_id: Mapped[str]
+    source_filename: Mapped[str]
+    status: Mapped[str] = mapped_column(index=True)
+    total_windows: Mapped[int] = mapped_column(default=0)
+    total_slices: Mapped[int] = mapped_column(default=0)
+    current_slice: Mapped[int] = mapped_column(default=0)
+    input_tokens: Mapped[int] = mapped_column(default=0)
+    output_tokens: Mapped[int] = mapped_column(default=0)
+    committed_entities_json: Mapped[str | None] = mapped_column(default=None)
+    # Snapshot of the review payload at interrupt time — same rationale as
+    # AgentSessionRow.review_json.
+    review_json: Mapped[str | None] = mapped_column(default=None)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
+
+
 class UsageEventRow(Base):
     """One recorded LLM call. The per-session totals on AgentSessionRow are a
     denormalized fast path for the review UI; this table is the granular

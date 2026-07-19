@@ -1,9 +1,9 @@
 import re
-from difflib import SequenceMatcher
 from typing import Any
 
 from loregraph.agent.state import AgentState
 from loregraph.schemas.agent import AgentWarning
+from loregraph.services.text_similarity import title_similarity
 from loregraph.storage.protocols import EntityStore
 
 # Fuzzy title similarity above which a generated entity counts as a duplicate.
@@ -115,7 +115,7 @@ async def check_duplicates_draft(
 
 
 def _similar(a: str, b: str) -> bool:
-    return SequenceMatcher(None, a, b).ratio() >= DUPLICATE_TITLE_RATIO
+    return title_similarity(a, b) >= DUPLICATE_TITLE_RATIO
 
 
 def route_after_draft_check(state: AgentState) -> str:

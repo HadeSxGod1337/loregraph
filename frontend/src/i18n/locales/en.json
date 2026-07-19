@@ -249,6 +249,30 @@
     "chunksCount_other": "{{count}} chunks",
     "deleteButton": "Delete"
   },
+  "import": {
+    "button": "Import to graph",
+    "dialogTitle": "Import document into the world graph",
+    "confirmBody": "This reads the whole of \"{{filename}}\" and proposes entities and relationships for your review, in pages. Nothing is written to the world until you approve a page.",
+    "startButton": "Start import",
+    "phasePlanning": "📖 Reading the document…",
+    "phaseRegistry": "🧭 Indexing names…",
+    "phaseExtracting": "✍️ Extracting lore…",
+    "phaseMerging": "🧬 Merging and deduplicating…",
+    "windowProgress": "{{done}} / {{total}} sections processed",
+    "totalWindows_one": "{{count}} section",
+    "totalWindows_other": "{{count}} sections",
+    "pageProgress": "Page {{current}} of {{total}}",
+    "committedSoFar_one": "{{count}} entity committed so far",
+    "committedSoFar_other": "{{count}} entities committed so far",
+    "approvePage_one": "Approve {{count}}",
+    "approvePage_other": "Approve {{count}}",
+    "approveAll": "Approve all remaining",
+    "approveAllHint": "Commits this page and every remaining page without asking again for each one.",
+    "rejectPage": "Skip this page",
+    "doneSummary_one": "Done — {{count}} entity added to the world.",
+    "doneSummary_other": "Done — {{count}} entities added to the world.",
+    "failed": "The import failed — check the backend logs for details."
+  },
   "assistant": {
     "stage": {
       "assistant": "💭 Thinking…",
@@ -328,7 +352,10 @@
     "dropped_unknown_source": "Dropped a relationship from an unknown source ({{ref}}).",
     "dropped_unknown_target": "Dropped a relationship to an unknown target ({{ref}}) — not a draft entity or retrieved lore.",
     "uncited_lore_id": "The draft cites lore id {{id}} that was never retrieved — treat the related claim as unverified.",
-    "relationship_failed": "Relationship {{source}} → {{target}} failed: {{detail}}"
+    "relationship_failed": "Relationship {{source}} → {{target}} failed: {{detail}}",
+    "import_linked_existing": "«{{title}}» linked to existing entity ({{existing_id}}) instead of creating a duplicate.",
+    "import_merged_duplicate": "«{{title}}» merged with another occurrence of the same entity elsewhere in the document.",
+    "import_relationship_unresolved": "Dropped a relationship that couldn't be resolved ({{source}} → {{target}})."
   },
   "events": {
     "budget_exhausted_reply": "Token budget for this conversation is exhausted — start a new session to continue.",
@@ -427,7 +454,13 @@
     "connector_config_invalid": "Invalid configuration for this connector.",
     "connector_unavailable": "The external tool is unreachable — check the connection settings.",
     "unsupported_connector_capability": "This connector doesn't support this operation.",
-    "external_data_parse": "Failed to parse data from the external source."
+    "external_data_parse": "Failed to parse data from the external source.",
+    "unknown_skill": "That action isn't available.",
+    "skill_input_invalid": "That request is missing required information.",
+    "import_job_not_found": "Import job not found.",
+    "import_job_not_idle": "An import is already running for this project — wait for it to finish first.",
+    "import_job_not_awaiting_review": "This import isn't waiting on a review decision.",
+    "knowledge_source_not_ready": "This document isn't ready to import yet."
   },
   "help": {
     "title": "Help",

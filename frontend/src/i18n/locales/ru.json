@@ -261,6 +261,38 @@
     "chunksCount_other": "{{count}} чанка",
     "deleteButton": "Удалить"
   },
+  "import": {
+    "button": "Импортировать в граф",
+    "dialogTitle": "Импорт документа в граф мира",
+    "confirmBody": "Ассистент прочитает весь документ «{{filename}}» и предложит сущности и связи на ревью, постранично. Ничего не попадёт в мир, пока вы не одобрите страницу.",
+    "startButton": "Начать импорт",
+    "phasePlanning": "📖 Читаю документ…",
+    "phaseRegistry": "🧭 Индексирую имена…",
+    "phaseExtracting": "✍️ Извлекаю лор…",
+    "phaseMerging": "🧬 Объединяю и убираю дубли…",
+    "windowProgress": "Обработано {{done}} из {{total}} фрагментов",
+    "totalWindows_one": "{{count}} фрагмент",
+    "totalWindows_few": "{{count}} фрагмента",
+    "totalWindows_many": "{{count}} фрагментов",
+    "totalWindows_other": "{{count}} фрагмента",
+    "pageProgress": "Страница {{current}} из {{total}}",
+    "committedSoFar_one": "уже сохранена {{count}} сущность",
+    "committedSoFar_few": "уже сохранено {{count}} сущности",
+    "committedSoFar_many": "уже сохранено {{count}} сущностей",
+    "committedSoFar_other": "уже сохранено {{count}} сущности",
+    "approvePage_one": "Одобрить {{count}}",
+    "approvePage_few": "Одобрить {{count}}",
+    "approvePage_many": "Одобрить {{count}}",
+    "approvePage_other": "Одобрить {{count}}",
+    "approveAll": "Одобрить всё оставшееся",
+    "approveAllHint": "Сохраняет эту и все оставшиеся страницы без повторного вопроса по каждой.",
+    "rejectPage": "Пропустить страницу",
+    "doneSummary_one": "Готово — в мир добавлена {{count}} сущность.",
+    "doneSummary_few": "Готово — в мир добавлено {{count}} сущности.",
+    "doneSummary_many": "Готово — в мир добавлено {{count}} сущностей.",
+    "doneSummary_other": "Готово — в мир добавлено {{count}} сущности.",
+    "failed": "Импорт не удался — подробности в логах бэкенда."
+  },
   "assistant": {
     "stage": {
       "assistant": "💭 Думаю…",
@@ -344,7 +376,10 @@
     "dropped_unknown_source": "Удалена связь с неизвестным источником ({{ref}}).",
     "dropped_unknown_target": "Удалена связь с неизвестной целью ({{ref}}) — это не сущность черновика и не найденный лор.",
     "uncited_lore_id": "Черновик ссылается на id лора {{id}}, который не был найден при поиске — считай связанное утверждение непроверенным.",
-    "relationship_failed": "Связь {{source}} → {{target}} не создана: {{detail}}"
+    "relationship_failed": "Связь {{source}} → {{target}} не создана: {{detail}}",
+    "import_linked_existing": "«{{title}}» связана с существующей сущностью ({{existing_id}}) вместо создания дубля.",
+    "import_merged_duplicate": "«{{title}}» объединена с другим упоминанием той же сущности в другом месте документа.",
+    "import_relationship_unresolved": "Удалена связь, которую не удалось разрешить ({{source}} → {{target}})."
   },
   "events": {
     "budget_exhausted_reply": "Бюджет токенов на этот разговор исчерпан — начни новую сессию, чтобы продолжить.",
@@ -443,7 +478,13 @@
     "connector_config_invalid": "Неверная конфигурация коннектора.",
     "connector_unavailable": "Внешний инструмент недоступен — проверь настройки подключения.",
     "unsupported_connector_capability": "Этот коннектор не поддерживает данную операцию.",
-    "external_data_parse": "Не удалось разобрать данные из внешнего источника."
+    "external_data_parse": "Не удалось разобрать данные из внешнего источника.",
+    "unknown_skill": "Это действие недоступно.",
+    "skill_input_invalid": "В запросе не хватает нужных данных.",
+    "import_job_not_found": "Задача импорта не найдена.",
+    "import_job_not_idle": "Для этого проекта уже выполняется импорт — дождитесь его завершения.",
+    "import_job_not_awaiting_review": "Этот импорт сейчас не ждёт решения по ревью.",
+    "knowledge_source_not_ready": "Этот документ ещё не готов к импорту."
   },
   "help": {
     "title": "Справка",

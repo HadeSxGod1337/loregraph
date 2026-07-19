@@ -18,6 +18,7 @@ from loregraph.api.routers import (
     edges,
     entities,
     graph,
+    import_jobs,
     knowledge,
     projects,
     realtime,
@@ -41,9 +42,12 @@ from loregraph.exceptions import (
     ExportConflictError,
     ExternalDataParseError,
     GenerationError,
+    ImportJobNotFoundError,
+    ImportJobNotIdleError,
     InvalidEdgeReferenceError,
     InvalidIconReferenceError,
     KnowledgeSourceNotFoundError,
+    KnowledgeSourceNotReadyError,
     ProjectNotFoundError,
     SkillInputInvalidError,
     UnknownConnectorTypeError,
@@ -74,6 +78,7 @@ from loregraph.storage.sqlite.db import (
 )
 from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
+from loregraph.storage.sqlite.import_job_store import SqliteImportJobStore
 from loregraph.storage.sqlite.knowledge_source_store import SqliteKnowledgeSourceStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
 from loregraph.storage.sqlite.usage_store import SqliteUsageStore
@@ -152,6 +157,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 session, settings.attachments_dir
             ),
             agent_session=SqliteAgentSessionStore,
+            import_job=SqliteImportJobStore,
             knowledge_source=lambda session: SqliteKnowledgeSourceStore(
                 session, settings.knowledge_dir
             ),
@@ -196,6 +202,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     str(settings.agent_checkpoint_db_path)
                 )
             )
+            # Bulk-import jobs (agent/import_graph.py) are a different graph
+            # (ImportState, not AgentState) with the same durability need —
+            # an interrupted job must survive a process restart — kept in
+            # its own file (see Settings.import_checkpoint_db_path).
+            app.state.import_checkpointer = await stack.enter_async_context(
+                AsyncSqliteSaver.from_conn_string(
+                    str(settings.import_checkpoint_db_path)
+                )
+            )
             await _seed_demo_project_if_empty(
                 app.state.session_factory,
                 app.state.store_factories,
@@ -234,6 +249,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(graph.router, prefix=_API_PREFIX)
     app.include_router(attachments.router, prefix=_API_PREFIX)
     app.include_router(agent.router, prefix=_API_PREFIX)
+    app.include_router(import_jobs.router, prefix=_API_PREFIX)
     app.include_router(knowledge.router, prefix=_API_PREFIX)
     app.include_router(usage.router, prefix=_API_PREFIX)
     app.include_router(connections.types_router, prefix=_API_PREFIX)
@@ -270,6 +286,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
         KnowledgeSourceNotFoundError,
         ConnectionNotFoundError,
         UnknownSkillError,
+        ImportJobNotFoundError,
     )
     for exc_type in _not_found:
         app.add_exception_handler(exc_type, lambda _r, e: _error_response(404, e))
@@ -299,6 +316,12 @@ def _register_exception_handlers(app: FastAPI) -> None:
     )
     app.add_exception_handler(
         ExportConflictError, lambda _r, e: _error_response(409, e)
+    )
+    app.add_exception_handler(
+        ImportJobNotIdleError, lambda _r, e: _error_response(409, e)
+    )
+    app.add_exception_handler(
+        KnowledgeSourceNotReadyError, lambda _r, e: _error_response(409, e)
     )
     # Fallback for every other CampaignError subclass (including the
     # HITL/session-state guards in api/routers/agent.py) — 400, code still

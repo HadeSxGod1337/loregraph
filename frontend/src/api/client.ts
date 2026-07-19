@@ -75,6 +75,55 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (await response.json()) as T;
 }
 
+/** POST an SSE endpoint and feed parsed events to the callback. EventSource
+ * can't POST, so this reads the fetch body stream directly. Shared by the
+ * agent chat endpoints and the bulk-import job endpoints — both stream the
+ * same `data: {...}\n\n` framing, just with different event payload shapes. */
+export async function streamSse<TEvent>(
+  path: string,
+  body: unknown,
+  onEvent: (event: TEvent) => void,
+): Promise<void> {
+  const response = await fetch(API_URL + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok || !response.body) {
+    let detail = response.statusText;
+    let code: string | undefined;
+    try {
+      const errorBody = (await response.json()) as { detail?: string; code?: string };
+      detail = errorBody.detail ?? detail;
+      code = errorBody.code;
+    } catch {
+      // no JSON body
+    }
+    throw new ApiError(
+      response.status,
+      `${detail} (POST ${path} → HTTP ${response.status})`,
+      code,
+    );
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let boundary = buffer.indexOf("\n\n");
+    while (boundary !== -1) {
+      const raw = buffer.slice(0, boundary).trim();
+      buffer = buffer.slice(boundary + 2);
+      if (raw.startsWith("data: ")) {
+        onEvent(JSON.parse(raw.slice(6)) as TEvent);
+      }
+      boundary = buffer.indexOf("\n\n");
+    }
+  }
+}
+
 export const apiClient = {
   get: <T>(path: string, params?: RequestOptions["params"]) =>
     request<T>(path, { method: "GET", params }),

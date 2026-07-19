@@ -3472,6 +3472,38 @@
   width: 480px;
 }
 
+.import-job-dialog {
+  width: 640px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.import-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.import-progress-phase {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin: 0;
+}
+
+.import-review {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.import-done-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent, inherit);
+}
+
 /* react-easy-crop's <Cropper> absolutely-positions itself to fill its
    nearest positioned ancestor — this is that ancestor, matched to
    ICON_CROP_ASPECT (ImageCropModal.tsx) so the crop window's proportions

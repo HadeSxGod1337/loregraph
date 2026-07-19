@@ -20,6 +20,11 @@ from loregraph.schemas.entity import (
     EntityPositionEntry,
     EntityUpdate,
 )
+from loregraph.schemas.import_job import (
+    ImportJobOut,
+    ImportJobStatus,
+    ImportReviewPayload,
+)
 from loregraph.schemas.knowledge import KnowledgeSourceOut
 from loregraph.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
 from loregraph.schemas.usage import UsageEvent, UsageRollupRow
@@ -83,6 +88,33 @@ class AgentSessionStore(Protocol):
         review: AgentReviewPayload | None = None,
         clear_review: bool = False,
     ) -> AgentSessionOut: ...
+
+
+@runtime_checkable
+class ImportJobStore(Protocol):
+    """Catalog of bulk-import jobs — same split as AgentSessionStore: the
+    ImportState checkpointer owns the graph state, this owns the listing/
+    progress (see storage/sqlite/models.py::ImportJobRow)."""
+
+    async def create(
+        self, project_id: str, job_id: str, source_id: str, source_filename: str
+    ) -> ImportJobOut: ...
+    async def get(self, job_id: str) -> ImportJobOut: ...
+    async def list_for_project(self, project_id: str) -> list[ImportJobOut]: ...
+    async def update(
+        self,
+        job_id: str,
+        *,
+        status: ImportJobStatus | None = None,
+        total_windows: int | None = None,
+        total_slices: int | None = None,
+        current_slice: int | None = None,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        committed_entity_ids: list[str] | None = None,
+        review: ImportReviewPayload | None = None,
+        clear_review: bool = False,
+    ) -> ImportJobOut: ...
 
 
 @runtime_checkable
@@ -162,3 +194,4 @@ class KnowledgeSourceStore(Protocol):
         chunk_count: int | None = None,
     ) -> KnowledgeSourceOut: ...
     async def delete(self, source_id: str) -> None: ...
+    async def read_content(self, source_id: str) -> bytes: ...

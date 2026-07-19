@@ -98,6 +98,21 @@ class edit_entity(BaseModel):
     )
 
 
+class import_document(BaseModel):
+    """Bulk-import an uploaded knowledge-base document into the world
+    graph: walks the whole document in parallel windows, canonicalizes
+    names before extraction, deduplicates against existing canon, and
+    presents the result for page-by-page review. NOT chat-dispatchable in
+    this version — always triggered directly (see api/routers/
+    import_jobs.py, agent/import_runner.py) from a UI button, deliberately
+    not left to the assistant's judgment to decide when to fire. Kept in
+    this registry anyway so it is documented alongside every other skill,
+    per the "single source of truth" rationale in this module's docstring.
+    """
+
+    source_id: str = Field(description="Id of a ready knowledge-base source.")
+
+
 class query_external_source(BaseModel):
     """Query live data from an external tool connected to this project
     (Foundry VTT world, LongStoryShort character sheets…). Use it when the
@@ -156,6 +171,16 @@ SKILLS: dict[str, SkillManifest] = {
             input_schema=edit_entity,
             kind="propose",
             entry_node="begin_edit",
+        ),
+        SkillManifest(
+            name="import_document",
+            description=import_document.__doc__ or "",
+            input_schema=import_document,
+            kind="job",
+            # No entry_node: this runs on its own compiled graph
+            # (agent/import_graph.py), not build_agent_graph's AgentState
+            # graph — see this class's docstring.
+            entry_node=None,
         ),
     )
 }

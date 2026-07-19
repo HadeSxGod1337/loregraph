@@ -137,3 +137,11 @@ class Settings(BaseSettings):
     @property
     def agent_checkpoint_db_path(self) -> Path:
         return self.data_dir / "agent_checkpoints.sqlite3"
+
+    @property
+    def import_checkpoint_db_path(self) -> Path:
+        # Separate file from agent_checkpoint_db_path: an import job is a
+        # different kind of graph (ImportState, not AgentState) with its own
+        # thread_id namespace — isolating the two files means a lock/
+        # corruption issue in one never affects the other.
+        return self.data_dir / "import_checkpoints.sqlite3"

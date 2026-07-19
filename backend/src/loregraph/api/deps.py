@@ -7,6 +7,8 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from loregraph.agent.graph import build_agent_graph
+from loregraph.agent.import_graph import build_import_graph
+from loregraph.agent.import_runner import ImportJobRunner
 from loregraph.agent.runner import AgentRunner
 from loregraph.config import Settings
 from loregraph.connectors.context import ConnectorContext
@@ -32,6 +34,7 @@ from loregraph.storage.protocols import (
     ConnectionStore,
     EdgeStore,
     EntityStore,
+    ImportJobStore,
     KnowledgeSourceStore,
     ProjectStore,
     UsageStore,
@@ -152,6 +155,13 @@ async def get_agent_session_store(
 
 
 AgentSessionStoreDep = Annotated[AgentSessionStore, Depends(get_agent_session_store)]
+
+
+async def get_import_job_store(request: Request, session: SessionDep) -> ImportJobStore:
+    return _factories(request).import_job(session)
+
+
+ImportJobStoreDep = Annotated[ImportJobStore, Depends(get_import_job_store)]
 
 
 async def get_connection_store(
@@ -349,3 +359,41 @@ async def get_agent_runner(
 
 
 AgentRunnerDep = Annotated[AgentRunner, Depends(get_agent_runner)]
+
+
+async def get_import_job_runner(
+    request: Request,
+    settings: SettingsDep,
+    source_store: KnowledgeSourceStoreDep,
+    entity_store: EntityStoreDep,
+    entity_service: EntityServiceDep,
+    edge_service: EdgeServiceDep,
+    import_jobs: ImportJobStoreDep,
+    event_bus: EventBusDep,
+) -> ImportJobRunner:
+    """Builds the per-request bulk-import graph — same rationale as
+    get_agent_runner (services are session-scoped, graph is compiled per
+    request against the shared import_checkpointer). Raises
+    ConfigurationError (→ 409) when no LLM is configured, same as the chat
+    graph."""
+    checkpointer = cast(BaseCheckpointSaver[str], request.app.state.import_checkpointer)
+    # Both the registry pass and the entity-extraction pass are
+    # classification/extraction-shaped work (CLAUDE.md: "Haiku —
+    # классификация/экстракция... низкая температура"), not the free
+    # creative generation propose_lore does — neither belongs on the
+    # pricier "generation" tier tuned for creative temperature.
+    extraction_model = get_chat_model(settings, tier="extraction")
+    graph = build_import_graph(
+        extraction=LangChainStructuredGenerator(extraction_model),
+        creative=LangChainStructuredGenerator(extraction_model),
+        source_store=source_store,
+        entity_store=entity_store,
+        entity_service=entity_service,
+        edge_service=edge_service,
+        checkpointer=checkpointer,
+        event_bus=event_bus,
+    )
+    return ImportJobRunner(graph, import_jobs)
+
+
+ImportJobRunnerDep = Annotated[ImportJobRunner, Depends(get_import_job_runner)]

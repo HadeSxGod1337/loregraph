@@ -87,6 +87,16 @@ class SqliteKnowledgeSourceStore:
         await self._session.commit()
         await asyncio.to_thread(path.unlink, missing_ok=True)
 
+    async def read_content(self, source_id: str) -> bytes:
+        """Raw uploaded bytes, unchunked — used by the bulk-import pipeline
+        (agent/nodes/import_plan.py) to re-derive text windows independent
+        of the KB's own embedding-sized chunks (see document_ingest.py)."""
+        row = await self._session.get(KnowledgeSourceRow, source_id)
+        if row is None:
+            raise KnowledgeSourceNotFoundError(source_id)
+        path = self._knowledge_dir / row.project_id / row.stored_filename
+        return await asyncio.to_thread(path.read_bytes)
+
 
 def _write_file(dest_path: Path, content: bytes) -> None:
     dest_path.parent.mkdir(parents=True, exist_ok=True)
