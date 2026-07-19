@@ -45,7 +45,9 @@ from loregraph.exceptions import (
     InvalidIconReferenceError,
     KnowledgeSourceNotFoundError,
     ProjectNotFoundError,
+    SkillInputInvalidError,
     UnknownConnectorTypeError,
+    UnknownSkillError,
     UnsupportedAttachmentTypeError,
     UnsupportedConnectorCapabilityError,
     UnsupportedExportFormatError,
@@ -267,6 +269,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
         AgentSessionNotFoundError,
         KnowledgeSourceNotFoundError,
         ConnectionNotFoundError,
+        UnknownSkillError,
     )
     for exc_type in _not_found:
         app.add_exception_handler(exc_type, lambda _r, e: _error_response(404, e))
@@ -282,6 +285,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
         ConnectorConfigInvalidError,
         UnsupportedConnectorCapabilityError,
         ExternalDataParseError,
+        SkillInputInvalidError,
     )
     for unprocessable_type in _unprocessable:
         app.add_exception_handler(

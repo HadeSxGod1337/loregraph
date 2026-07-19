@@ -1,13 +1,15 @@
 import json
 import uuid
 from collections.abc import AsyncIterator
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from pydantic import ValidationError
 
 from loregraph.agent.multimodal import build_message_content
 from loregraph.agent.runner import AgentEvent
+from loregraph.agent.skills.registry import SKILLS
 from loregraph.api.deps import (
     AgentRunnerDep,
     AgentSessionStoreDep,
@@ -20,6 +22,8 @@ from loregraph.exceptions import (
     AwaitingReviewConflictError,
     ChatAttachmentLimitExceededError,
     NotAwaitingReviewError,
+    SkillInputInvalidError,
+    UnknownSkillError,
 )
 from loregraph.llm.factory import is_llm_configured
 from loregraph.schemas.agent import (
@@ -29,6 +33,7 @@ from loregraph.schemas.agent import (
     AgentSessionDetail,
     AgentSessionOut,
     AgentSessionStatus,
+    AgentSkillRunRequest,
     ChatAttachment,
 )
 from loregraph.storage.protocols import AgentSessionStore
@@ -123,6 +128,33 @@ async def _review_guard(
     )
 
 
+async def _skill_run_guard(
+    project_id: str,
+    thread_id: str,
+    skill_name: str,
+    data: AgentSkillRunRequest,
+    sessions: AgentSessionStoreDep,
+) -> dict[str, Any]:
+    # Same ordering rule as the session guards above: an unknown skill name
+    # or malformed input is a 404/422 regardless of whether an LLM key is
+    # configured, so this must resolve — and raise — before AgentRunnerDep
+    # does. Returns the already-validated input dict for the endpoint to use
+    # directly, so the skill's own schema is only parsed once.
+    await _validate_session(
+        sessions, project_id, thread_id, forbidden_status="awaiting_review"
+    )
+    manifest = SKILLS.get(skill_name)
+    if manifest is None or manifest.entry_node is None:
+        # Unknown name, or a "read" skill — those only run inline inside a
+        # chat turn's tool-call loop, never as a standalone graph entry.
+        raise UnknownSkillError(skill_name)
+    try:
+        validated = manifest.input_schema.model_validate(data.input)
+    except ValidationError as e:
+        raise SkillInputInvalidError(skill_name, str(e)) from e
+    return validated.model_dump(mode="json")
+
+
 async def _sse(events: AsyncIterator[AgentEvent]) -> AsyncIterator[str]:
     async for event in events:
         yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
@@ -204,6 +236,26 @@ async def send_agent_message(
             data.anchor_entity_id,
             data.attachments,
         )
+    )
+
+
+@router.post(
+    "/projects/{project_id}/agent/sessions/{thread_id}/skills/{skill_name}/run"
+)
+async def run_agent_skill(
+    project_id: str,
+    thread_id: str,
+    skill_name: str,
+    validated_input: Annotated[dict[str, Any], Depends(_skill_run_guard)],
+    runner: AgentRunnerDep,
+) -> StreamingResponse:
+    """Second entry point for a skill (see agent/skills/registry.py): runs
+    it directly, with no assistant LLM call deciding whether to fire —
+    for UI-driven triggers (a button) that must work deterministically
+    regardless of model judgment. Streamed as SSE, same status/review/done
+    shape as /messages."""
+    return _sse_response(
+        runner.stream_skill_run(project_id, thread_id, skill_name, validated_input)
     )
 
 

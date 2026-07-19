@@ -20,6 +20,7 @@ from loregraph.schemas.agent import (
     AgentSessionOut,
     AgentSessionStatus,
     ChatAttachment,
+    SkillKickoff,
 )
 from loregraph.services.connector_push import ConnectorPushService
 from loregraph.services.event_bus import (
@@ -175,6 +176,50 @@ class AgentRunner:
             "messages": [message],
             # Per-turn outcome fields reset so _finalize reports THIS turn's
             # result, not a stale committed/rejected from an earlier proposal.
+            "decision_action": None,
+            "draft_committed": False,
+        }
+        async for event in self._stream_turn(
+            thread_id,
+            graph_input,
+            project_id,
+            prior_committed=frozenset(session.committed_entity_ids),
+        ):
+            yield event
+
+    async def stream_skill_run(
+        self,
+        project_id: str,
+        thread_id: str,
+        skill_name: str,
+        skill_input: dict[str, Any],
+    ) -> AsyncIterator[AgentEvent]:
+        """Second entry point for a skill (see agent/skills/registry.py):
+        starts its pipeline directly via AgentState.skill_kickoff, with no
+        assistant LLM call deciding whether to fire it — for UI-driven
+        triggers (e.g. a button) that must not depend on the model's
+        judgment. Reuses the exact same graph/checkpointer/SSE machinery as
+        a chat turn; only how the turn is seeded differs."""
+        session = await self._require(project_id, thread_id)
+        if session.status == "awaiting_review":
+            # Same rationale as stream_message's matching guard: a plain
+            # dict input on an interrupted thread would just re-fire the
+            # interrupt. Defense in depth — the router's guard already
+            # blocks this before the stream opens.
+            yield {
+                "type": "error",
+                "code": "awaiting_review_conflict",
+                "detail": "A draft is awaiting review — approve, reject or "
+                "request changes before running another skill.",
+            }
+            return
+        graph_input: dict[str, Any] = {
+            "project_id": project_id,
+            "thread_id": thread_id,
+            "skill_kickoff": SkillKickoff(
+                skill=skill_name, input=skill_input
+            ).model_dump(mode="json"),
+            "messages": [],
             "decision_action": None,
             "draft_committed": False,
         }

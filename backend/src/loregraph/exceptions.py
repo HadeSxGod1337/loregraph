@@ -136,6 +136,24 @@ class AwaitingReviewConflictError(CampaignError):
         )
 
 
+class UnknownSkillError(CampaignError):
+    """Raised when a direct skill run (see agent/skills/registry.py) names a
+    skill that either doesn't exist or has no entry_node (a "read" skill —
+    those only ever run inline inside a chat turn's tool-call loop, never as
+    a standalone run)."""
+
+    def __init__(self, skill_name: str) -> None:
+        super().__init__(f"Unknown or non-runnable skill: {skill_name}")
+        self.skill_name = skill_name
+
+
+class SkillInputInvalidError(CampaignError):
+    def __init__(self, skill_name: str, reason: str) -> None:
+        super().__init__(f"Invalid input for skill {skill_name!r}: {reason}")
+        self.skill_name = skill_name
+        self.reason = reason
+
+
 class NotAwaitingReviewError(CampaignError):
     """Raised when a review decision arrives for a session that isn't paused
     at the human_review gate."""

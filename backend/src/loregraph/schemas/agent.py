@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -8,6 +8,17 @@ from loregraph.schemas.entity import FieldType
 type AgentSessionStatus = Literal[
     "idle", "running", "awaiting_review", "committed", "rejected", "failed"
 ]
+
+
+class SkillKickoff(BaseModel):
+    """One-shot trigger for a direct (non-chat) skill invocation — see
+    agent/skills/registry.py. Consumed by the skill's entry node
+    (begin_proposal, begin_edit, …) and cleared immediately, same lifecycle
+    as a chat tool call reaching that node, just without an AIMessage/
+    ToolMessage pair to answer."""
+
+    skill: str
+    input: dict[str, Any] = Field(default_factory=dict)
 
 
 class DraftField(BaseModel):
@@ -154,6 +165,14 @@ class AgentMessageRequest(BaseModel):
     text: str
     anchor_entity_id: str | None = None
     attachments: list[ChatAttachment] = Field(default_factory=list)
+
+
+class AgentSkillRunRequest(BaseModel):
+    """Direct (non-chat) invocation of a "propose"/"job" skill (see
+    agent/skills/registry.py) — `input` is validated against that skill's
+    own input_schema by the router before the graph ever sees it."""
+
+    input: dict[str, Any] = Field(default_factory=dict)
 
 
 class AgentResumeRequest(BaseModel):

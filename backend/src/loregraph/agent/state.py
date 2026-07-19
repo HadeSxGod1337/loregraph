@@ -4,7 +4,12 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
 
-from loregraph.schemas.agent import AgentWarning, EntityEditDraft, LoreDraft
+from loregraph.schemas.agent import (
+    AgentWarning,
+    EntityEditDraft,
+    LoreDraft,
+    SkillKickoff,
+)
 
 # Checkpointed state is the app's closest thing to a public contract:
 # interrupted graphs live on disk between process restarts.
@@ -36,6 +41,11 @@ class AgentState(BaseModel):
     thread_id: str = ""
     anchor_entity_id: str | None = None
     messages: Annotated[list[AnyMessage], add_messages] = Field(default_factory=list)
+    # One-shot trigger for a direct (non-chat) skill run — additive field
+    # with a default, safe for pre-existing checkpoints (STATE_VERSION
+    # unchanged, same precedent as knowledge_context below). Consumed and
+    # cleared by the skill's own entry node (see agent/skills/registry.py).
+    skill_kickoff: SkillKickoff | None = None
 
     # Current proposal (reset when a new propose_lore tool call starts)
     pending_brief: str = ""

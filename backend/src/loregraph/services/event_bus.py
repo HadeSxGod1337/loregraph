@@ -15,7 +15,7 @@ import itertools
 import logging
 import time
 from collections import deque
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -126,7 +126,7 @@ class EventBus:
 
     async def subscribe(
         self, project_id: str, *, catch_up_from: int | None = None
-    ) -> AsyncIterator[Event]:
+    ) -> AsyncGenerator[Event, None]:
         """Yields buffered events newer than `catch_up_from` (if given), then
         streams live events until the consumer stops iterating (or the task
         is cancelled — e.g. the WebSocket disconnects)."""

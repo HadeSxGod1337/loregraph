@@ -23,6 +23,7 @@ from loregraph.agent.nodes.human_review import human_review, route_after_review
 from loregraph.agent.nodes.retrieve_context import retrieve_context
 from loregraph.agent.nodes.tools import run_tools
 from loregraph.agent.nodes.verify_grounding import verify_grounding
+from loregraph.agent.skills.registry import SKILLS
 from loregraph.agent.state import AgentState
 from loregraph.connectors.live import LiveSourceProvider
 from loregraph.llm.structured import StructuredGenerator
@@ -160,16 +161,34 @@ def build_agent_graph(
         ),
     )
 
-    builder.add_edge(START, "assistant")
+    # Every "propose"/"job" skill's entry_node is a valid route_after_
+    # assistant target (chat tool-call dispatch) AND a valid START target
+    # (direct skill_kickoff, bypassing the assistant LLM entirely — see
+    # agent/skills/registry.py, api/routers/agent.py's skill-run endpoint).
+    # Built from the registry so a new skill needs no change here beyond its
+    # own node/edges.
+    skill_entry_nodes = {
+        manifest.entry_node
+        for manifest in SKILLS.values()
+        if manifest.kind in ("propose", "job") and manifest.entry_node
+    }
+
+    def route_entry(state: AgentState) -> str:
+        if state.skill_kickoff is not None:
+            entry_node = SKILLS[state.skill_kickoff.skill].entry_node
+            assert entry_node is not None
+            return entry_node
+        return "assistant"
+
+    builder.add_conditional_edges(
+        START,
+        route_entry,
+        {"assistant": "assistant", **{node: node for node in skill_entry_nodes}},
+    )
     builder.add_conditional_edges(
         "assistant",
         route_after_assistant,
-        {
-            "tools": "tools",
-            "propose": "begin_proposal",
-            "edit": "begin_edit",
-            "end": END,
-        },
+        {"tools": "tools", "end": END, **{node: node for node in skill_entry_nodes}},
     )
     builder.add_edge("tools", "assistant")
 

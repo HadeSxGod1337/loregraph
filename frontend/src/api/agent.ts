@@ -215,4 +215,21 @@ export const agentApi = {
       decision,
       onEvent,
     ),
+  /** Second entry point for a skill (see backend agent/skills/registry.py):
+   * runs it directly on a fresh/idle session, with no assistant LLM call
+   * deciding whether to fire — for UI-driven triggers (a button) that must
+   * work deterministically regardless of model judgment. Same SSE shape as
+   * streamMessage/streamReview. */
+  streamSkillRun: (
+    projectId: string,
+    threadId: string,
+    skillName: string,
+    input: Record<string, unknown>,
+    onEvent: (event: AgentEvent) => void,
+  ) =>
+    streamAgentTurn(
+      `/api/projects/${projectId}/agent/sessions/${threadId}/skills/${skillName}/run`,
+      { input },
+      onEvent,
+    ),
 };

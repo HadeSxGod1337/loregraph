@@ -75,3 +75,70 @@ def test_review_without_pending_draft_is_400(
     )
     assert resp.status_code == 400
     assert "not awaiting review" in resp.json()["detail"]
+
+
+def test_run_unknown_skill_is_404_even_without_llm_key(
+    client: TestClient, project_id: str
+) -> None:
+    """Guard ordering regression (see api/routers/agent.py's _skill_run_guard
+    comment): an unknown skill name must 404 before AgentRunnerDep's
+    ConfigurationError (409, no LLM key in test settings) ever fires."""
+    created = client.post(f"/api/projects/{project_id}/agent/sessions").json()
+    resp = client.post(
+        f"/api/projects/{project_id}/agent/sessions/{created['thread_id']}"
+        "/skills/not_a_real_skill/run",
+        json={"input": {}},
+    )
+    assert resp.status_code == 404
+
+
+def test_run_read_skill_is_404_not_runnable_directly(
+    client: TestClient, project_id: str
+) -> None:
+    """search_lore is kind="read" — it only executes inline inside a chat
+    turn's tool-call loop, it has no entry_node to run standalone."""
+    created = client.post(f"/api/projects/{project_id}/agent/sessions").json()
+    resp = client.post(
+        f"/api/projects/{project_id}/agent/sessions/{created['thread_id']}"
+        "/skills/search_lore/run",
+        json={"input": {"query": "кузнец"}},
+    )
+    assert resp.status_code == 404
+
+
+def test_run_skill_with_invalid_input_is_422(
+    client: TestClient, project_id: str
+) -> None:
+    created = client.post(f"/api/projects/{project_id}/agent/sessions").json()
+    resp = client.post(
+        f"/api/projects/{project_id}/agent/sessions/{created['thread_id']}"
+        "/skills/propose_lore/run",
+        # propose_lore requires a `brief` field.
+        json={"input": {}},
+    )
+    assert resp.status_code == 422
+
+
+def test_run_skill_to_unknown_session_is_404(
+    client: TestClient, project_id: str
+) -> None:
+    resp = client.post(
+        f"/api/projects/{project_id}/agent/sessions/nope/skills/propose_lore/run",
+        json={"input": {"brief": "тест"}},
+    )
+    assert resp.status_code == 404
+
+
+def test_run_skill_without_key_is_409_once_input_is_valid(
+    client: TestClient, project_id: str
+) -> None:
+    """Valid skill + valid input still needs an LLM configured to actually
+    run the graph — mirrors test_send_message_without_key_is_409."""
+    created = client.post(f"/api/projects/{project_id}/agent/sessions").json()
+    resp = client.post(
+        f"/api/projects/{project_id}/agent/sessions/{created['thread_id']}"
+        "/skills/propose_lore/run",
+        json={"input": {"brief": "стартовый лор"}},
+    )
+    assert resp.status_code == 409
+    assert "ANTHROPIC_API_KEY" in resp.json()["detail"]

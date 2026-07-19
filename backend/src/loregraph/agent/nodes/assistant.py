@@ -2,9 +2,14 @@ from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, SystemMessage, ToolMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from loregraph.agent.events import event_message
+from loregraph.agent.skills.registry import (
+    base_chat_tool_schemas,
+    entry_node_for,
+    query_external_source,
+)
 from loregraph.agent.state import AgentState
 from loregraph.agent.usage import record_usage
 from loregraph.connectors.live import LiveSourceProvider
@@ -22,75 +27,10 @@ BUDGET_EXHAUSTED_REPLY = (
     "Token budget for this conversation is exhausted — start a new session to continue."
 )
 
-
-class search_lore(BaseModel):
-    """Semantic search over the world's lore. Use it BEFORE answering any
-    question about the world."""
-
-    query: str = Field(description="What to look for, in the lore's language.")
-
-
-class get_entity_details(BaseModel):
-    """Full details of one entity by its id (ids come from search_lore)."""
-
-    entity_id: str
-
-
-class search_knowledge_base(BaseModel):
-    """Semantic search over the project's uploaded reference documents
-    (rulebooks, setting bibles) — NOT world canon. Use it when the game
-    master's question is about rules or reference material rather than the
-    world's own established facts (that's search_lore)."""
-
-    query: str = Field(description="What to look for, in the document's language.")
-
-
-class propose_lore(BaseModel):
-    """Draft new world content (entities + relationships) for the game
-    master's review. The only way to create anything."""
-
-    brief: str = Field(
-        description="Concise self-contained description of what to create, "
-        "carrying all relevant user constraints (scale, tone, connections)."
-    )
-
-
-class edit_entity(BaseModel):
-    """Propose edits to an existing entity for the game master's review.
-    Always call get_entity_details first to read the current state.
-    The only way to modify world content. Never promise changes without
-    calling this tool."""
-
-    entity_id: str = Field(description="Id of the entity to edit.")
-    brief: str = Field(
-        description="Concise description of what to change and why, "
-        "carrying all user constraints."
-    )
-
-
-class query_external_source(BaseModel):
-    """Query live data from an external tool connected to this project
-    (Foundry VTT world, LongStoryShort character sheets…). Use it when the
-    game master asks about the CURRENT state of their external tools (actor
-    stats, journals, party HP) — that data lives outside the world's lore."""
-
-    source: str = Field(
-        description="Connection name, exactly as listed in <external_sources>."
-    )
-    query: str = Field(description="What to look for.")
-    kind: str | None = Field(
-        default=None,
-        description="Optional data kind: actors | journals | compendium.",
-    )
-
-
-ASSISTANT_TOOLS: list[type[BaseModel]] = [
-    search_lore,
-    get_entity_details,
-    search_knowledge_base,
-    propose_lore,
-    edit_entity,
-]
+# Tool schemas the assistant can call are owned by the skills registry (see
+# agent/skills/registry.py) — this module only decides, per turn, whether
+# the project-specific query_external_source tool is also bound.
+ASSISTANT_TOOLS: list[type[BaseModel]] = base_chat_tool_schemas()
 
 
 def external_sources_block(live_sources: LiveSourceProvider | None) -> str:
@@ -176,39 +116,53 @@ async def assistant(
 
 
 def route_after_assistant(state: AgentState) -> str:
-    """tools → run read tools; propose → start the draft pipeline;
-    edit → start the entity-edit pipeline;
-    end → the turn is a plain reply (answer or clarifying question)."""
+    """tools → run read tools; a "propose"/"job" skill's own entry node
+    (agent/skills/registry.py, e.g. begin_proposal/begin_edit) → start its
+    pipeline; end → the turn is a plain reply (answer or clarifying
+    question). Dispatch is data-driven off the registry, not a hardcoded
+    branch per skill name — a new "propose"/"job" skill only needs a
+    registry entry and a matching graph edge, no change here."""
     last = state.messages[-1] if state.messages else None
     if not isinstance(last, AIMessage) or not last.tool_calls:
         return "end"
-    if any(call["name"] == "propose_lore" for call in last.tool_calls):
-        return "propose"
-    if any(call["name"] == "edit_entity" for call in last.tool_calls):
-        return "edit"
+    for call in last.tool_calls:
+        entry_node = entry_node_for(call["name"])
+        if entry_node is not None:
+            return entry_node
     return "tools"
 
 
-def begin_proposal(state: AgentState) -> dict[str, Any]:
-    """Accept the propose_lore call: answer it (providers require a tool
-    result for every tool call) and reset per-proposal state."""
-    last = state.messages[-1]
-    assert isinstance(last, AIMessage)
-    tool_messages = [
-        ToolMessage(
-            "Draft pipeline started; the result goes to the game master's review.",
-            tool_call_id=call["id"] or "",
-        )
-        for call in last.tool_calls
-    ]
-    brief = next(
-        str(call["args"].get("brief", ""))
-        for call in last.tool_calls
-        if call["name"] == "propose_lore"
-    )
+def _begin_skill(
+    state: AgentState,
+    *,
+    skill_name: str,
+    started_message: str,
+    from_tool_call: Any,
+    from_kickoff: Any,
+) -> dict[str, Any]:
+    """Shared shape of every "propose"-kind skill's entry node: resolve the
+    triggering input from whichever of the two entry points fired (a chat
+    tool call, or a direct skill_kickoff — see agent/skills/registry.py),
+    then apply the caller-supplied per-skill state via the two callables.
+
+    `from_tool_call(call) -> dict` and `from_kickoff(input) -> dict` each
+    return the skill-specific fields (e.g. pending_brief) to merge into the
+    common reset below."""
+    if state.skill_kickoff is not None:
+        messages: list[Any] = []
+        specific = from_kickoff(state.skill_kickoff.input)
+    else:
+        last = state.messages[-1]
+        assert isinstance(last, AIMessage)
+        call = next(c for c in last.tool_calls if c["name"] == skill_name)
+        messages = [
+            ToolMessage(started_message, tool_call_id=c["id"] or "")
+            for c in last.tool_calls
+        ]
+        specific = from_tool_call(call)
     return {
-        "messages": tool_messages,
-        "pending_brief": brief,
+        "messages": messages,
+        "skill_kickoff": None,
         "revision_feedback": "",
         "draft": None,
         "entity_edit_draft": None,
@@ -218,31 +172,39 @@ def begin_proposal(state: AgentState) -> dict[str, Any]:
         "retry_feedback": "",
         "draft_committed": False,
         "decision_action": None,
+        **specific,
     }
+
+
+def begin_proposal(state: AgentState) -> dict[str, Any]:
+    """Entry node for the propose_lore skill, reached either from a chat
+    tool call (route_after_assistant) or a direct skill_kickoff."""
+    return _begin_skill(
+        state,
+        skill_name="propose_lore",
+        started_message="Draft pipeline started; the result goes to the game "
+        "master's review.",
+        from_tool_call=lambda call: {
+            "pending_brief": str(call["args"].get("brief", ""))
+        },
+        from_kickoff=lambda data: {"pending_brief": str(data.get("brief", ""))},
+    )
 
 
 def begin_edit(state: AgentState) -> dict[str, Any]:
-    """Accept the edit_entity call: answer it and capture the target entity
-    id + brief so generate_edit can read them from state."""
-    last = state.messages[-1]
-    assert isinstance(last, AIMessage)
-    edit_call = next(call for call in last.tool_calls if call["name"] == "edit_entity")
-    tool_messages = [
-        ToolMessage(
-            "Edit pipeline started; the result goes to the game master's review.",
-            tool_call_id=call["id"] or "",
-        )
-        for call in last.tool_calls
-    ]
-    return {
-        "messages": tool_messages,
-        "pending_brief": str(edit_call["args"].get("brief", "")),
-        "pending_edit_entity_id": str(edit_call["args"].get("entity_id", "")),
-        "entity_edit_draft": None,
-        "draft": None,
-        "warnings": [],
-        "attempts": 0,
-        "retry_feedback": "",
-        "draft_committed": False,
-        "decision_action": None,
-    }
+    """Entry node for the edit_entity skill, reached either from a chat tool
+    call (route_after_assistant) or a direct skill_kickoff."""
+    return _begin_skill(
+        state,
+        skill_name="edit_entity",
+        started_message="Edit pipeline started; the result goes to the game "
+        "master's review.",
+        from_tool_call=lambda call: {
+            "pending_brief": str(call["args"].get("brief", "")),
+            "pending_edit_entity_id": str(call["args"].get("entity_id", "")),
+        },
+        from_kickoff=lambda data: {
+            "pending_brief": str(data.get("brief", "")),
+            "pending_edit_entity_id": str(data.get("entity_id", "")),
+        },
+    )
