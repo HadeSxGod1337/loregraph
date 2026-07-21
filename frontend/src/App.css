@@ -3436,6 +3436,12 @@
   padding: 20px 22px;
   width: 400px;
   max-width: 100%;
+  /* .dialog-backdrop centers this with 24px padding on all sides — cap
+     height to the viewport minus that padding and scroll internally
+     instead of growing past the screen (e.g. ExportDialog's preview table
+     for a project with 100+ entities). */
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;

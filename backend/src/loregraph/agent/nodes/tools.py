@@ -4,6 +4,7 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, ToolMessage
 
+from loregraph.agent.mcp_tools import McpToolProvider
 from loregraph.agent.state import AgentState
 from loregraph.connectors.live import LiveSourceProvider
 from loregraph.exceptions import ConnectorError
@@ -19,7 +20,15 @@ DETAIL_TEXT_LIMIT = 800
 SEARCH_TEXT_LIMIT = 200
 KB_SEARCH_TEXT_LIMIT = 400
 EXTERNAL_TEXT_LIMIT = 400  # chars per external chunk
-EXTERNAL_CHUNK_LIMIT = 5
+# A generic safety net across every LiveSource implementation (Foundry,
+# LongStoryShort, future connectors) against a misbehaving connector
+# returning an unbounded response — NOT the primary budget control anymore.
+# Each connector now applies its own kind-aware budget internally (see e.g.
+# FoundryConnector.query()'s per-branch _*_CHUNK_LIMIT constants); this only
+# needs to be generous enough not to undo that. Sized for the largest
+# legitimate combined case (Foundry's kind=None fan-out: 5 journal + 30
+# actor + 30 item = 65).
+EXTERNAL_CHUNK_LIMIT = 65
 EXTERNAL_QUERY_TIMEOUT_S = 12.0
 
 
@@ -30,6 +39,7 @@ async def run_tools(
     knowledge_index: KnowledgeIndex | None,
     entity_store: EntityStore,
     live_sources: LiveSourceProvider | None = None,
+    mcp_tools: McpToolProvider | None = None,
 ) -> dict[str, Any]:
     """Executes the assistant's read tools against the project's stores.
 
@@ -67,6 +77,8 @@ async def run_tools(
                     str(call["args"].get("query", "")),
                     str(kind) if isinstance(kind, str) and kind else None,
                 )
+            case name if name.startswith("mcp__"):
+                content = await _call_mcp_tool(mcp_tools, name, dict(call["args"]))
             case unknown:
                 content = f"Unknown tool: {unknown}"
         results.append(ToolMessage(content, tool_call_id=call["id"] or ""))
@@ -145,11 +157,51 @@ async def _query_external_source(
         )
     if not chunks:
         return f"'{entry.name}' returned nothing for this query."
+    shown = chunks[:EXTERNAL_CHUNK_LIMIT]
     lines = [
         f"[{chunk.kind}] {chunk.title}: {chunk.text[:EXTERNAL_TEXT_LIMIT]}"
-        for chunk in chunks[:EXTERNAL_CHUNK_LIMIT]
+        for chunk in shown
     ]
+    # Truncation must be visible, never silent — otherwise a partial list
+    # gets relayed to the game master as if it were complete (exactly the
+    # bug this is fixing: "add all items" quietly returning 5 of 11 with no
+    # indication anything was cut).
+    if len(chunks) > len(shown):
+        lines.append(
+            f"(showing {len(shown)} of {len(chunks)} results — narrow the "
+            "query if you need the rest.)"
+        )
     return "\n".join(lines)
+
+
+async def _call_mcp_tool(
+    mcp_tools: McpToolProvider | None,
+    qualified_name: str,
+    arguments: dict[str, Any],
+) -> str:
+    """Never raises: a generic MCP server going offline mid-turn must
+    produce a readable tool message, not an exception out of the node —
+    same graceful-degradation contract as _query_external_source."""
+    if mcp_tools is None:
+        return "No MCP tool sources are connected to this project."
+    entry = mcp_tools.get(qualified_name)
+    if entry is None:
+        return f"Unknown MCP tool: {qualified_name!r}."
+    try:
+        async with asyncio.timeout(EXTERNAL_QUERY_TIMEOUT_S):
+            return await entry.source.call_mcp_tool(entry.tool.name, arguments)
+    except asyncio.CancelledError:
+        raise
+    except (ConnectorError, TimeoutError) as e:
+        logger.warning(
+            "MCP connection %s unavailable during a tool call",
+            entry.connection_name,
+            exc_info=True,
+        )
+        return (
+            f"MCP connection '{entry.connection_name}' is unavailable right "
+            f"now ({type(e).__name__}). Tell the game master it may be offline."
+        )
 
 
 async def _search_knowledge_base(

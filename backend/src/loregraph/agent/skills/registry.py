@@ -125,7 +125,10 @@ class query_external_source(BaseModel):
     query: str = Field(description="What to look for.")
     kind: str | None = Field(
         default=None,
-        description="Optional data kind: actors | journals | compendium.",
+        description="Optional data kind: actors | journals | items | "
+        "compendium. 'items' is this world's own item library (armor, "
+        "weapons, loot in the sidebar) — NOT 'compendium', which is the "
+        "reference rulebook item database.",
     )
 
 

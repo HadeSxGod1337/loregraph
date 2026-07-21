@@ -138,6 +138,49 @@ async def test_query_external_source_offline_yields_message_not_exception(
 
 
 @pytest.mark.asyncio
+async def test_query_external_source_returns_all_chunks_within_connector_budget(
+    db_session: AsyncSession,
+) -> None:
+    """Regression: a connector's own per-kind budget (e.g. Foundry's world
+    items, up to 30) must reach the chat reply intact — this generic tool-
+    level cap (EXTERNAL_CHUNK_LIMIT) must not silently re-truncate it back
+    down to a much smaller number with no indication anything was cut."""
+    many_chunks = [_chunk(f"Item {i}") for i in range(20)]
+    provider = _provider(FakeLiveSource(many_chunks))
+    update = await run_tools(
+        _tool_call_state("My Foundry"),
+        vector_index=None,
+        knowledge_index=None,
+        entity_store=SqliteEntityStore(db_session),
+        live_sources=provider,
+    )
+    content = update["messages"][0].content
+    for i in range(20):
+        assert f"Item {i}" in content
+    assert "showing" not in content  # nothing was cut, no truncation note
+
+
+@pytest.mark.asyncio
+async def test_query_external_source_notes_truncation_when_it_does_happen(
+    db_session: AsyncSession,
+) -> None:
+    """When a connector legitimately returns more than the safety-net cap,
+    the reply must say so explicitly rather than silently presenting a
+    partial list as complete."""
+    too_many_chunks = [_chunk(f"Item {i}") for i in range(80)]
+    provider = _provider(FakeLiveSource(too_many_chunks))
+    update = await run_tools(
+        _tool_call_state("My Foundry"),
+        vector_index=None,
+        knowledge_index=None,
+        entity_store=SqliteEntityStore(db_session),
+        live_sources=provider,
+    )
+    content = update["messages"][0].content
+    assert "showing 65 of 80 results" in content
+
+
+@pytest.mark.asyncio
 async def test_grounding_includes_external_source_chunks(
     db_session: AsyncSession,
 ) -> None:
@@ -204,6 +247,7 @@ def test_assistant_prompt_lists_external_sources() -> None:
         "assistant.system.md",
         project_instructions_block="",
         external_sources_block=external_sources_block(provider),
+        mcp_tools_block="",
     )
     assert "<external_sources" in rendered
     assert "My Foundry (foundry)" in rendered
@@ -214,6 +258,7 @@ def test_assistant_prompt_omits_block_without_sources() -> None:
         "assistant.system.md",
         project_instructions_block="",
         external_sources_block=external_sources_block(None),
+        mcp_tools_block="",
     )
     # The block with the note attribute should be absent when there are no
     # sources — rule 7 in the prose may still reference the concept by name.

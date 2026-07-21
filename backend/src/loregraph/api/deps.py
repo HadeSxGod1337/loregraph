@@ -9,11 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loregraph.agent.graph import build_agent_graph
 from loregraph.agent.import_graph import build_import_graph
 from loregraph.agent.import_runner import ImportJobRunner
+from loregraph.agent.mcp_tools import McpToolEntry, McpToolProvider
 from loregraph.agent.runner import AgentRunner
 from loregraph.config import Settings
 from loregraph.connectors.context import ConnectorContext
 from loregraph.connectors.live import LiveSourceEntry, LiveSourceProvider
-from loregraph.connectors.protocols import CAPABILITY_LIVE, LiveSource
+from loregraph.connectors.protocols import (
+    CAPABILITY_LIVE,
+    CAPABILITY_MCP_TOOLS,
+    LiveSource,
+    McpToolSource,
+)
 from loregraph.connectors.registry import ConnectorRegistry
 from loregraph.connectors.runtime import ConnectorRuntime
 from loregraph.exceptions import CampaignError
@@ -260,6 +266,78 @@ LiveSourceProviderDep = Annotated[
 ]
 
 
+async def get_mcp_tool_provider(
+    project_id: str,
+    settings: SettingsDep,
+    connection_store: ConnectionStoreDep,
+    link_store: ConnectionEntityLinkStoreDep,
+    registry: ConnectorRegistryDep,
+    runtime: ConnectorRuntimeDep,
+    entity_service: EntityServiceDep,
+    edge_service: EdgeServiceDep,
+    entity_store: EntityStoreDep,
+    edge_store: EdgeStoreDep,
+    attachment_store: AttachmentStoreDep,
+) -> McpToolProvider | None:
+    """Generic MCP tool sources of this project's connections — the
+    McpToolSource analog of get_live_source_provider, one entry per tool
+    the server actually exposes (so the assistant binds each tool under its
+    own real name/schema, not one generic wrapper tool).
+
+    None when the project has no such connections. A connection whose
+    server can't be reached (or isn't configured correctly) is skipped with
+    a warning instead of breaking the whole agent turn — same graceful-
+    degradation contract as live sources."""
+    connections = await connection_store.list_for_project(project_id)
+    entries: list[McpToolEntry] = []
+    for connection in connections:
+        try:
+            descriptor = registry.get(connection.connector_type)
+            if CAPABILITY_MCP_TOOLS not in descriptor.capabilities:
+                continue
+            context = ConnectorContext(
+                project_id=connection.project_id,
+                connection_id=connection.id,
+                connection_name=connection.name,
+                entity_service=entity_service,
+                edge_service=edge_service,
+                entity_store=entity_store,
+                edge_store=edge_store,
+                attachment_store=attachment_store,
+                attachments_dir=settings.attachments_dir,
+                link_store=link_store,
+                runtime=runtime,
+            )
+            connector = registry.create(
+                connection.connector_type, connection.config, context
+            )
+            if not isinstance(connector, McpToolSource):
+                continue
+            tools = await connector.list_mcp_tools()
+        except CampaignError:
+            logger.warning(
+                "Skipping MCP tool source %s (%s): connector could not be "
+                "built or its tools listed",
+                connection.name,
+                connection.connector_type,
+                exc_info=True,
+            )
+            continue
+        entries.extend(
+            McpToolEntry(
+                connection_name=connection.name,
+                connector_type=connection.connector_type,
+                tool=tool,
+                source=connector,
+            )
+            for tool in tools
+        )
+    return McpToolProvider(entries) if entries else None
+
+
+McpToolProviderDep = Annotated[McpToolProvider | None, Depends(get_mcp_tool_provider)]
+
+
 async def get_connector_push_service(
     settings: SettingsDep,
     connection_store: ConnectionStoreDep,
@@ -308,6 +386,7 @@ async def get_agent_runner(
     agent_sessions: AgentSessionStoreDep,
     usage_store: UsageStoreDep,
     live_sources: LiveSourceProviderDep,
+    mcp_tools: McpToolProviderDep,
     push_service: ConnectorPushServiceDep,
     event_bus: EventBusDep,
 ) -> AgentRunner:
@@ -347,6 +426,7 @@ async def get_agent_runner(
         generation_model_name=settings.llm_model_generation,
         extraction_model_name=settings.llm_model_extraction,
         live_sources=live_sources,
+        mcp_tools=mcp_tools,
     )
     tracing_config = getattr(request.app.state, "tracing_config", None)
     return AgentRunner(

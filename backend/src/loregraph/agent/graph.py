@@ -5,6 +5,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from loregraph.agent.mcp_tools import McpToolProvider
 from loregraph.agent.nodes.assistant import (
     assistant,
     begin_edit,
@@ -63,6 +64,9 @@ def build_agent_graph(
     # Live external sources (Foundry, LSS…) — None when the project has no
     # live-capable connections; the assistant then never sees the tool.
     live_sources: LiveSourceProvider | None = None,
+    # Generic MCP passthrough tools (any stdio MCP server the game master
+    # connects) — None when the project has no such connections.
+    mcp_tools: McpToolProvider | None = None,
 ) -> CompiledStateGraph[AgentState]:
     """Conversational assistant with a lore-proposal pipeline.
 
@@ -85,6 +89,7 @@ def build_agent_graph(
             usage_store=usage_store,
             model_name=assistant_model_name,
             live_sources=live_sources,
+            mcp_tools=mcp_tools,
         ),
     )
     builder.add_node(
@@ -95,6 +100,7 @@ def build_agent_graph(
             knowledge_index=knowledge_index,
             entity_store=entity_store,
             live_sources=live_sources,
+            mcp_tools=mcp_tools,
         ),
     )
     builder.add_node("begin_proposal", begin_proposal)

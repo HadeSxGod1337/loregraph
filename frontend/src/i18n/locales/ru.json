@@ -413,9 +413,16 @@
     "config": {
       "vaultPath": "Путь к хранилищу",
       "subfolder": "Подпапка",
-      "mcpCommand": "Команда MCP-сервера",
-      "mcpArgs": "Аргументы MCP-сервера (через запятую)",
-      "timeout": "Таймаут (секунды)"
+      "nodeCommand": "Путь к Node.js",
+      "mcpServerPath": "Точка входа MCP-сервера (index.cjs)",
+      "foundryHost": "Хост Foundry",
+      "foundryPort": "Порт Foundry",
+      "timeout": "Таймаут (секунды)",
+      "mcpCommand": "Команда (например, «node», «npx»)",
+      "mcpArgs": "Аргументы (по одному на строку)",
+      "mcpEnv": "Переменные окружения (по одной KEY=value на строку)",
+      "mcpAllowedTools": "Разрешённые тулы (по одному на строку, пусто = все тулы)",
+      "oneLine": "По одному на строку"
     },
     "probe": {
       "vault_ok": "Хранилище доступно",
@@ -423,7 +430,9 @@
       "vault_not_directory": "Путь не является директорией",
       "vault_not_writable": "Хранилище недоступно для записи",
       "foundry_ok": "Foundry подключён",
-      "foundry_unreachable": "Мост Foundry недоступен"
+      "foundry_unreachable": "Мост Foundry недоступен",
+      "mcp_ok": "MCP-сервер подключён",
+      "mcp_unreachable": "MCP-сервер недоступен"
     },
     "exportTitle": "Предпросмотр экспорта",
     "exportNothing": "Нечего экспортировать — все сущности уже актуальны или ни одна не выбрана.",

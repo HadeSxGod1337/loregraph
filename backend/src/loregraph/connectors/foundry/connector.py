@@ -12,12 +12,12 @@ are stored as provenance so re-exports update instead of duplicating.
 
 import asyncio
 import logging
+import re
 from typing import Any
 
 from pydantic import BaseModel
 
 from loregraph.connectors.context import ConnectorContext
-from loregraph.connectors.foundry.mcp_client import FoundryMcpClient
 from loregraph.connectors.markdown_codec import (
     MarkdownRenderOptions,
     markdown_to_prosemirror,
@@ -25,6 +25,7 @@ from loregraph.connectors.markdown_codec import (
 from loregraph.connectors.markdown_codec import (
     prosemirror_to_markdown as _pm_to_md,
 )
+from loregraph.connectors.mcp.stdio_client import McpStdioClient
 from loregraph.connectors.protocols import ExternalChunk
 from loregraph.exceptions import (
     ConnectorUnavailableError,
@@ -53,7 +54,19 @@ logger = logging.getLogger(__name__)
 LINK_KIND_JOURNAL = "journal"
 LINK_KIND_ACTOR = "actor"
 NPC_TYPE = "npc"
-_LIVE_CHUNK_LIMIT = 5
+# Per-kind budgets, applied to EACH branch of query() independently — not
+# one shared cap across every kind combined. Journals/compendium are
+# relevance-ranked SEARCH results over a potentially large, mostly-
+# irrelevant-beyond-the-top-few corpus, so they stay tight. Actors/items are
+# a bounded, enumerable resource (this world's own actors/items, not a
+# reference library) — a deliberate "list them all" chat request
+# (query_external_source with kind="items"/"actors") should actually get
+# them all for any normally-sized world, not silently lose most of the
+# list with no indication anything was cut.
+_JOURNAL_CHUNK_LIMIT = 5
+_COMPENDIUM_CHUNK_LIMIT = 5
+_ACTOR_CHUNK_LIMIT = 30
+_ITEM_CHUNK_LIMIT = 30
 _LIVE_TEXT_LIMIT = 600
 
 # Tool names of the Foundry MCP Bridge (verified against its README).
@@ -65,6 +78,13 @@ _TOOL_LIST_JOURNALS = "list-journals"
 _TOOL_LIST_CHARACTERS = "list-characters"
 _TOOL_GET_CHARACTER = "get-character"
 _TOOL_SEARCH_COMPENDIUM = "search-compendium"
+# World-level items (the sidebar Items directory) — NOT compendium reference
+# items and NOT an actor's carried items (search-character-items covers
+# that separately). Previously missing entirely: query()'s "compendium"
+# kind is the *reference* item library (rulebook templates), so a request
+# for "this world's items" silently searched the wrong data source and
+# came back nearly empty.
+_TOOL_MANAGE_WORLD_ITEMS = "manage-world-items"
 _TOOL_CREATE_NPC = "dnd5e-create-npc"
 
 
@@ -85,12 +105,12 @@ class FoundryConnector:
         self._config = config
         self._context = context
 
-    async def _client(self) -> FoundryMcpClient:
+    async def _client(self) -> McpStdioClient:
         runtime = self._context.runtime
         config = self._config
 
-        async def factory() -> FoundryMcpClient:
-            client = FoundryMcpClient(
+        async def factory() -> McpStdioClient:
+            client = McpStdioClient(
                 connection_name=self._context.connection_name,
                 command=config.node_command,
                 args=[config.mcp_server_path],
@@ -189,9 +209,7 @@ class FoundryConnector:
                 )
         return result
 
-    async def _try_create_npc(
-        self, client: FoundryMcpClient, entity: EntityOut
-    ) -> None:
+    async def _try_create_npc(self, client: McpStdioClient, entity: EntityOut) -> None:
         """Best effort: an actor next to the journal when the bridge has the
         dnd5e tool. Failure is logged, never an export error — the journal
         already carries the content."""
@@ -307,7 +325,7 @@ class FoundryConnector:
 
     async def _import_actor(
         self,
-        client: FoundryMcpClient,
+        client: McpStdioClient,
         name: str,
         external_id: str,
         result: ImportResult,
@@ -319,7 +337,14 @@ class FoundryConnector:
         if existing_link is not None:
             result.skipped += 1
             return
-        detail = await client.call_tool(_TOOL_GET_CHARACTER, {"characterName": name})
+        # The bridge's real schema requires "identifier" (name or id) — not
+        # "characterName". external_id (the Foundry document id from
+        # list-characters) is used rather than name: this world has many
+        # same-named actors ("Маг" x3, "Бальтазар" x2, ...), and by id is
+        # unambiguous where by-name could resolve to the wrong actor.
+        detail = await client.call_tool(
+            _TOOL_GET_CHARACTER, {"identifier": external_id}
+        )
         fields: list[EntityFieldIn] = [
             EntityFieldIn(
                 key="tags", field_type=FieldType.TAG, value=["foundry-import"]
@@ -347,27 +372,121 @@ class FoundryConnector:
     # ── live source ──────────────────────────────────────────────────────────
 
     async def query(self, query: str, kind: str | None = None) -> list[ExternalChunk]:
+        """Each branch applies its OWN budget (see the _*_CHUNK_LIMIT
+        constants) instead of one shared cap sliced across every kind
+        combined — a deliberate, single-kind request (e.g. kind="items" for
+        "list every item") gets that kind's full budget, not a fraction of
+        a budget shared with journals/actors it never asked about."""
         client = await self._client()
         chunks: list[ExternalChunk] = []
         if kind in (None, "journals"):
-            response = await client.call_tool(_TOOL_SEARCH_JOURNALS, {"query": query})
-            chunks.extend(self._to_chunks(response, "journal"))
+            # The bridge's real schema requires "searchQuery" — not "query".
+            response = await client.call_tool(
+                _TOOL_SEARCH_JOURNALS, {"searchQuery": query}
+            )
+            chunks.extend(self._journal_chunks(response)[:_JOURNAL_CHUNK_LIMIT])
         if kind in (None, "actors", "characters"):
             response = await client.call_tool(_TOOL_LIST_CHARACTERS, {})
             needle = query.strip().lower()
+            actor_chunks: list[ExternalChunk] = []
             for descriptor in _character_descriptors(response):
                 name = descriptor.get("name")
                 if not isinstance(name, str):
                     continue
                 if needle and needle not in name.lower():
                     continue
-                chunks.extend(self._to_chunks([descriptor], "character"))
+                actor_chunks.extend(self._to_chunks([descriptor], "character", 1))
+                if len(actor_chunks) >= _ACTOR_CHUNK_LIMIT:
+                    break
+            chunks.extend(actor_chunks)
+        if kind in (None, "items", "world_items"):
+            # This world's own standalone items (armor/weapons/loot in the
+            # sidebar Items directory) — distinct from "compendium" (the
+            # reference rulebook library) and from an actor's own carried
+            # items (search-character-items, not this method's concern).
+            args: dict[str, Any] = {"action": "list"}
+            if query.strip():
+                args["nameFilter"] = query.strip()
+            response = await client.call_tool(_TOOL_MANAGE_WORLD_ITEMS, args)
+            chunks.extend(self._world_item_chunks(response)[:_ITEM_CHUNK_LIMIT])
         if kind == "compendium":
             response = await client.call_tool(_TOOL_SEARCH_COMPENDIUM, {"query": query})
-            chunks.extend(self._to_chunks(response, "compendium"))
-        return chunks[:_LIVE_CHUNK_LIMIT]
+            chunks.extend(
+                self._to_chunks(response, "compendium", _COMPENDIUM_CHUNK_LIMIT)
+            )
+        return chunks
 
-    def _to_chunks(self, response: Any, kind: str) -> list[ExternalChunk]:
+    def _journal_chunks(self, response: Any) -> list[ExternalChunk]:
+        """search-journals has a distinct shape from the other tools (a
+        real, live-verified response, not a guess — see the comment on the
+        query() call site): `{results: [{name, matchedPages: [{pageName,
+        contentSnippet}, ...]}, ...]}`. The match itself is only a
+        (journalId, pageId) locator with a truncated preview — no full-page
+        endpoint is used here, the snippet is what grounds the answer, same
+        budget as every other live source (never a full document dump)."""
+        results = response.get("results") if isinstance(response, dict) else None
+        if not isinstance(results, list):
+            return []
+        chunks: list[ExternalChunk] = []
+        for journal in results:
+            if not isinstance(journal, dict):
+                continue
+            journal_name = str(journal.get("name") or "Journal")
+            pages = journal.get("matchedPages")
+            if not isinstance(pages, list):
+                continue
+            for page in pages:
+                if not isinstance(page, dict):
+                    continue
+                snippet = page.get("contentSnippet")
+                if not isinstance(snippet, str) or not snippet.strip():
+                    continue
+                page_name = page.get("pageName")
+                title = f"{journal_name} — {page_name}" if page_name else journal_name
+                chunks.append(
+                    ExternalChunk(
+                        source_name=self._context.connection_name,
+                        connector_type="foundry",
+                        kind="journal",
+                        title=title,
+                        text=_strip_html(snippet)[:_LIVE_TEXT_LIMIT],
+                    )
+                )
+        return chunks
+
+    def _world_item_chunks(self, response: Any) -> list[ExternalChunk]:
+        """manage-world-items(action="list") shape (live-verified):
+        `{items: [{id, name, type, img, folderId, folderName}], total}` —
+        listing only, no description text (there is no "get one world item
+        with full details" action on this tool, only create/list/update/
+        add-to-actor)."""
+        items = response.get("items") if isinstance(response, dict) else None
+        if not isinstance(items, list):
+            return []
+        chunks: list[ExternalChunk] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+            item_type = item.get("type")
+            folder = item.get("folderName")
+            detail_bits = [str(item_type)] if isinstance(item_type, str) else []
+            if isinstance(folder, str) and folder:
+                detail_bits.append(f"folder: {folder}")
+            chunks.append(
+                ExternalChunk(
+                    source_name=self._context.connection_name,
+                    connector_type="foundry",
+                    kind="item",
+                    title=name,
+                    text=", ".join(detail_bits) or "world item",
+                )
+            )
+        return chunks
+
+    def _to_chunks(self, response: Any, kind: str, limit: int) -> list[ExternalChunk]:
         records: list[Any]
         if isinstance(response, list):
             records = response
@@ -377,7 +496,7 @@ class FoundryConnector:
         else:
             records = [response]
         chunks: list[ExternalChunk] = []
-        for record in records[:_LIVE_CHUNK_LIMIT]:
+        for record in records[:limit]:
             if isinstance(record, dict):
                 title = str(record.get("name") or record.get("title") or kind)
                 text = _compact_json(record)
@@ -404,6 +523,17 @@ def _text_field(entity: EntityOut, key: str) -> str | None:
     return None
 
 
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _strip_html(text: str) -> str:
+    """search-journals content snippets are truncated ProseMirror/TipTap
+    HTML (<p data-start="...">...), not plain text — strip tags so what
+    reaches the model (and gets cited to the game master) reads as prose,
+    not markup soup."""
+    return " ".join(_HTML_TAG_RE.sub(" ", text).split())
+
+
 def _character_descriptors(response: Any) -> list[dict[str, Any]]:
     if isinstance(response, list):
         return [r for r in response if isinstance(r, dict)]
@@ -425,28 +555,44 @@ def _extract_id(response: Any) -> str | None:
 
 
 def _actor_fields(detail: dict[str, Any]) -> list[EntityFieldIn]:
+    """get-character (the bridge tool) is deliberately description-free —
+    "optimized for minimal token usage": no class/race/alignment/biography,
+    stats nested under `stats`/`basicInfo` rather than flat top-level keys.
+    Full item/action/effect descriptions need a separate get-character-
+    entity call per item, which this bulk import doesn't do (same
+    "no round-tripping full detail" scope call as the module docstring's
+    journal-import note)."""
     fields: list[EntityFieldIn] = []
-    for key in ("class", "race", "type", "alignment"):
-        value = detail.get(key)
-        if isinstance(value, str) and value.strip():
+    stats = detail.get("stats")
+    stats = stats if isinstance(stats, dict) else detail
+
+    for key, target in (("level", "level"), ("challengeRating", "cr")):
+        value = stats.get(key)
+        if isinstance(value, int | float) and not isinstance(value, bool) and value:
             fields.append(
-                EntityFieldIn(key=key, field_type=FieldType.TEXT, value=value.strip())
+                EntityFieldIn(key=target, field_type=FieldType.NUMBER, value=value)
             )
-    for key in ("level", "hp", "ac", "cr"):
-        value = detail.get(key)
-        if isinstance(value, int | float) and not isinstance(value, bool):
-            fields.append(
-                EntityFieldIn(key=key, field_type=FieldType.NUMBER, value=value)
-            )
-    biography = detail.get("biography") or detail.get("description")
-    if isinstance(biography, str) and biography.strip():
+    ac = stats.get("armorClass")
+    if isinstance(ac, int | float) and not isinstance(ac, bool):
+        fields.append(EntityFieldIn(key="ac", field_type=FieldType.NUMBER, value=ac))
+    hit_points = stats.get("hitPoints")
+    max_hp = hit_points.get("max") if isinstance(hit_points, dict) else None
+    if isinstance(max_hp, int | float) and not isinstance(max_hp, bool):
         fields.append(
-            EntityFieldIn(
-                key="biography",
-                field_type=FieldType.RICH_TEXT,
-                value=markdown_to_prosemirror(biography),
-            )
+            EntityFieldIn(key="hp", field_type=FieldType.NUMBER, value=max_hp)
         )
+
+    items = detail.get("items")
+    if isinstance(items, list):
+        names = [
+            str(item["name"])
+            for item in items
+            if isinstance(item, dict) and isinstance(item.get("name"), str)
+        ]
+        if names:
+            fields.append(
+                EntityFieldIn(key="equipment", field_type=FieldType.TAG, value=names)
+            )
     return fields
 
 

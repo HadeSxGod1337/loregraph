@@ -1,20 +1,23 @@
 """Foundry connector against a fake MCP client (the real bridge needs a live
 Foundry — that's the manual E2E check, not CI's job)."""
 
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 import pytest
 from fastapi.testclient import TestClient
 
 import loregraph.connectors.foundry.connector as foundry_module
+from loregraph.connectors.context import ConnectorContext
+from loregraph.connectors.foundry.connector import FoundryConfig, FoundryConnector
 from loregraph.exceptions import ConnectorUnavailableError
 
 
 class FakeFoundryMcpClient:
-    """Stands in for FoundryMcpClient: records calls, serves canned data."""
+    """Stands in for McpStdioClient: records calls, serves canned data."""
 
     instances: ClassVar[list["FakeFoundryMcpClient"]] = []
     fail_all = False
+    world_item_count = 2
 
     def __init__(self, **kwargs: Any) -> None:
         self.kwargs = kwargs
@@ -48,14 +51,86 @@ class FakeFoundryMcpClient:
                     ]
                 }
             case "get-character":
+                # Real bridge shape (verified live against a running Foundry
+                # world): keyed by "identifier" (name or id), not
+                # "characterName"; stats nested under "stats", no
+                # class/race/biography — the tool is deliberately
+                # description-free ("optimized for minimal token usage").
+                assert "identifier" in arguments
                 return {
-                    "name": arguments.get("characterName"),
-                    "class": "Vampire",
-                    "level": 15,
-                    "biography": "Lord of Barovia.",
+                    "name": arguments["identifier"],
+                    "type": "npc",
+                    "stats": {
+                        "level": 15,
+                        "armorClass": 16,
+                        "challengeRating": 10,
+                        "hitPoints": {"max": 144, "current": 144},
+                    },
+                    "items": [{"name": "Sunsword"}, {"name": "Holy Symbol"}],
                 }
             case "search-journals":
-                return [{"name": "Session 3 notes", "content": "The party..."}]
+                # Real bridge shape (verified live): keyed by "searchQuery",
+                # not "query"; results are journal->matchedPages locators
+                # with an HTML content snippet, not a flat list of records.
+                assert "searchQuery" in arguments
+                return {
+                    "success": True,
+                    "searchQuery": arguments["searchQuery"],
+                    "results": [
+                        {
+                            "id": "journal-1",
+                            "name": "Session 3 notes",
+                            "pageCount": 2,
+                            "matchedPages": [
+                                {
+                                    "pageId": "page-1",
+                                    "pageName": "Lore",
+                                    "contentSnippet": (
+                                        '<p data-start="1">The party '
+                                        "<strong>met Strahd</strong> at "
+                                        "the castle gate.</p>"
+                                    ),
+                                }
+                            ],
+                        }
+                    ],
+                    "totalMatches": 1,
+                }
+            case "manage-world-items":
+                # Real bridge shape (live-verified): action="list" returns
+                # a flat item directory, no description text (there is no
+                # "get one world item" action, only create/list/update/
+                # add-to-actor).
+                assert arguments.get("action") == "list"
+                items = [
+                    {
+                        "id": "item-1",
+                        "name": "Кольцо сопротивления",
+                        "type": "loot",
+                        "folderId": None,
+                        "folderName": None,
+                    },
+                    {
+                        "id": "item-2",
+                        "name": "Молот",
+                        "type": "weapon",
+                        "folderId": "f1",
+                        "folderName": "Оружие",
+                    },
+                ][: FakeFoundryMcpClient.world_item_count]
+                missing = FakeFoundryMcpClient.world_item_count - len(items)
+                if missing > 0:
+                    items.extend(
+                        {
+                            "id": f"item-extra-{i}",
+                            "name": f"Extra Item {i}",
+                            "type": "loot",
+                            "folderId": None,
+                            "folderName": None,
+                        }
+                        for i in range(missing)
+                    )
+                return {"items": items, "total": len(items)}
             case _:
                 return {}
 
@@ -64,7 +139,8 @@ class FakeFoundryMcpClient:
 def fake_mcp(monkeypatch: pytest.MonkeyPatch) -> type[FakeFoundryMcpClient]:
     FakeFoundryMcpClient.instances = []
     FakeFoundryMcpClient.fail_all = False
-    monkeypatch.setattr(foundry_module, "FoundryMcpClient", FakeFoundryMcpClient)
+    FakeFoundryMcpClient.world_item_count = 2
+    monkeypatch.setattr(foundry_module, "McpStdioClient", FakeFoundryMcpClient)
     return FakeFoundryMcpClient
 
 
@@ -148,8 +224,22 @@ def test_import_pulls_actors_with_provenance_dedupe(
     strahd = next(e for e in entities if e["title"] == "Strahd")
     by_key = {f["key"]: f for f in strahd["fields"]}
     assert by_key["tags"]["value"] == ["foundry-import"]
-    assert by_key["class"]["value"] == "Vampire"
     assert by_key["level"]["value"] == 15
+    assert by_key["ac"]["value"] == 16
+    assert by_key["hp"]["value"] == 144
+    assert by_key["cr"]["value"] == 10
+    assert set(by_key["equipment"]["value"]) == {"Sunsword", "Holy Symbol"}
+
+    # get-character must be looked up by the actor's Foundry id (by-name
+    # lookups are ambiguous when actors share a name), and the call uses
+    # the real "identifier" argument the bridge actually validates.
+    get_character_calls = [
+        c
+        for i in FakeFoundryMcpClient.instances
+        for c in i.calls
+        if c[0] == "get-character"
+    ]
+    assert {c[1]["identifier"] for c in get_character_calls} == {"actor-1", "actor-2"}
 
     # Second import: both actors already linked -> skipped, no duplicates.
     second = client.post(url, json={"payload": {}}).json()
@@ -168,3 +258,120 @@ def test_export_while_bridge_down_is_502(client: TestClient, project_id: str) ->
     )
     assert resp.status_code == 502
     assert resp.json()["code"] == "connector_unavailable"
+
+
+def _make_connector() -> FoundryConnector:
+    """Constructs a FoundryConnector directly against the fake bridge, for
+    testing FoundryConnector.query() (the LiveSource protocol method the
+    assistant's query_external_source chat tool calls) without the full
+    HTTP/DB stack the other tests in this file use. No runtime
+    (runtime=None) -> _client() constructs McpStdioClient directly, which
+    the autouse fake_mcp fixture has already replaced with
+    FakeFoundryMcpClient module-wide."""
+    context = ConnectorContext(
+        project_id="p1",
+        connection_id="c1",
+        connection_name="Test",
+        entity_service=cast(Any, None),
+        edge_service=cast(Any, None),
+        entity_store=cast(Any, None),
+        edge_store=cast(Any, None),
+        attachment_store=cast(Any, None),
+        attachments_dir=cast(Any, None),
+        link_store=cast(Any, None),
+        runtime=None,
+    )
+    return FoundryConnector(
+        FoundryConfig(mcp_server_path="C:/bridge/dist/index.js"), context
+    )
+
+
+@pytest.mark.asyncio
+async def test_live_query_journals_uses_search_query_param_and_strips_html() -> None:
+    """Against the real search-journals shape — a locator+snippet
+    structure, not a flat list — verified live against a running Foundry
+    world."""
+    connector = _make_connector()
+
+    chunks = await connector.query("Strahd", kind="journals")
+
+    assert len(chunks) == 1
+    assert chunks[0].title == "Session 3 notes — Lore"
+    assert chunks[0].text == "The party met Strahd at the castle gate."
+    call = next(
+        c
+        for i in FakeFoundryMcpClient.instances
+        for c in i.calls
+        if c[0] == "search-journals"
+    )
+    assert call[1] == {"searchQuery": "Strahd"}
+
+
+@pytest.mark.asyncio
+async def test_live_query_items_reaches_world_item_library_not_compendium() -> None:
+    """Regression for the reported gap: "add all items from Foundry" only
+    ever searched the compendium (the reference rulebook item database)
+    because query_external_source had no "items" kind at all — the world's
+    own standalone items (manage-world-items) were unreachable through
+    chat no matter how the request was phrased."""
+    connector = _make_connector()
+
+    chunks = await connector.query("", kind="items")
+
+    assert {c.title for c in chunks} == {"Кольцо сопротивления", "Молот"}
+    hammer = next(c for c in chunks if c.title == "Молот")
+    assert hammer.kind == "item"
+    assert "weapon" in hammer.text
+    assert "Оружие" in hammer.text
+    call = next(
+        c
+        for i in FakeFoundryMcpClient.instances
+        for c in i.calls
+        if c[0] == "manage-world-items"
+    )
+    assert call[1] == {"action": "list"}
+
+
+@pytest.mark.asyncio
+async def test_live_query_items_passes_nonempty_query_as_name_filter() -> None:
+    connector = _make_connector()
+
+    await connector.query("Молот", kind="items")
+
+    call = next(
+        c
+        for i in FakeFoundryMcpClient.instances
+        for c in i.calls
+        if c[0] == "manage-world-items"
+    )
+    assert call[1] == {"action": "list", "nameFilter": "Молот"}
+
+
+@pytest.mark.asyncio
+async def test_live_query_items_returns_more_than_the_old_five_item_cap() -> None:
+    """Regression for the exact reported bug: "add all items from Foundry"
+    only ever returned 5 of the world's real 11 items, with no indication
+    anything was cut, because a single _LIVE_CHUNK_LIMIT=5 was shared
+    across every result kind combined. Items now get their own budget
+    (_ITEM_CHUNK_LIMIT=30), independent of journals/actors/compendium."""
+    FakeFoundryMcpClient.world_item_count = 11
+    connector = _make_connector()
+
+    chunks = await connector.query("", kind="items")
+
+    assert len(chunks) == 11
+
+
+@pytest.mark.asyncio
+async def test_live_query_default_kind_includes_world_items() -> None:
+    """kind=None (the default when the assistant doesn't specify) fans out
+    to journals/actors/items together — items must be included, not just
+    reachable via an explicit kind="items" the model has to know to ask
+    for."""
+    connector = _make_connector()
+
+    chunks = await connector.query("")
+
+    assert any(c.kind == "item" for c in chunks)
+
+

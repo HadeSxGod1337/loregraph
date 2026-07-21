@@ -1,15 +1,19 @@
-"""MCP client for a locally running Foundry MCP Bridge.
+"""Generic stdio MCP client — Loregraph is the MCP *client* here (the
+inverse of loregraph.mcp_server): it spawns any locally configured MCP
+server over stdio and talks the protocol to it. One long-lived session per
+connection, cached in ConnectorRuntime for the app's lifetime.
 
-Loregraph is the MCP *client* here (the inverse of loregraph.mcp_server):
-it spawns the bridge's stdio server (adambdooley/foundry-vtt-mcp), which
-talks WebSocket to the Foundry module on localhost. One long-lived session
-per connection, cached in ConnectorRuntime for the app's lifetime.
+Not tied to any particular server: FoundryConnector uses this to talk to
+the community Foundry MCP Bridge, and GenericMcpConnector
+(connectors/mcp/connector.py) uses the exact same class to talk to
+whatever MCP server the game master points it at.
 """
 
 import asyncio
 import json
 import logging
 from contextlib import AsyncExitStack
+from dataclasses import dataclass
 from typing import Any
 
 from mcp import ClientSession, StdioServerParameters
@@ -20,7 +24,17 @@ from loregraph.exceptions import ConnectorUnavailableError
 logger = logging.getLogger(__name__)
 
 
-class FoundryMcpClient:
+@dataclass(frozen=True)
+class McpToolInfo:
+    """One tool as the server itself describes it — verbatim name/
+    description/input schema, no Loregraph-side reinterpretation."""
+
+    name: str
+    description: str
+    input_schema: dict[str, Any]
+
+
+class McpStdioClient:
     """Thin wrapper: spawn, initialize, call tools with a timeout, translate
     every transport failure into ConnectorUnavailableError (502) so callers
     never see raw MCP/anyio exceptions."""
@@ -40,7 +54,7 @@ class FoundryMcpClient:
         self._timeout_s = timeout_s
         self._stack: AsyncExitStack | None = None
         self._session: ClientSession | None = None
-        self._tool_names: frozenset[str] | None = None
+        self._tools: list[McpToolInfo] | None = None
 
     async def start(self) -> None:
         stack = AsyncExitStack()
@@ -61,7 +75,7 @@ class FoundryMcpClient:
         except Exception as e:
             await stack.aclose()
             raise ConnectorUnavailableError(
-                self._connection_name, f"failed to start Foundry MCP bridge: {e}"
+                self._connection_name, f"failed to start MCP server: {e}"
             ) from e
         self._stack = stack
         self._session = session
@@ -72,8 +86,8 @@ class FoundryMcpClient:
             self._stack = None
             self._session = None
 
-    async def tool_names(self) -> frozenset[str]:
-        if self._tool_names is None:
+    async def list_tools(self) -> list[McpToolInfo]:
+        if self._tools is None:
             session = self._require_session()
             try:
                 async with asyncio.timeout(self._timeout_s):
@@ -84,11 +98,21 @@ class FoundryMcpClient:
                 raise ConnectorUnavailableError(
                     self._connection_name, f"list_tools failed: {e}"
                 ) from e
-            self._tool_names = frozenset(tool.name for tool in listed.tools)
-        return self._tool_names
+            self._tools = [
+                McpToolInfo(
+                    name=tool.name,
+                    description=tool.description or "",
+                    input_schema=tool.inputSchema or {},
+                )
+                for tool in listed.tools
+            ]
+        return self._tools
+
+    async def tool_names(self) -> frozenset[str]:
+        return frozenset(tool.name for tool in await self.list_tools())
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
-        """Call a bridge tool and return its text content, JSON-decoded when
+        """Call a server tool and return its text content, JSON-decoded when
         possible. Tool-level errors (isError) and transport failures both
         raise ConnectorUnavailableError — for this connector the distinction
         doesn't change what the caller can do."""

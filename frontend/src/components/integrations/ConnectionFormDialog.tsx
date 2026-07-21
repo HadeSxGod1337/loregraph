@@ -10,29 +10,80 @@ import { translateApiError } from "../../i18n/eventText";
 import { Checkbox } from "../ui/Checkbox";
 import { useToast } from "../ui/Toast";
 
-/** Hardcoded config field definitions per connector type.  No JSON-schema
- * forms — the three supported types have small, stable config shapes. */
+/** Hardcoded config field definitions per connector type. No JSON-schema
+ * forms — every supported type has a small, stable config shape. "lines"
+ * fields are one value per line (→ a string array); "kv" fields are one
+ * KEY=VALUE per line (→ a string map) — used only by "mcp", the one type
+ * whose config isn't flat strings/numbers (an arbitrary MCP server's own
+ * argv/env). */
 const CONFIG_FIELDS: Record<
   string,
-  { key: string; label: string; type?: "password" | "text"; secret?: boolean }[]
+  {
+    key: string;
+    label: string;
+    type?: "password" | "text" | "lines" | "kv";
+    secret?: boolean;
+  }[]
 > = {
   obsidian: [
     { key: "vault_path", label: "integrations.config.vaultPath" },
     { key: "subfolder", label: "integrations.config.subfolder" },
   ],
   foundry: [
-    { key: "mcp_server_command", label: "integrations.config.mcpCommand" },
-    { key: "mcp_server_args", label: "integrations.config.mcpArgs" },
+    { key: "node_command", label: "integrations.config.nodeCommand" },
+    { key: "mcp_server_path", label: "integrations.config.mcpServerPath" },
+    { key: "foundry_host", label: "integrations.config.foundryHost" },
+    { key: "foundry_port", label: "integrations.config.foundryPort" },
     { key: "request_timeout_s", label: "integrations.config.timeout" },
   ],
   longstoryshort: [],
+  mcp: [
+    { key: "command", label: "integrations.config.mcpCommand" },
+    { key: "args", label: "integrations.config.mcpArgs", type: "lines" },
+    { key: "env", label: "integrations.config.mcpEnv", type: "kv" },
+    { key: "request_timeout_s", label: "integrations.config.timeout" },
+    {
+      key: "allowed_tools",
+      label: "integrations.config.mcpAllowedTools",
+      type: "lines",
+    },
+  ],
 };
 
 const CONNECTOR_LABELS: Record<string, string> = {
   obsidian: "Obsidian",
   foundry: "Foundry VTT",
   longstoryshort: "LongStoryShort",
+  mcp: "MCP server",
 };
+
+function linesToArray(raw: string): string[] {
+  return raw
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function linesToRecord(raw: string): Record<string, string> {
+  const record: Record<string, string> = {};
+  for (const line of linesToArray(raw)) {
+    const eq = line.indexOf("=");
+    if (eq > 0) record[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+  }
+  return record;
+}
+
+/** Flattens a stored config value back into the textarea/input string the
+ * form edits — the inverse of linesToArray/linesToRecord. */
+function valueToEditableString(value: unknown): string {
+  if (Array.isArray(value)) return value.join("\n");
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n");
+  }
+  return String(value ?? "");
+}
 
 export function ConnectionFormDialog({
   projectId,
@@ -59,7 +110,7 @@ export function ConnectionFormDialog({
     if (!connection) return {};
     const flat: Record<string, string> = {};
     for (const [k, v] of Object.entries(connection.config)) {
-      flat[k] = String(v);
+      flat[k] = valueToEditableString(v);
     }
     return flat;
   });
@@ -79,14 +130,12 @@ export function ConnectionFormDialog({
     const typedConfig: Record<string, unknown> = {};
     for (const f of fields) {
       const raw = config[f.key] ?? "";
-      if (f.key === "request_timeout_s") {
-        typedConfig[f.key] = Number(raw) || 15;
-      } else if (f.key === "mcp_server_args") {
-        // Comma-separated → array
-        typedConfig[f.key] = raw
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
+      if (f.key === "request_timeout_s" || f.key === "foundry_port") {
+        typedConfig[f.key] = Number(raw) || (f.key === "foundry_port" ? 31415 : 15);
+      } else if (f.type === "lines") {
+        typedConfig[f.key] = linesToArray(raw);
+      } else if (f.type === "kv") {
+        typedConfig[f.key] = linesToRecord(raw);
       } else {
         typedConfig[f.key] = raw;
       }
@@ -169,23 +218,39 @@ export function ConnectionFormDialog({
             />
           </label>
 
-          {fields.map((f) => (
-            <label key={f.key}>
-              {t(f.label)}
-              <input
-                type={f.secret ? "password" : "text"}
-                value={config[f.key] ?? ""}
-                onChange={(e) =>
-                  setConfig((prev) => ({ ...prev, [f.key]: e.target.value }))
-                }
-                placeholder={
-                  isEdit && connection.config[f.key] !== undefined
-                    ? String(connection.config[f.key]).slice(0, 8) + "••••"
-                    : ""
-                }
-              />
-            </label>
-          ))}
+          {fields.map((f) =>
+            f.type === "lines" || f.type === "kv" ? (
+              <label key={f.key}>
+                {t(f.label)}
+                <textarea
+                  rows={3}
+                  value={config[f.key] ?? ""}
+                  onChange={(e) =>
+                    setConfig((prev) => ({ ...prev, [f.key]: e.target.value }))
+                  }
+                  placeholder={
+                    f.type === "kv" ? "KEY=value" : t("integrations.config.oneLine")
+                  }
+                />
+              </label>
+            ) : (
+              <label key={f.key}>
+                {t(f.label)}
+                <input
+                  type={f.secret ? "password" : "text"}
+                  value={config[f.key] ?? ""}
+                  onChange={(e) =>
+                    setConfig((prev) => ({ ...prev, [f.key]: e.target.value }))
+                  }
+                  placeholder={
+                    isEdit && connection.config[f.key] !== undefined
+                      ? String(connection.config[f.key]).slice(0, 8) + "••••"
+                      : ""
+                  }
+                />
+              </label>
+            ),
+          )}
 
           <Checkbox
             label={t("integrations.grounding")}

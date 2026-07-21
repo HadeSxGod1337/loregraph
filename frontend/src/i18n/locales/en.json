@@ -389,9 +389,16 @@
     "config": {
       "vaultPath": "Vault path",
       "subfolder": "Subfolder",
-      "mcpCommand": "MCP server command",
-      "mcpArgs": "MCP server args (comma-separated)",
-      "timeout": "Timeout (seconds)"
+      "nodeCommand": "Node.js command path",
+      "mcpServerPath": "MCP server entry point (index.cjs)",
+      "foundryHost": "Foundry host",
+      "foundryPort": "Foundry port",
+      "timeout": "Timeout (seconds)",
+      "mcpCommand": "Command (e.g. \"node\", \"npx\")",
+      "mcpArgs": "Arguments (one per line)",
+      "mcpEnv": "Environment variables (one KEY=value per line)",
+      "mcpAllowedTools": "Allowed tools (one per line, empty = all tools)",
+      "oneLine": "One per line"
     },
     "probe": {
       "vault_ok": "Vault accessible",
@@ -399,7 +406,9 @@
       "vault_not_directory": "Path is not a directory",
       "vault_not_writable": "Vault is not writable",
       "foundry_ok": "Foundry connected",
-      "foundry_unreachable": "Foundry bridge unreachable"
+      "foundry_unreachable": "Foundry bridge unreachable",
+      "mcp_ok": "MCP server connected",
+      "mcp_unreachable": "MCP server unreachable"
     },
     "exportTitle": "Export preview",
     "exportNothing": "Nothing to export — all entities are already up to date or none are selected.",

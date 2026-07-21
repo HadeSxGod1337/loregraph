@@ -5,6 +5,7 @@ from langchain_core.messages import AIMessage, AnyMessage, SystemMessage, ToolMe
 from pydantic import BaseModel
 
 from loregraph.agent.events import event_message
+from loregraph.agent.mcp_tools import McpToolProvider, build_tool_model
 from loregraph.agent.skills.registry import (
     base_chat_tool_schemas,
     entry_node_for,
@@ -46,6 +47,23 @@ def external_sources_block(live_sources: LiveSourceProvider | None) -> str:
     )
 
 
+def mcp_tools_block(mcp_tools: McpToolProvider | None) -> str:
+    """System-prompt block listing connected generic MCP tool connections
+    (each tool itself is bound under its own real name/description — this
+    just names the connections, for citing which one an action came from)."""
+    if not mcp_tools:
+        return ""
+    names = sorted({entry.connection_name for entry in mcp_tools.entries()})
+    lines = "\n".join(f"- {name}" for name in names)
+    return (
+        '\n<mcp_connections note="external tools from these connected MCP '
+        "servers execute IMMEDIATELY when called, with no game master "
+        "review — they act on the external tool, never on this world's "
+        'canon">\n'
+        f"{lines}\n</mcp_connections>"
+    )
+
+
 def chat_window(messages: list[AnyMessage]) -> list[AnyMessage]:
     """Last N messages, never starting with an orphaned ToolMessage (a tool
     result without its tool call is a provider-side 400)."""
@@ -64,6 +82,7 @@ async def assistant(
     usage_store: UsageStore | None,
     model_name: str,
     live_sources: LiveSourceProvider | None = None,
+    mcp_tools: McpToolProvider | None = None,
 ) -> dict[str, Any]:
     """The conversational brain: answers from retrieved lore, asks clarifying
     questions, and calls propose_lore to draft content. Deliberately has no
@@ -84,6 +103,11 @@ async def assistant(
         # Bound only when the project actually has live connections — no
         # dead tool in the prompt otherwise.
         tools.append(query_external_source)
+    if mcp_tools:
+        # Each connected MCP tool is bound under its own real name/schema
+        # (built fresh per turn from the server's own tool list) — no
+        # generic wrapper tool, no per-tool Python parsing.
+        tools.extend(build_tool_model(entry) for entry in mcp_tools.entries())
     model = chat_model.bind_tools(tools)
     response = await model.ainvoke(
         [
@@ -94,6 +118,7 @@ async def assistant(
                         project.agent_instructions
                     ),
                     external_sources_block=external_sources_block(live_sources),
+                    mcp_tools_block=mcp_tools_block(mcp_tools),
                 )
             ),
             *chat_window(state.messages),
