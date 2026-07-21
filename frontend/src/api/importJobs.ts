@@ -71,6 +71,20 @@ export const importJobsApi = {
       { source_id: sourceId },
       onEvent,
     ),
+  /** Migrate a connected external tool's OWN content into the graph with AI
+   * (backend connectors/protocols.py IngestSource). Same pipeline and review
+   * stream as start(); only the source differs — this one is for a project
+   * Loregraph never created, not a round-trip of our own export format. */
+  startFromConnection: (
+    projectId: string,
+    connectionId: string,
+    onEvent: (event: ImportJobEvent) => void,
+  ) =>
+    streamSse<ImportJobEvent>(
+      `/api/projects/${projectId}/import-jobs/from-connection`,
+      { connection_id: connectionId },
+      onEvent,
+    ),
   review: (
     projectId: string,
     jobId: string,

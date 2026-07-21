@@ -78,3 +78,64 @@ def test_list_and_get_import_jobs_needs_no_llm(
     resp = client.get(f"/api/projects/{project_id}/import-jobs")
     assert resp.status_code == 200
     assert resp.json() == []
+
+
+# --- migration from a connection (IngestSource) ------------------------------
+
+
+def test_migrate_for_unknown_project_is_404(client: TestClient) -> None:
+    resp = client.post(
+        "/api/projects/does-not-exist/import-jobs/from-connection",
+        json={"connection_id": "nope"},
+    )
+    assert resp.status_code == 404
+
+
+def test_migrate_for_unknown_connection_is_404(
+    client: TestClient, project_id: str
+) -> None:
+    resp = client.post(
+        f"/api/projects/{project_id}/import-jobs/from-connection",
+        json={"connection_id": "nope"},
+    )
+    assert resp.status_code == 404
+
+
+def test_migrate_for_connector_without_ingest_is_422(
+    client: TestClient, project_id: str
+) -> None:
+    """LongStoryShort has no IngestSource — migration must be refused before
+    any job is created, not fail deep inside the pipeline."""
+    created = client.post(
+        f"/api/projects/{project_id}/connections",
+        json={"connector_type": "longstoryshort", "name": "LSS", "config": {}},
+    )
+    assert created.status_code == 201
+    resp = client.post(
+        f"/api/projects/{project_id}/import-jobs/from-connection",
+        json={"connection_id": created.json()["id"]},
+    )
+    assert resp.status_code == 422
+
+
+def test_migrate_from_ingest_capable_connection_reaches_llm_guard(
+    client: TestClient, project_id: str, tmp_path: Any
+) -> None:
+    """An ingest-capable connection passes every guard and only then hits the
+    "no LLM configured" 409 — proving the capability/ownership checks accept
+    it rather than rejecting migration outright."""
+    created = client.post(
+        f"/api/projects/{project_id}/connections",
+        json={
+            "connector_type": "obsidian",
+            "name": "Vault",
+            "config": {"vault_path": str(tmp_path)},
+        },
+    )
+    assert created.status_code == 201
+    resp = client.post(
+        f"/api/projects/{project_id}/import-jobs/from-connection",
+        json={"connection_id": created.json()["id"]},
+    )
+    assert resp.status_code == 409
+    assert "ANTHROPIC_API_KEY" in resp.json()["detail"]

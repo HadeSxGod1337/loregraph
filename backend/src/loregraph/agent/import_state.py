@@ -35,6 +35,11 @@ class ImportState(BaseModel):
     state_version: int = IMPORT_STATE_VERSION
 
     project_id: str
+    # "knowledge": source_id is a KnowledgeSource id (uploaded file).
+    # "connection": source_id is a connection id whose connector implements
+    # IngestSource (migrate an external project into the graph). source_id /
+    # source_filename stay generic ref/label so no DB column had to change.
+    source_kind: Literal["knowledge", "connection"] = "knowledge"
     source_id: str
     source_filename: str
     # Mirrors the checkpointer's thread_id, same rationale as AgentState's

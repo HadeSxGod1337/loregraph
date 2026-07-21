@@ -15,6 +15,7 @@ CAPABILITY_EXPORT = "export"
 CAPABILITY_IMPORT = "import"
 CAPABILITY_LIVE = "live"
 CAPABILITY_MCP_TOOLS = "mcp_tools"
+CAPABILITY_INGEST = "ingest"
 
 
 @dataclass(frozen=True)
@@ -41,9 +42,43 @@ class Exporter(Protocol):
 @runtime_checkable
 class Importer(Protocol):
     """Pulls external data into Loregraph entities. Implementations must
-    write through EntityService/EdgeService (the single write path)."""
+    write through EntityService/EdgeService (the single write path).
+
+    This is the SYNC half of the story: a deterministic round-trip of
+    Loregraph's own export format, provenance-linked (ConnectionEntityLink)
+    so a second run updates instead of duplicating. For bringing in a
+    project Loregraph never created, see IngestSource below — the two
+    coexist on purpose and answer different questions."""
 
     async def import_data(self, request: ImportRequest) -> ImportResult: ...
+
+
+@dataclass(frozen=True)
+class IngestDocument:
+    """One unit of raw external content for the AI migration pipeline (a
+    journal page, an actor sheet, a vault note) — plain text/markdown that
+    the extractor windows and reads. `external_id` is provenance (which
+    external record it came from); `kind` is informational."""
+
+    external_id: str
+    title: str
+    text: str
+    kind: str
+
+
+@runtime_checkable
+class IngestSource(Protocol):
+    """Yields the connection's OWN content as plain-text documents for the AI
+    migration pipeline (agent/import_graph.py) to extract a graph from.
+
+    Deliberately distinct from Importer: Importer is a deterministic
+    round-trip of Loregraph's own export format (idempotent, provenance-
+    linked); IngestSource hands RAW external content to the AI extractor, for
+    migrating a project Loregraph never created. Migration is one-
+    directional and always passes through the same human review as file
+    import — it never writes canon directly."""
+
+    async def ingest_documents(self) -> list[IngestDocument]: ...
 
 
 @runtime_checkable

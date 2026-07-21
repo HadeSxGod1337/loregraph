@@ -21,6 +21,7 @@ export interface ImportJobController {
   busy: boolean;
   error: string | null;
   start: (sourceId: string) => Promise<void>;
+  startFromConnection: (connectionId: string) => Promise<void>;
   review: (decision: ImportReviewDecision) => Promise<void>;
   reset: () => void;
 }
@@ -66,22 +67,36 @@ export function useImportJob(projectId: string): ImportJobController {
     }
   }, []);
 
-  const start = useCallback(
-    async (sourceId: string) => {
+  const runStart = useCallback(
+    async (begin: () => Promise<void>) => {
       setBusy(true);
       setError(null);
       setProgress(null);
       setJob(null);
       jobIdRef.current = null;
       try {
-        await importJobsApi.start(projectId, sourceId, handleEvent);
+        await begin();
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
         setBusy(false);
       }
     },
-    [projectId, handleEvent],
+    [],
+  );
+
+  const start = useCallback(
+    async (sourceId: string) =>
+      runStart(() => importJobsApi.start(projectId, sourceId, handleEvent)),
+    [projectId, handleEvent, runStart],
+  );
+
+  const startFromConnection = useCallback(
+    async (connectionId: string) =>
+      runStart(() =>
+        importJobsApi.startFromConnection(projectId, connectionId, handleEvent),
+      ),
+    [projectId, handleEvent, runStart],
   );
 
   const review = useCallback(
@@ -107,5 +122,5 @@ export function useImportJob(projectId: string): ImportJobController {
     jobIdRef.current = null;
   }, []);
 
-  return { job, progress, busy, error, start, review, reset };
+  return { job, progress, busy, error, start, startFromConnection, review, reset };
 }

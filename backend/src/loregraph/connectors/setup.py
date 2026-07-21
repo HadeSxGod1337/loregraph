@@ -10,6 +10,7 @@ from loregraph.connectors.obsidian.connector import ObsidianConfig, ObsidianConn
 from loregraph.connectors.protocols import (
     CAPABILITY_EXPORT,
     CAPABILITY_IMPORT,
+    CAPABILITY_INGEST,
     CAPABILITY_LIVE,
     CAPABILITY_MCP_TOOLS,
 )
@@ -41,7 +42,9 @@ def build_default_registry() -> ConnectorRegistry:
             connector_type="obsidian",
             config_model=ObsidianConfig,
             factory=_obsidian_factory,
-            capabilities=frozenset({CAPABILITY_EXPORT, CAPABILITY_IMPORT}),
+            capabilities=frozenset(
+                {CAPABILITY_EXPORT, CAPABILITY_IMPORT, CAPABILITY_INGEST}
+            ),
         )
     )
     registry.register(
@@ -50,7 +53,12 @@ def build_default_registry() -> ConnectorRegistry:
             config_model=FoundryConfig,
             factory=_foundry_factory,
             capabilities=frozenset(
-                {CAPABILITY_EXPORT, CAPABILITY_IMPORT, CAPABILITY_LIVE}
+                {
+                    CAPABILITY_EXPORT,
+                    CAPABILITY_IMPORT,
+                    CAPABILITY_LIVE,
+                    CAPABILITY_INGEST,
+                }
             ),
         )
     )

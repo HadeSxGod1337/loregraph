@@ -26,6 +26,7 @@ from loregraph.connectors.markdown_codec import (
     resolve_entity_link_ids,
 )
 from loregraph.connectors.obsidian.frontmatter import compose_note, parse_note
+from loregraph.connectors.protocols import IngestDocument
 from loregraph.exceptions import (
     CampaignError,
     ConnectorUnavailableError,
@@ -79,7 +80,8 @@ class ObsidianConfig(BaseModel):
 
 
 class ObsidianConnector:
-    """Implements Exporter, Importer and ConnectionProbe over a local vault."""
+    """Implements Exporter, Importer, IngestSource and ConnectionProbe over a
+    local vault."""
 
     def __init__(self, config: ObsidianConfig, context: ConnectorContext) -> None:
         self._config = config
@@ -482,6 +484,51 @@ class ObsidianConnector:
                         ItemError(ref=note.relpath, code=error_code(e), detail=str(e))
                     )
         return result
+
+    # ── ingest (IngestSource) ────────────────────────────────────────────────
+
+    async def ingest_documents(self) -> list[IngestDocument]:
+        """Dump the WHOLE vault as raw markdown for the AI migration pipeline
+        (agent/import_graph.py) — the "bring my existing Obsidian vault into
+        the graph" path.
+
+        Deliberately different from import_data(): that one reads only our
+        own export subfolder and parses OUR format (frontmatter loregraph_id,
+        `## Relationships` arrow lines), so a foreign vault imports as flat
+        notes with no edges. Here the notes are handed to the AI extractor
+        verbatim, so an arbitrary vault's structure and prose become entities
+        and relationships without having to match any Loregraph convention.
+        """
+        vault = Path(self._config.vault_path)
+
+        def read_all() -> list[IngestDocument]:
+            if not vault.is_dir():
+                raise ConnectorUnavailableError(
+                    self._context.connection_name,
+                    f"vault path is not a directory: {self._config.vault_path}",
+                )
+            documents: list[IngestDocument] = []
+            for path in sorted(vault.rglob("*.md")):
+                if ATTACHMENTS_SUBFOLDER in path.parts:
+                    continue
+                try:
+                    text = path.read_text(encoding="utf-8")
+                except OSError:
+                    logger.warning("Skipping unreadable vault note %s", path)
+                    continue
+                if not text.strip():
+                    continue
+                documents.append(
+                    IngestDocument(
+                        external_id=path.relative_to(vault).as_posix(),
+                        title=path.stem,
+                        text=text,
+                        kind="note",
+                    )
+                )
+            return documents
+
+        return await asyncio.to_thread(read_all)
 
     async def _match_or_create(
         self,

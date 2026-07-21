@@ -85,6 +85,15 @@ class ImportJobStartRequest(BaseModel):
     source_id: str
 
 
+class ImportJobFromConnectionRequest(BaseModel):
+    """Start a bulk import that reads an external tool's OWN content
+    (IngestSource) instead of an uploaded file — "migrate my existing
+    Foundry world / Obsidian vault into the graph". Same pipeline, same
+    page-by-page review; only the source differs."""
+
+    connection_id: str
+
+
 class ImportEstimateOut(BaseModel):
     """Pre-flight estimate, computed before any LLM call — pure arithmetic,
     shown by the UI so the DM (who pays for their own BYOK key)

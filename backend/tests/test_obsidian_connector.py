@@ -3,8 +3,13 @@ folder in tmp_path) — the same wiring the app uses, no mocks needed for a
 file-based connector."""
 
 from pathlib import Path
+from typing import Any, cast
 
+import pytest
 from fastapi.testclient import TestClient
+
+from loregraph.connectors.context import ConnectorContext
+from loregraph.connectors.obsidian.connector import ObsidianConfig, ObsidianConnector
 
 
 def _make_connection(client: TestClient, project_id: str, vault: Path) -> str:
@@ -231,3 +236,66 @@ def test_import_malformed_note_reports_error_without_aborting(
     assert result["created"] == 1  # good.md landed
     assert len(result["errors"]) == 1
     assert result["errors"][0]["ref"] == "bad.md"
+
+
+# --- ingest (AI migration of a FOREIGN vault) --------------------------------
+
+
+def _ingest_connector(vault: Path) -> ObsidianConnector:
+    """Connector built directly against a vault, for testing ingest_documents
+    (the IngestSource method the migration pipeline calls) without the
+    HTTP/DB stack — it touches no stores."""
+    context = ConnectorContext(
+        project_id="p1",
+        connection_id="c1",
+        connection_name="My Vault",
+        entity_service=cast(Any, None),
+        edge_service=cast(Any, None),
+        entity_store=cast(Any, None),
+        edge_store=cast(Any, None),
+        attachment_store=cast(Any, None),
+        attachments_dir=cast(Any, None),
+        link_store=cast(Any, None),
+        runtime=None,
+    )
+    return ObsidianConnector(ObsidianConfig(vault_path=str(vault)), context)
+
+
+@pytest.mark.asyncio
+async def test_ingest_reads_the_whole_vault_not_just_our_subfolder(
+    tmp_path: Path,
+) -> None:
+    """The migration case: a vault Loregraph never exported to. Notes outside
+    our own subfolder — the entire point — must be picked up verbatim, with
+    no Loregraph frontmatter or relationship syntax required."""
+    vault = tmp_path / "vault"
+    (vault / "Characters").mkdir(parents=True)
+    (vault / "Loregraph").mkdir(parents=True)
+    (vault / "Characters" / "Strahd.md").write_text(
+        "# Strahd\n\nLord of Barovia, sworn enemy of Ireena.\n", encoding="utf-8"
+    )
+    (vault / "Loregraph" / "Ours.md").write_text(
+        "---\nloregraph_id: abc\n---\n\n# Ours\n", encoding="utf-8"
+    )
+
+    documents = await _ingest_connector(vault).ingest_documents()
+
+    by_title = {doc.title: doc for doc in documents}
+    assert set(by_title) == {"Strahd", "Ours"}
+    strahd = by_title["Strahd"]
+    assert strahd.kind == "note"
+    assert strahd.external_id == "Characters/Strahd.md"
+    assert "sworn enemy of Ireena" in strahd.text
+
+
+@pytest.mark.asyncio
+async def test_ingest_skips_attachments_and_empty_notes(tmp_path: Path) -> None:
+    vault = tmp_path / "vault"
+    (vault / "_attachments").mkdir(parents=True)
+    (vault / "_attachments" / "note.md").write_text("# Attached\n", encoding="utf-8")
+    (vault / "blank.md").write_text("   \n", encoding="utf-8")
+    (vault / "real.md").write_text("# Real\n\nContent.\n", encoding="utf-8")
+
+    documents = await _ingest_connector(vault).ingest_documents()
+
+    assert [doc.title for doc in documents] == ["real"]

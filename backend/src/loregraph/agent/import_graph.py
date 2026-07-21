@@ -4,6 +4,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from loregraph.agent.import_source import ImportSourceResolver
 from loregraph.agent.import_state import ImportState
 from loregraph.agent.nodes.import_commit import (
     advance_slice,
@@ -24,14 +25,14 @@ from loregraph.llm.structured import StructuredGenerator
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
 from loregraph.services.event_bus import EventBus
-from loregraph.storage.protocols import EntityStore, KnowledgeSourceStore
+from loregraph.storage.protocols import EntityStore
 
 
 def build_import_graph(
     *,
     extraction: StructuredGenerator,
     creative: StructuredGenerator,
-    source_store: KnowledgeSourceStore,
+    source_resolver: ImportSourceResolver,
     entity_store: EntityStore,
     entity_service: EntityService,
     edge_service: EdgeService,
@@ -61,7 +62,9 @@ def build_import_graph(
     """
     builder: StateGraph[ImportState] = StateGraph(ImportState)
 
-    builder.add_node("plan_windows", partial(plan_windows, source_store=source_store))
+    builder.add_node(
+        "plan_windows", partial(plan_windows, source_resolver=source_resolver)
+    )
     builder.add_node(
         "build_registry",
         partial(

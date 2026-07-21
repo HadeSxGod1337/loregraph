@@ -50,6 +50,37 @@ class FakeFoundryMcpClient:
                         {"id": "actor-2", "name": "Ireena"},
                     ]
                 }
+            case "list-journals" if "pageId" in arguments:
+                # Real bridge shape (verified live): journalId+pageId returns
+                # ONE page's FULL content as HTML — the migration path's
+                # source, unlike search-journals' truncated snippet.
+                return {
+                    "success": True,
+                    "mode": "page",
+                    "journalId": arguments["journalId"],
+                    "page": {
+                        "id": arguments["pageId"],
+                        "name": "Описание",
+                        "type": "text",
+                        "content": (
+                            "<h3>1. Входной холл</h3><p>Главный вход и гардероб.</p>"
+                        ),
+                    },
+                }
+            case "list-journals":
+                return {
+                    "success": True,
+                    "mode": "list",
+                    "journals": [
+                        {
+                            "id": "journal-1",
+                            "name": "SexSpace",
+                            "pageCount": 1,
+                            "pages": [{"id": "page-1", "name": "Описание"}],
+                        }
+                    ],
+                    "total": 1,
+                }
             case "get-character":
                 # Real bridge shape (verified live against a running Foundry
                 # world): keyed by "identifier" (name or id), not
@@ -375,3 +406,56 @@ async def test_live_query_default_kind_includes_world_items() -> None:
     assert any(c.kind == "item" for c in chunks)
 
 
+# --- ingest (AI migration of a FOREIGN world) --------------------------------
+
+
+@pytest.mark.asyncio
+async def test_ingest_pulls_full_journal_pages_actors_and_items() -> None:
+    """Migration reads journals in FULL (journalId+pageId), unlike
+    import_data() which skips journals entirely and unlike query() which only
+    gets a truncated search snippet. Actors and items are aggregated into one
+    document each so short uniform records don't each cost an extraction
+    call."""
+    connector = _make_connector()
+
+    documents = await connector.ingest_documents()
+
+    by_kind = {doc.kind: doc for doc in documents}
+    assert set(by_kind) == {"journal", "actor", "item"}
+
+    journal = by_kind["journal"]
+    assert journal.title == "SexSpace"
+    assert journal.external_id == "journal-1"
+    assert "## Описание" in journal.text
+    # Full page content, HTML stripped — not a snippet, not markup soup.
+    assert "Главный вход и гардероб" in journal.text
+    assert "<p>" not in journal.text
+
+    actors = by_kind["actor"]
+    assert "Strahd" in actors.text and "Ireena" in actors.text
+    assert "AC: 16" in actors.text
+
+    assert "Кольцо сопротивления" in by_kind["item"].text
+
+
+@pytest.mark.asyncio
+async def test_ingest_skips_an_unreadable_page_without_sinking_the_migration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One bad page must not abort a whole world's migration."""
+    connector = _make_connector()
+    original = FakeFoundryMcpClient.call_tool
+
+    async def flaky(
+        self: FakeFoundryMcpClient, name: str, arguments: dict[str, Any]
+    ) -> Any:
+        if name == "list-journals" and "pageId" in arguments:
+            raise ConnectorUnavailableError("Test", "page unreadable")
+        return await original(self, name, arguments)
+
+    monkeypatch.setattr(FakeFoundryMcpClient, "call_tool", flaky)
+
+    documents = await connector.ingest_documents()
+
+    # The journal is dropped (no readable pages), actors/items still arrive.
+    assert {doc.kind for doc in documents} == {"actor", "item"}

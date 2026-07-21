@@ -9,8 +9,14 @@ import { Icon } from "../ui/Icon";
 
 interface ImportJobDialogProps {
   projectId: string;
+  /** Knowledge-base source id, or a connection id when mode="connection". */
   sourceId: string;
+  /** Filename, or the connection's name when mode="connection". */
   sourceFilename: string;
+  /** "knowledge" (default) imports an uploaded file; "connection" migrates a
+   * connected external tool's own content (backend IngestSource). Same
+   * pipeline and review UI either way — only the start call differs. */
+  mode?: "knowledge" | "connection";
   onClose: () => void;
 }
 
@@ -26,10 +32,12 @@ export function ImportJobDialog({
   projectId,
   sourceId,
   sourceFilename,
+  mode = "knowledge",
   onClose,
 }: ImportJobDialogProps) {
   const { t } = useTranslation();
-  const { job, progress, busy, error, start, review, reset } = useImportJob(projectId);
+  const { job, progress, busy, error, start, startFromConnection, review, reset } =
+    useImportJob(projectId);
   const [started, setStarted] = useState(false);
 
   useEffect(() => {
@@ -42,7 +50,8 @@ export function ImportJobDialog({
 
   function handleStart() {
     setStarted(true);
-    void start(sourceId);
+    if (mode === "connection") void startFromConnection(sourceId);
+    else void start(sourceId);
   }
 
   function handleClose() {
@@ -51,6 +60,8 @@ export function ImportJobDialog({
   }
 
   const status = job?.status ?? (started ? "extracting" : null);
+  const title =
+    mode === "connection" ? t("import.migrateDialogTitle") : t("import.dialogTitle");
 
   return (
     <div className="dialog-backdrop" onClick={handleClose}>
@@ -58,14 +69,18 @@ export function ImportJobDialog({
         className="dialog import-job-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label={t("import.dialogTitle")}
+        aria-label={title}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2>{t("import.dialogTitle")}</h2>
+        <h2>{title}</h2>
 
         {!started && (
           <>
-            <p>{t("import.confirmBody", { filename: sourceFilename })}</p>
+            <p>
+              {mode === "connection"
+                ? t("import.migrateConfirmBody", { name: sourceFilename })
+                : t("import.confirmBody", { filename: sourceFilename })}
+            </p>
             <div className="dialog-actions">
               <button type="button" className="button-secondary" onClick={handleClose}>
                 {t("common.cancel")}

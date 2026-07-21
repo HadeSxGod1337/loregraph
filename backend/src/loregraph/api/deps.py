@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loregraph.agent.graph import build_agent_graph
 from loregraph.agent.import_graph import build_import_graph
 from loregraph.agent.import_runner import ImportJobRunner
+from loregraph.agent.import_source import ImportSourceResolver
 from loregraph.agent.mcp_tools import McpConnection, McpToolProvider
 from loregraph.agent.runner import AgentRunner
 from loregraph.config import Settings
@@ -17,12 +18,17 @@ from loregraph.connectors.live import LiveSourceEntry, LiveSourceProvider
 from loregraph.connectors.protocols import (
     CAPABILITY_LIVE,
     CAPABILITY_MCP_TOOLS,
+    IngestSource,
     LiveSource,
     McpToolSource,
 )
 from loregraph.connectors.registry import ConnectorRegistry
 from loregraph.connectors.runtime import ConnectorRuntime
-from loregraph.exceptions import CampaignError
+from loregraph.exceptions import (
+    CampaignError,
+    ConnectionNotFoundError,
+    UnsupportedConnectorCapabilityError,
+)
 from loregraph.llm.factory import get_chat_model
 from loregraph.llm.structured import LangChainStructuredGenerator
 from loregraph.schemas.connection import ConnectionOut
@@ -442,7 +448,13 @@ async def get_import_job_runner(
     request: Request,
     settings: SettingsDep,
     source_store: KnowledgeSourceStoreDep,
+    connection_store: ConnectionStoreDep,
+    link_store: ConnectionEntityLinkStoreDep,
+    registry: ConnectorRegistryDep,
+    runtime: ConnectorRuntimeDep,
     entity_store: EntityStoreDep,
+    edge_store: EdgeStoreDep,
+    attachment_store: AttachmentStoreDep,
     entity_service: EntityServiceDep,
     edge_service: EdgeServiceDep,
     import_jobs: ImportJobStoreDep,
@@ -454,6 +466,41 @@ async def get_import_job_runner(
     ConfigurationError (→ 409) when no LLM is configured, same as the chat
     graph."""
     checkpointer = cast(BaseCheckpointSaver[str], request.app.state.import_checkpointer)
+
+    async def connection_ingest_factory(
+        project_id: str, connection_id: str
+    ) -> IngestSource:
+        """Resolve a connection to an IngestSource for the migration path —
+        same connector-resolution pattern as get_live_source_provider, kept
+        out of the agent layer (see agent/import_source.py's docstring). Only
+        invoked by plan_windows when source_kind == "connection", i.e. never
+        for the file-import path."""
+        connection = await connection_store.get(connection_id)
+        if connection.project_id != project_id:
+            raise ConnectionNotFoundError(connection_id)
+        context = ConnectorContext(
+            project_id=connection.project_id,
+            connection_id=connection.id,
+            connection_name=connection.name,
+            entity_service=entity_service,
+            edge_service=edge_service,
+            entity_store=entity_store,
+            edge_store=edge_store,
+            attachment_store=attachment_store,
+            attachments_dir=settings.attachments_dir,
+            link_store=link_store,
+            runtime=runtime,
+        )
+        connector = registry.create(
+            connection.connector_type, connection.config, context
+        )
+        if not isinstance(connector, IngestSource):
+            raise UnsupportedConnectorCapabilityError(
+                connection.connector_type, "ingest"
+            )
+        return connector
+
+    source_resolver = ImportSourceResolver(source_store, connection_ingest_factory)
     # Both the registry pass and the entity-extraction pass are
     # classification/extraction-shaped work (CLAUDE.md: "Haiku —
     # классификация/экстракция... низкая температура"), not the free
@@ -463,7 +510,7 @@ async def get_import_job_runner(
     graph = build_import_graph(
         extraction=LangChainStructuredGenerator(extraction_model),
         creative=LangChainStructuredGenerator(extraction_model),
-        source_store=source_store,
+        source_resolver=source_resolver,
         entity_store=entity_store,
         entity_service=entity_service,
         edge_service=edge_service,

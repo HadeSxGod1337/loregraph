@@ -13,6 +13,7 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Icon } from "../ui/Icon";
 import { KebabMenu } from "../ui/KebabMenu";
 import { useToast } from "../ui/Toast";
+import { ImportJobDialog } from "../knowledge/ImportJobDialog";
 import { ConnectionFormDialog } from "./ConnectionFormDialog";
 import { ExportDialog } from "./ExportDialog";
 import { ImportDialog } from "./ImportDialog";
@@ -42,10 +43,16 @@ export function ConnectionCard({
   const [editOpen, setEditOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [migrateOpen, setMigrateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const typeLabel =
     CONNECTOR_LABELS[connection.connector_type] ?? connection.connector_type;
+  // AI migration is only offered for connectors that can dump their own
+  // content as text (backend CAPABILITY_INGEST / IngestSource).
+  const canMigrate = connectorTypes
+    .find((ct) => ct.connector_type === connection.connector_type)
+    ?.capabilities.includes("ingest");
 
   function handleTest() {
     testConn.mutate(connection.id, {
@@ -136,6 +143,16 @@ export function ConnectionCard({
         >
           <Icon name="download" size={14} />
         </button>
+        {canMigrate && (
+          <button
+            type="button"
+            className="icon-button icon-button-accent"
+            onClick={() => setMigrateOpen(true)}
+            title={t("integrations.migrate")}
+          >
+            <Icon name="sparkles" size={14} />
+          </button>
+        )}
       </div>
 
       {editOpen && (
@@ -158,6 +175,15 @@ export function ConnectionCard({
           projectId={projectId}
           connection={connection}
           onClose={() => setImportOpen(false)}
+        />
+      )}
+      {migrateOpen && (
+        <ImportJobDialog
+          projectId={projectId}
+          sourceId={connection.id}
+          sourceFilename={connection.name}
+          mode="connection"
+          onClose={() => setMigrateOpen(false)}
         />
       )}
       {deleteOpen && (

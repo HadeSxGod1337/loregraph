@@ -42,11 +42,17 @@ class ImportJobRunner:
         self._jobs = jobs
 
     async def stream_start(
-        self, project_id: str, job_id: str, source_id: str, source_filename: str
+        self,
+        project_id: str,
+        job_id: str,
+        source_id: str,
+        source_filename: str,
+        source_kind: str = "knowledge",
     ) -> AsyncIterator[AgentEvent]:
         graph_input: dict[str, Any] = {
             "project_id": project_id,
             "job_id": job_id,
+            "source_kind": source_kind,
             "source_id": source_id,
             "source_filename": source_filename,
         }

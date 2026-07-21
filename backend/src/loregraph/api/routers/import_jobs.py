@@ -8,17 +8,23 @@ from fastapi.responses import StreamingResponse
 
 from loregraph.agent.runner import AgentEvent
 from loregraph.api.deps import (
+    ConnectionStoreDep,
+    ConnectorRegistryDep,
     ImportJobRunnerDep,
     ImportJobStoreDep,
     KnowledgeSourceStoreDep,
     ProjectStoreDep,
 )
+from loregraph.connectors.protocols import CAPABILITY_INGEST
 from loregraph.exceptions import (
+    ConnectionNotFoundError,
     ImportJobNotFoundError,
     ImportJobNotIdleError,
     KnowledgeSourceNotReadyError,
+    UnsupportedConnectorCapabilityError,
 )
 from loregraph.schemas.import_job import (
+    ImportJobFromConnectionRequest,
     ImportJobOut,
     ImportJobStartRequest,
     ImportReviewDecision,
@@ -78,6 +84,29 @@ async def _start_guard(
     await _require_no_active_job(project_id, jobs)
 
 
+async def _migrate_guard(
+    project_id: str,
+    data: ImportJobFromConnectionRequest,
+    project_store: ProjectStoreDep,
+    connection_store: ConnectionStoreDep,
+    registry: ConnectorRegistryDep,
+    jobs: ImportJobStoreDep,
+) -> None:
+    # Same ordering rationale as _start_guard: these must resolve — and
+    # raise — before ImportJobRunnerDep's ConfigurationError (409, no LLM
+    # key), so an unknown connection or a connector that can't be ingested
+    # 404s/422s regardless of whether an LLM is configured.
+    await project_store.get(project_id)
+    connection = await connection_store.get(data.connection_id)
+    if connection.project_id != project_id:
+        # Same rule as elsewhere: wrong project -> 404, don't confirm the id.
+        raise ConnectionNotFoundError(data.connection_id)
+    descriptor = registry.get(connection.connector_type)
+    if CAPABILITY_INGEST not in descriptor.capabilities:
+        raise UnsupportedConnectorCapabilityError(connection.connector_type, "ingest")
+    await _require_no_active_job(project_id, jobs)
+
+
 async def _job_guard(project_id: str, job_id: str, jobs: ImportJobStoreDep) -> None:
     await _validate_job(jobs, project_id, job_id)
 
@@ -117,6 +146,41 @@ async def start_import_job(
     await jobs.create(project_id, job_id, source.id, source.original_filename)
     return _sse_response(
         runner.stream_start(project_id, job_id, source.id, source.original_filename)
+    )
+
+
+@router.post(
+    "/projects/{project_id}/import-jobs/from-connection",
+    response_model=None,
+)
+async def start_migration_job(
+    project_id: str,
+    data: ImportJobFromConnectionRequest,
+    _guard: Annotated[None, Depends(_migrate_guard)],
+    connection_store: ConnectionStoreDep,
+    jobs: ImportJobStoreDep,
+    runner: ImportJobRunnerDep,
+) -> StreamingResponse:
+    """Migrate a connected external tool's OWN content into the world graph
+    with AI (see connectors/protocols.py's IngestSource): the connector
+    yields its journals/notes as text and the SAME bulk pipeline
+    (agent/import_graph.py) extracts entities and relationships, page-by-page
+    reviewed before anything reaches canon.
+
+    Distinct from the connection's deterministic Import action, which is a
+    round-trip of Loregraph's own export format. This one is for a project
+    Loregraph never created."""
+    connection = await connection_store.get(data.connection_id)
+    job_id = uuid.uuid4().hex
+    await jobs.create(project_id, job_id, connection.id, connection.name)
+    return _sse_response(
+        runner.stream_start(
+            project_id,
+            job_id,
+            connection.id,
+            connection.name,
+            source_kind="connection",
+        )
     )
 
 

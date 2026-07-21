@@ -11,7 +11,7 @@ from loregraph.agent.nodes.commit import (
 from loregraph.exceptions import CampaignError
 from loregraph.schemas.agent import AgentWarning
 from loregraph.schemas.edge import EdgeCreate
-from loregraph.schemas.entity import EntityCreate
+from loregraph.schemas.entity import EntityCreate, EntityFieldIn, FieldType
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
 
@@ -37,6 +37,9 @@ async def commit_slice(
     try:
         for draft_entity in slice_draft.entities:
             fields = _build_fields(draft_entity, title_to_id)
+            provenance = _provenance_field(state)
+            if provenance is not None:
+                fields.append(provenance)
             entity = await entity_service.create(
                 EntityCreate(
                     type=draft_entity.type, title=draft_entity.title, fields=fields
@@ -56,6 +59,24 @@ async def commit_slice(
         "committed_entity_ids": [*state.committed_entity_ids, *created_ids],
         "ref_to_id": {**state.ref_to_id, **new_ref_to_id},
     }
+
+
+def _provenance_field(state: ImportState) -> EntityFieldIn | None:
+    """Coarse "where did this come from" marker on migrated entities.
+
+    Deliberately a plain field, NOT a ConnectionEntityLink: the AI extractor
+    merges and splits content across windows, so there is no honest 1:1
+    external_id↔entity mapping to record (that mapping is what the
+    deterministic Exporter/Importer round-trip relies on). Migration is
+    therefore one-directional — a later export to that same tool creates
+    fresh, properly linked records rather than round-tripping these."""
+    if state.source_kind != "connection" or not state.source_filename:
+        return None
+    return EntityFieldIn(
+        key="source",
+        field_type=FieldType.TEXT,
+        value=f"Migrated from {state.source_filename}",
+    )
 
 
 def advance_slice(state: ImportState) -> dict[str, Any]:

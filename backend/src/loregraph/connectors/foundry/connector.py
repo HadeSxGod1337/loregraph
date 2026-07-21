@@ -26,7 +26,7 @@ from loregraph.connectors.markdown_codec import (
     prosemirror_to_markdown as _pm_to_md,
 )
 from loregraph.connectors.mcp.stdio_client import McpStdioClient
-from loregraph.connectors.protocols import ExternalChunk
+from loregraph.connectors.protocols import ExternalChunk, IngestDocument
 from loregraph.exceptions import (
     ConnectorUnavailableError,
     EntityNotFoundError,
@@ -99,7 +99,8 @@ class FoundryConfig(BaseModel):
 
 
 class FoundryConnector:
-    """Implements Exporter, Importer, LiveSource and ConnectionProbe."""
+    """Implements Exporter, Importer, LiveSource, IngestSource and
+    ConnectionProbe."""
 
     def __init__(self, config: FoundryConfig, context: ConnectorContext) -> None:
         self._config = config
@@ -301,9 +302,12 @@ class FoundryConnector:
     # ── import ───────────────────────────────────────────────────────────────
 
     async def import_data(self, request: ImportRequest) -> ImportResult:
-        """Pull actors as npc entities. Journal import is deliberately not in
-        the first iteration: Loregraph journals are what we push there, and
-        pulling them back would round-trip our own exports as duplicates."""
+        """Pull actors as npc entities. Journal import is deliberately out of
+        scope here: Loregraph journals are what we push there, and pulling
+        them back would round-trip our own exports as duplicates. That stays
+        correct — a FOREIGN world's journals are the migration path's job
+        instead (see ingest_documents), which reads them in full and routes
+        them through AI extraction plus human review."""
         del request
         client = await self._client()
         result = ImportResult()
@@ -513,6 +517,178 @@ class FoundryConnector:
                 )
             )
         return chunks
+
+    # ── ingest (IngestSource) ────────────────────────────────────────────────
+
+    async def ingest_documents(self) -> list[IngestDocument]:
+        """Dump this world's content as plain text for the AI migration
+        pipeline (agent/import_graph.py) — the "bring my existing Foundry
+        world into the graph" path.
+
+        Deliberately broader than import_data(): that one is a deterministic
+        round-trip of what WE exported (actors only, journals skipped so our
+        own exports don't come back as duplicates). Migration is the opposite
+        case — the world was never ours, so its journals are the main prize
+        and are pulled in FULL (page by page), not as search snippets.
+
+        One document per journal (pages as `## sections`), plus one aggregate
+        document each for actors and world items — those are short, uniform
+        records, so aggregating keeps the extractor's windows well packed
+        instead of one call per one-line record."""
+        client = await self._client()
+        documents: list[IngestDocument] = []
+        documents.extend(await self._ingest_journals(client))
+        actors = await self._ingest_actors(client)
+        if actors is not None:
+            documents.append(actors)
+        items = await self._ingest_items(client)
+        if items is not None:
+            documents.append(items)
+        return documents
+
+    async def _ingest_journals(self, client: McpStdioClient) -> list[IngestDocument]:
+        listing = await client.call_tool(_TOOL_LIST_JOURNALS, {})
+        journals = listing.get("journals") if isinstance(listing, dict) else None
+        if not isinstance(journals, list):
+            return []
+        documents: list[IngestDocument] = []
+        for journal in journals:
+            if not isinstance(journal, dict):
+                continue
+            journal_id = journal.get("id")
+            name = str(journal.get("name") or "Journal")
+            pages = journal.get("pages")
+            if not isinstance(journal_id, str) or not isinstance(pages, list):
+                continue
+            sections: list[str] = []
+            for page in pages:
+                if not isinstance(page, dict):
+                    continue
+                page_id = page.get("id")
+                if not isinstance(page_id, str):
+                    continue
+                page_name = str(page.get("name") or "")
+                text = await self._journal_page_text(client, journal_id, page_id)
+                if text:
+                    heading = f"## {page_name}\n\n" if page_name else ""
+                    sections.append(f"{heading}{text}")
+            if sections:
+                documents.append(
+                    IngestDocument(
+                        external_id=journal_id,
+                        title=name,
+                        text="\n\n".join(sections),
+                        kind="journal",
+                    )
+                )
+        return documents
+
+    async def _journal_page_text(
+        self, client: McpStdioClient, journal_id: str, page_id: str
+    ) -> str:
+        """Full page content (not the truncated search snippet query() uses).
+        One unreadable page must not sink a whole migration, so a failure is
+        logged and skipped."""
+        try:
+            response = await client.call_tool(
+                _TOOL_LIST_JOURNALS, {"journalId": journal_id, "pageId": page_id}
+            )
+        except ConnectorUnavailableError:
+            logger.warning(
+                "Skipping unreadable Foundry journal page %s/%s",
+                journal_id,
+                page_id,
+                exc_info=True,
+            )
+            return ""
+        page = response.get("page") if isinstance(response, dict) else None
+        content = page.get("content") if isinstance(page, dict) else None
+        return _strip_html(content) if isinstance(content, str) else ""
+
+    async def _ingest_actors(self, client: McpStdioClient) -> IngestDocument | None:
+        response = await client.call_tool(_TOOL_LIST_CHARACTERS, {})
+        blocks: list[str] = []
+        for descriptor in _character_descriptors(response):
+            name = descriptor.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+            external_id = str(descriptor.get("id") or descriptor.get("_id") or name)
+            try:
+                detail = await client.call_tool(
+                    _TOOL_GET_CHARACTER, {"identifier": external_id}
+                )
+            except ConnectorUnavailableError:
+                logger.warning("Skipping unreadable actor %s", name, exc_info=True)
+                continue
+            blocks.append(_actor_text(name, detail))
+        if not blocks:
+            return None
+        return IngestDocument(
+            external_id="actors",
+            title="Characters and NPCs",
+            text="\n\n".join(blocks),
+            kind="actor",
+        )
+
+    async def _ingest_items(self, client: McpStdioClient) -> IngestDocument | None:
+        response = await client.call_tool(_TOOL_MANAGE_WORLD_ITEMS, {"action": "list"})
+        items = response.get("items") if isinstance(response, dict) else None
+        if not isinstance(items, list):
+            return None
+        lines: list[str] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+            item_type = item.get("type")
+            suffix = f" ({item_type})" if isinstance(item_type, str) else ""
+            lines.append(f"- {name}{suffix}")
+        if not lines:
+            return None
+        return IngestDocument(
+            external_id="items",
+            title="World items",
+            text="\n".join(lines),
+            kind="item",
+        )
+
+
+def _actor_text(name: str, detail: Any) -> str:
+    """Readable block for one actor. get-character is deliberately
+    description-free (no biography/class/race — see _actor_fields), so this
+    is stats plus carried items; the extractor still gets a named character
+    it can relate to the journals' narrative."""
+    if not isinstance(detail, dict):
+        return f"### {name}"
+    stats = detail.get("stats")
+    stats = stats if isinstance(stats, dict) else detail
+    parts: list[str] = [f"### {name}"]
+    actor_type = detail.get("type")
+    if isinstance(actor_type, str) and actor_type:
+        parts.append(f"type: {actor_type}")
+    for key, label in (("level", "level"), ("challengeRating", "CR")):
+        value = stats.get(key)
+        if isinstance(value, int | float) and not isinstance(value, bool) and value:
+            parts.append(f"{label}: {value}")
+    armor_class = stats.get("armorClass")
+    if isinstance(armor_class, int | float) and not isinstance(armor_class, bool):
+        parts.append(f"AC: {armor_class}")
+    hit_points = stats.get("hitPoints")
+    max_hp = hit_points.get("max") if isinstance(hit_points, dict) else None
+    if isinstance(max_hp, int | float) and not isinstance(max_hp, bool):
+        parts.append(f"HP: {max_hp}")
+    items = detail.get("items")
+    if isinstance(items, list):
+        names = [
+            str(item["name"])
+            for item in items
+            if isinstance(item, dict) and isinstance(item.get("name"), str)
+        ]
+        if names:
+            parts.append("equipment: " + ", ".join(names))
+    return "\n".join(parts)
 
 
 def _text_field(entity: EntityOut, key: str) -> str | None:

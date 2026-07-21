@@ -10,8 +10,8 @@ from loregraph.connectors.registry import ConnectorDescriptor, ConnectorRegistry
 def test_list_connector_types_reports_capabilities(client: TestClient) -> None:
     types = {t["connector_type"]: t for t in client.get("/api/connectors").json()}
     assert set(types) >= {"obsidian", "foundry", "longstoryshort"}
-    assert types["obsidian"]["capabilities"] == ["export", "import"]
-    assert types["foundry"]["capabilities"] == ["export", "import", "live"]
+    assert types["obsidian"]["capabilities"] == ["export", "import", "ingest"]
+    assert types["foundry"]["capabilities"] == ["export", "import", "ingest", "live"]
     assert types["longstoryshort"]["capabilities"] == ["import", "live"]
 
 

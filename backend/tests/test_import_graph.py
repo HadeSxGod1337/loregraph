@@ -20,7 +20,9 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from loregraph.agent.import_graph import build_import_graph
+from loregraph.agent.import_source import ImportSourceResolver
 from loregraph.agent.import_state import ImportState
+from loregraph.connectors.protocols import IngestSource
 from loregraph.llm.structured import StructuredResult
 from loregraph.llm.usage import LLMCallUsage
 from loregraph.schemas.agent import DraftEntity, DraftRelationship, LoreDraft
@@ -33,6 +35,16 @@ from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
 from loregraph.storage.sqlite.knowledge_source_store import SqliteKnowledgeSourceStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
+
+
+def _resolver(source_store: SqliteKnowledgeSourceStore) -> ImportSourceResolver:
+    """File-import path only — these tests never migrate from a connection,
+    so the connection factory must never be reached."""
+
+    async def _no_connections(project_id: str, connection_id: str) -> IngestSource:
+        raise AssertionError("file-import tests must not resolve a connection")
+
+    return ImportSourceResolver(source_store, _no_connections)
 
 
 class ConcurrencyTrackingGenerator:
@@ -110,7 +122,7 @@ async def test_import_graph_fans_out_concurrently_and_interrupts_once(
     graph = build_import_graph(
         extraction=generator,
         creative=generator,
-        source_store=source_store,
+        source_resolver=_resolver(source_store),
         entity_store=entity_store,
         entity_service=EntityService(entity_store),
         edge_service=EdgeService(edge_store, entity_store),
@@ -174,7 +186,7 @@ async def test_approve_commits_entities_and_relationships(
     graph = build_import_graph(
         extraction=generator,
         creative=generator,
-        source_store=source_store,
+        source_resolver=_resolver(source_store),
         entity_store=entity_store,
         entity_service=EntityService(entity_store),
         edge_service=EdgeService(edge_store, entity_store),
@@ -227,7 +239,7 @@ async def test_reject_skips_page_without_committing_it(
     graph = build_import_graph(
         extraction=generator,
         creative=generator,
-        source_store=source_store,
+        source_resolver=_resolver(source_store),
         entity_store=entity_store,
         entity_service=EntityService(entity_store),
         edge_service=EdgeService(edge_store, entity_store),
@@ -311,7 +323,7 @@ async def test_approve_all_commits_every_remaining_page_without_further_interrup
     graph = build_import_graph(
         extraction=generator,
         creative=generator,
-        source_store=source_store,
+        source_resolver=_resolver(source_store),
         entity_store=entity_store,
         entity_service=EntityService(entity_store),
         edge_service=EdgeService(edge_store, entity_store),
@@ -368,7 +380,7 @@ async def test_import_job_resumes_after_a_real_checkpointer_restart(
         graph = build_import_graph(
             extraction=generator,
             creative=generator,
-            source_store=source_store,
+            source_resolver=_resolver(source_store),
             entity_store=entity_store,
             entity_service=EntityService(entity_store),
             edge_service=EdgeService(edge_store, entity_store),
@@ -389,7 +401,7 @@ async def test_import_job_resumes_after_a_real_checkpointer_restart(
         graph2 = build_import_graph(
             extraction=generator,
             creative=generator,
-            source_store=source_store,
+            source_resolver=_resolver(source_store),
             entity_store=entity_store,
             entity_service=EntityService(entity_store),
             edge_service=EdgeService(edge_store, entity_store),
