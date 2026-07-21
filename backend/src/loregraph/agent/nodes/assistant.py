@@ -5,7 +5,11 @@ from langchain_core.messages import AIMessage, AnyMessage, SystemMessage, ToolMe
 from pydantic import BaseModel
 
 from loregraph.agent.events import event_message
-from loregraph.agent.mcp_tools import McpToolProvider, build_tool_model
+from loregraph.agent.mcp_tools import (
+    McpToolProvider,
+    call_mcp_tool,
+    discover_mcp_tools,
+)
 from loregraph.agent.skills.registry import (
     base_chat_tool_schemas,
     entry_node_for,
@@ -48,16 +52,17 @@ def external_sources_block(live_sources: LiveSourceProvider | None) -> str:
 
 
 def mcp_tools_block(mcp_tools: McpToolProvider | None) -> str:
-    """System-prompt block listing connected generic MCP tool connections
-    (each tool itself is bound under its own real name/description — this
-    just names the connections, for citing which one an action came from)."""
+    """System-prompt block naming the connected MCP servers. Their tools are
+    NOT bound directly — the model reaches them via discover_mcp_tools /
+    call_mcp_tool (progressive disclosure), so this only lists which servers
+    exist, cheaply, without spawning any of them."""
     if not mcp_tools:
         return ""
-    names = sorted({entry.connection_name for entry in mcp_tools.entries()})
-    lines = "\n".join(f"- {name}" for name in names)
+    lines = "\n".join(f"- {name}" for name in sorted(mcp_tools.connection_names()))
     return (
-        '\n<mcp_connections note="external tools from these connected MCP '
-        "servers execute IMMEDIATELY when called, with no game master "
+        '\n<mcp_connections note="MCP servers connected to this project. '
+        "Their tools are reached via discover_mcp_tools then call_mcp_tool; "
+        "calls execute IMMEDIATELY on the external tool, with no game master "
         "review — they act on the external tool, never on this world's "
         'canon">\n'
         f"{lines}\n</mcp_connections>"
@@ -104,10 +109,12 @@ async def assistant(
         # dead tool in the prompt otherwise.
         tools.append(query_external_source)
     if mcp_tools:
-        # Each connected MCP tool is bound under its own real name/schema
-        # (built fresh per turn from the server's own tool list) — no
-        # generic wrapper tool, no per-tool Python parsing.
-        tools.extend(build_tool_model(entry) for entry in mcp_tools.entries())
+        # Progressive disclosure: bind only the two meta-tools, never the
+        # servers' N tools themselves. The model discovers the tool it needs
+        # by intent and calls it by name — constant ~2 schemas/turn no matter
+        # how many servers/tools are connected (see agent/mcp_tools.py).
+        tools.append(discover_mcp_tools)
+        tools.append(call_mcp_tool)
     model = chat_model.bind_tools(tools)
     response = await model.ainvoke(
         [

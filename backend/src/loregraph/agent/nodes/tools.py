@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from typing import Any
 
@@ -30,6 +31,10 @@ EXTERNAL_TEXT_LIMIT = 400  # chars per external chunk
 # actor + 30 item = 65).
 EXTERNAL_CHUNK_LIMIT = 65
 EXTERNAL_QUERY_TIMEOUT_S = 12.0
+# How many matched MCP tools discover_mcp_tools returns WITH their full input
+# schema. A broad query can match many tools; past this we list the rest by
+# name only so the discovery result itself never blows up the prompt.
+MCP_DISCOVER_SCHEMA_LIMIT = 8
 
 
 async def run_tools(
@@ -77,8 +82,17 @@ async def run_tools(
                     str(call["args"].get("query", "")),
                     str(kind) if isinstance(kind, str) and kind else None,
                 )
-            case name if name.startswith("mcp__"):
-                content = await _call_mcp_tool(mcp_tools, name, dict(call["args"]))
+            case "discover_mcp_tools":
+                content = await _discover_mcp_tools(
+                    mcp_tools, str(call["args"].get("query", ""))
+                )
+            case "call_mcp_tool":
+                raw_args = call["args"].get("arguments")
+                content = await _call_mcp_tool(
+                    mcp_tools,
+                    str(call["args"].get("tool", "")),
+                    dict(raw_args) if isinstance(raw_args, dict) else {},
+                )
             case unknown:
                 content = f"Unknown tool: {unknown}"
         results.append(ToolMessage(content, tool_call_id=call["id"] or ""))
@@ -174,6 +188,46 @@ async def _query_external_source(
     return "\n".join(lines)
 
 
+async def _discover_mcp_tools(mcp_tools: McpToolProvider | None, query: str) -> str:
+    """Progressive disclosure: the model's entry point into any connected MCP
+    server's tools. Returns matched tools' qualified name + description +
+    real input schema (so the model can then call one), or the whole catalog
+    by name when the query is empty. Never raises — an offline server yields
+    a readable message, same graceful-degradation contract as the rest."""
+    if mcp_tools is None:
+        return "No MCP tool sources are connected to this project."
+    try:
+        async with asyncio.timeout(EXTERNAL_QUERY_TIMEOUT_S):
+            matches = await mcp_tools.find(query)
+    except asyncio.CancelledError:
+        raise
+    except (ConnectorError, TimeoutError) as e:
+        logger.warning("MCP catalog unavailable during discovery", exc_info=True)
+        return (
+            f"Connected MCP servers are unavailable right now "
+            f"({type(e).__name__}). Tell the game master they may be offline."
+        )
+    if not matches:
+        return (
+            f"No MCP tools matched {query!r}. Call discover_mcp_tools with an "
+            "empty query to see everything available."
+        )
+    lines: list[str] = []
+    for entry in matches[:MCP_DISCOVER_SCHEMA_LIMIT]:
+        schema = json.dumps(entry.tool.input_schema or {}, ensure_ascii=False)
+        lines.append(
+            f"{entry.qualified_name}: {entry.tool.description}\n"
+            f"  input schema: {schema}"
+        )
+    remainder = matches[MCP_DISCOVER_SCHEMA_LIMIT:]
+    if remainder:
+        names = ", ".join(entry.qualified_name for entry in remainder)
+        lines.append(
+            f"(more matches, names only — refine the query for their schemas: {names})"
+        )
+    return "\n".join(lines)
+
+
 async def _call_mcp_tool(
     mcp_tools: McpToolProvider | None,
     qualified_name: str,
@@ -184,23 +238,25 @@ async def _call_mcp_tool(
     same graceful-degradation contract as _query_external_source."""
     if mcp_tools is None:
         return "No MCP tool sources are connected to this project."
-    entry = mcp_tools.get(qualified_name)
-    if entry is None:
-        return f"Unknown MCP tool: {qualified_name!r}."
     try:
         async with asyncio.timeout(EXTERNAL_QUERY_TIMEOUT_S):
-            return await entry.source.call_mcp_tool(entry.tool.name, arguments)
+            return await mcp_tools.call(qualified_name, arguments)
     except asyncio.CancelledError:
         raise
+    except KeyError:
+        return (
+            f"Unknown MCP tool: {qualified_name!r}. Call discover_mcp_tools "
+            "first to get an exact tool name."
+        )
     except (ConnectorError, TimeoutError) as e:
         logger.warning(
-            "MCP connection %s unavailable during a tool call",
-            entry.connection_name,
+            "MCP tool call %s failed (connection unavailable)",
+            qualified_name,
             exc_info=True,
         )
         return (
-            f"MCP connection '{entry.connection_name}' is unavailable right "
-            f"now ({type(e).__name__}). Tell the game master it may be offline."
+            f"MCP tool {qualified_name!r} is unavailable right now "
+            f"({type(e).__name__}). Tell the game master the server may be offline."
         )
 
 

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loregraph.agent.graph import build_agent_graph
 from loregraph.agent.import_graph import build_import_graph
 from loregraph.agent.import_runner import ImportJobRunner
-from loregraph.agent.mcp_tools import McpToolEntry, McpToolProvider
+from loregraph.agent.mcp_tools import McpConnection, McpToolProvider
 from loregraph.agent.runner import AgentRunner
 from loregraph.config import Settings
 from loregraph.connectors.context import ConnectorContext
@@ -279,17 +279,18 @@ async def get_mcp_tool_provider(
     edge_store: EdgeStoreDep,
     attachment_store: AttachmentStoreDep,
 ) -> McpToolProvider | None:
-    """Generic MCP tool sources of this project's connections — the
-    McpToolSource analog of get_live_source_provider, one entry per tool
-    the server actually exposes (so the assistant binds each tool under its
-    own real name/schema, not one generic wrapper tool).
+    """Generic MCP tool connections of this project — the McpToolSource
+    analog of get_live_source_provider.
 
-    None when the project has no such connections. A connection whose
-    server can't be reached (or isn't configured correctly) is skipped with
-    a warning instead of breaking the whole agent turn — same graceful-
-    degradation contract as live sources."""
+    Built lazily: this only assembles the connectors (cheap — construction
+    spawns no MCP server); the actual tool catalog is fetched on the first
+    discover/call, so a chat turn that never touches MCP costs no bridge
+    spawn and no list round-trip. None when the project has no such
+    connections. A misconfigured connection is skipped with a warning
+    instead of breaking the whole agent — same graceful-degradation contract
+    as live sources."""
     connections = await connection_store.list_for_project(project_id)
-    entries: list[McpToolEntry] = []
+    mcp_connections: list[McpConnection] = []
     for connection in connections:
         try:
             descriptor = registry.get(connection.connector_type)
@@ -311,28 +312,24 @@ async def get_mcp_tool_provider(
             connector = registry.create(
                 connection.connector_type, connection.config, context
             )
-            if not isinstance(connector, McpToolSource):
-                continue
-            tools = await connector.list_mcp_tools()
         except CampaignError:
             logger.warning(
-                "Skipping MCP tool source %s (%s): connector could not be "
-                "built or its tools listed",
+                "Skipping MCP tool source %s (%s): connector could not be built",
                 connection.name,
                 connection.connector_type,
                 exc_info=True,
             )
             continue
-        entries.extend(
-            McpToolEntry(
-                connection_name=connection.name,
+        if not isinstance(connector, McpToolSource):
+            continue
+        mcp_connections.append(
+            McpConnection(
+                name=connection.name,
                 connector_type=connection.connector_type,
-                tool=tool,
                 source=connector,
             )
-            for tool in tools
         )
-    return McpToolProvider(entries) if entries else None
+    return McpToolProvider(mcp_connections) if mcp_connections else None
 
 
 McpToolProviderDep = Annotated[McpToolProvider | None, Depends(get_mcp_tool_provider)]
