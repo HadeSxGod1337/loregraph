@@ -1,6 +1,6 @@
 [project]
 name = "loregraph"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local self-hosted app for preparing and running tabletop RPG campaigns, with a hybrid vector+graph lore store and an HITL-reviewed AI agent layer."
 authors = [
     { name = "korsh", email = "korshunov.hades1337@gmail.com" }
