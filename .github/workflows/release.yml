@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  # Same lint/typecheck/test/build gates as every push to main.
+  # A tag that cannot pass CI never becomes a release.
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required by `gh release create`
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git archive needs the tagged tree
+
+      - name: Verify versions match the tag
+        run: bash scripts/check-version.sh "${GITHUB_REF_NAME}"
+
+      - name: Extract release notes from CHANGELOG
+        run: bash scripts/changelog-section.sh "${GITHUB_REF_NAME}" > RELEASE_NOTES.md
+
+      - name: Build distribution archive
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          git archive --format=zip \
+            --prefix="loregraph-${version}/" \
+            -o "dist/loregraph-${version}.zip" \
+            "${GITHUB_REF_NAME}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A tag like v0.2.0-rc.1 publishes as a pre-release.
+          prerelease=""
+          case "${GITHUB_REF_NAME}" in
+            *-*) prerelease="--prerelease" ;;
+          esac
+
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file RELEASE_NOTES.md \
+            --verify-tag \
+            ${prerelease} \
+            "dist/loregraph-${GITHUB_REF_NAME#v}.zip"

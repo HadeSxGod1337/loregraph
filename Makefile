@@ -13,6 +13,7 @@ NPM := npm --prefix $(FRONTEND)
         typecheck typecheck-backend typecheck-frontend \
         test test-backend \
         check build build-frontend \
+        release-check release-archive \
         clean
 
 help: ## Show this help
@@ -78,6 +79,18 @@ build-frontend: ## Build frontend production bundle
 	$(NPM) run build
 
 build: build-frontend ## Build production artifacts
+
+## --- Release ------------------------------------------------------------------
+
+release-check: ## Verify versions and changelog for a tag (make release-check TAG=v0.2.0)
+	@bash scripts/check-version.sh $(TAG)
+	@bash scripts/changelog-section.sh $(TAG) > /dev/null && echo "CHANGELOG section for $(TAG) found."
+
+release-archive: release-check ## Build the release zip locally (make release-archive TAG=v0.2.0)
+	@mkdir -p dist
+	git archive --format=zip --prefix=loregraph-$(TAG:v%=%)/ \
+		-o dist/loregraph-$(TAG:v%=%).zip $(TAG)
+	@echo "Wrote dist/loregraph-$(TAG:v%=%).zip"
 
 ## --- Cleanup -------------------------------------------------------------------
 

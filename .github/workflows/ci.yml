@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Lets release.yml run the exact same gates before publishing a tag.
+  workflow_call:
 
 jobs:
   backend:
