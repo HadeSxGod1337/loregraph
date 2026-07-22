@@ -1,12 +1,17 @@
 import logging
 from typing import Any
 
+from loregraph.agent.relationships import (
+    detect_relationship_conflicts,
+    validate_relationship_ops,
+)
 from loregraph.agent.state import NO_LORE_SENTINEL, AgentState
 from loregraph.agent.usage import record_usage
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.prompts import render
 from loregraph.schemas.agent import AgentWarning, GroundingReport, LoreDraft
-from loregraph.storage.protocols import UsageStore
+from loregraph.services.graph_query import edges_among
+from loregraph.storage.protocols import EdgeStore, UsageStore
 
 logger = logging.getLogger(__name__)
 
@@ -18,42 +23,39 @@ async def verify_grounding(
     *,
     extraction: StructuredGenerator,
     token_budget: int,
+    edge_store: EdgeStore,
     usage_store: UsageStore | None,
     model_name: str,
 ) -> dict[str, Any]:
     """Verifier before review. Deterministic part always runs: relationship
-    endpoints must be real draft refs or retrieved entity ids (the model
-    never gets to invent connection targets), and grounded_in citations must
-    come from retrieval. The LLM-as-judge pass runs when there is lore to
-    check against and budget left. Warnings never block — the DM sees them."""
+    operations must address entities and edges that retrieval actually
+    returned (the model never gets to invent connection endpoints), and
+    grounded_in citations must come from retrieval. The LLM-as-judge pass runs
+    when there is lore to check against and budget left. Warnings never
+    block — the DM sees them."""
     if state.draft is None:
         return {}
     warnings: list[AgentWarning] = []
     draft = state.draft
 
-    # -- Deterministic: relationship endpoints.
+    # -- Deterministic: relationship operations.
     refs = {entity.ref for entity in draft.entities}
-    allowed_targets = refs | set(state.context_entity_ids)
-    kept = []
-    for relationship in draft.relationships:
-        if relationship.source_ref not in refs:
-            warnings.append(
-                AgentWarning(
-                    code="dropped_unknown_source",
-                    params={"ref": relationship.source_ref},
-                )
-            )
-        elif relationship.target_ref not in allowed_targets:
-            warnings.append(
-                AgentWarning(
-                    code="dropped_unknown_target",
-                    params={"ref": relationship.target_ref},
-                )
-            )
-        else:
-            kept.append(relationship)
+    kept, endpoint_warnings = validate_relationship_ops(
+        draft.relationships,
+        allowed_ends=refs | set(state.context_entity_ids),
+        allowed_edge_ids=set(state.context_edge_ids),
+    )
+    warnings.extend(endpoint_warnings)
     if len(kept) != len(draft.relationships):
         draft = LoreDraft(entities=draft.entities, relationships=kept)
+
+    # -- Deterministic: does this argue with the graph as it stands?
+    warnings.extend(
+        detect_relationship_conflicts(
+            kept,
+            await edges_among(edge_store, state.project_id, state.context_entity_ids),
+        )
+    )
 
     # -- Deterministic: citations must come from retrieval.
     allowed_citations = set(state.context_entity_ids)

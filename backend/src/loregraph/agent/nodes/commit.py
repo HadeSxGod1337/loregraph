@@ -4,10 +4,9 @@ import re
 from typing import Any
 
 from loregraph.agent.events import event_message
+from loregraph.agent.relationships import apply_relationship_ops
 from loregraph.agent.state import AgentState
-from loregraph.exceptions import CampaignError
-from loregraph.schemas.agent import AgentWarning, DraftEntity, EntityEditDraft
-from loregraph.schemas.edge import EdgeCreate
+from loregraph.schemas.agent import DraftEntity, EntityEditDraft
 from loregraph.schemas.entity import (
     EntityCreate,
     EntityFieldIn,
@@ -145,10 +144,14 @@ async def commit(
     edge_service: EdgeService,
 ) -> dict[str, Any]:
     """The only node with write access (structural HITL guarantee — no other
-    node receives the services as an argument). Creates the whole approved
-    batch: entities first (building the ref → real id map), then the
-    relationship web. All-or-nothing per proposal: a mid-batch failure rolls
-    back the entities created so far, so a retry can't duplicate them.
+    node receives the services as an argument). Applies the whole approved
+    proposal: entities first (building the ref → real id map), then the
+    relationship operations against it (agent/relationships.py). All-or-
+    nothing per proposal: a mid-batch failure rolls back the entities created
+    so far, so a retry can't duplicate them.
+
+    A proposal may be entities only, relationship operations only, or both —
+    "connect these two characters" commits with no entity written at all.
 
     Acknowledgements are deterministic events (see agent/events.py) — zero
     extra LLM tokens, and language-agnostic: the UI translates the code, the
@@ -190,11 +193,9 @@ async def commit(
             "pending_brief": "",
         }
 
-    warnings: list[AgentWarning] = []
     ref_to_id: dict[str, str] = {}
     title_to_id = await _build_title_to_id(entity_service, state.project_id)
     titles: list[str] = []
-    edge_count = 0
     try:
         for draft_entity in state.draft.entities:
             fields = _build_fields(draft_entity, title_to_id)
@@ -208,36 +209,12 @@ async def commit(
             title_to_id[draft_entity.title.lower()] = entity.id
             titles.append(draft_entity.title)
 
-        for relationship in state.draft.relationships:
-            source_id = ref_to_id.get(relationship.source_ref)
-            if source_id is None:
-                continue  # source entity was removed by the DM at review
-            # Target is either another draft entity (ref) or an existing id.
-            target_id = ref_to_id.get(relationship.target_ref, relationship.target_ref)
-            try:
-                await edge_service.create(
-                    state.project_id,
-                    EdgeCreate(
-                        source_entity_id=source_id,
-                        target_entity_id=target_id,
-                        type=relationship.type,
-                        label=relationship.reason or None,
-                    ),
-                )
-                edge_count += 1
-            except CampaignError as exc:
-                # One bad edge must not lose the approved entities/edges.
-                logger.warning("Skipping approved relationship: %s", exc)
-                warnings.append(
-                    AgentWarning(
-                        code="relationship_failed",
-                        params={
-                            "source": relationship.source_ref,
-                            "target": relationship.target_ref,
-                            "detail": str(exc),
-                        },
-                    )
-                )
+        ops = await apply_relationship_ops(
+            state.draft.relationships,
+            edge_service=edge_service,
+            project_id=state.project_id,
+            ref_to_id=ref_to_id,
+        )
     except asyncio.CancelledError:
         await _rollback_created(
             entity_service, state.project_id, list(ref_to_id.values())
@@ -249,23 +226,36 @@ async def commit(
         )
         raise
 
+    # A proposal that only rewires the graph gets its own acknowledgement:
+    # "Committed 0 entities" reads like a failure when nothing was meant to
+    # be created in the first place.
+    if titles:
+        message = event_message(
+            f"Committed {len(titles)} entities ({', '.join(titles)}) "
+            f"and {ops.total} relationships.",
+            "batch_committed",
+            count=str(len(titles)),
+            titles=", ".join(titles),
+            edges=str(ops.total),
+        )
+    else:
+        message = event_message(
+            f"Committed {ops.created} new relationships, "
+            f"{ops.updated} changed, {ops.deleted} removed.",
+            "relationships_committed",
+            created=str(ops.created),
+            updated=str(ops.updated),
+            removed=str(ops.deleted),
+        )
+
     return {
-        "messages": [
-            event_message(
-                f"Committed {len(titles)} entities ({', '.join(titles)}) "
-                f"and {edge_count} relationships.",
-                "batch_committed",
-                count=str(len(titles)),
-                titles=", ".join(titles),
-                edges=str(edge_count),
-            )
-        ],
+        "messages": [message],
         "committed_entity_ids": [*state.committed_entity_ids, *ref_to_id.values()],
         "draft_committed": True,
         # Clear the proposal: smaller checkpoints, and the next propose_lore
         # starts clean. The review snapshot lives in the session registry.
         "draft": None,
-        "warnings": warnings,
+        "warnings": ops.warnings,
         "pending_brief": "",
     }
 

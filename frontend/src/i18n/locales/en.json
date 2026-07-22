@@ -343,7 +343,12 @@
       "editReason": "Why",
       "editEntityTitle": "Entity",
       "editCurrentHeading": "Current",
-      "editProposedHeading": "Proposed"
+      "editProposedHeading": "Proposed",
+      "op": {
+        "create": "connect",
+        "update": "change",
+        "delete": "remove"
+      }
     }
   },
   "warnings": {
@@ -351,13 +356,19 @@
     "mentions_existing": "The request mentions existing entity «{{title}}» ({{type}}) — the draft should connect to it, not duplicate it.",
     "duplicate_of_existing": "«{{title}}» duplicates existing entity «{{existing_title}}».",
     "duplicate_in_batch": "The draft contains two near-identical titles: «{{title_a}}» and «{{title_b}}».",
-    "dropped_unknown_source": "Dropped a relationship from an unknown source ({{ref}}).",
-    "dropped_unknown_target": "Dropped a relationship to an unknown target ({{ref}}) — not a draft entity or retrieved lore.",
+    "dropped_unknown_source": "Dropped a relationship: its source ({{ref}}) is neither a draft entity nor retrieved lore.",
+    "dropped_unknown_target": "Dropped a relationship: its target ({{ref}}) is neither a draft entity nor retrieved lore.",
     "uncited_lore_id": "The draft cites lore id {{id}} that was never retrieved — treat the related claim as unverified.",
     "relationship_failed": "Relationship {{source}} → {{target}} failed: {{detail}}",
     "import_linked_existing": "«{{title}}» linked to existing entity ({{existing_id}}) instead of creating a duplicate.",
     "import_merged_duplicate": "«{{title}}» merged with another occurrence of the same entity elsewhere in the document.",
-    "import_relationship_unresolved": "Dropped a relationship that couldn't be resolved ({{source}} → {{target}})."
+    "import_relationship_unresolved": "Dropped a relationship that couldn't be resolved ({{source}} → {{target}}).",
+    "dropped_unknown_edge": "Dropped a \"{{op}}\" operation: relationship ({{ref}}) was not among the ones shown.",
+    "dropped_self_relationship": "Dropped a relationship from an entity ({{ref}}) to itself.",
+    "dropped_draft_entity": "Dropped the new entity \"{{title}}\": this step only changes relationships.",
+    "relationship_scope_empty": "Fewer than two of the requested entities exist — nothing to connect.",
+    "conflicting_relationship": "These entities are already \"{{existing_type}}\", but \"{{proposed_type}}\" is proposed.",
+    "duplicate_relationship": "A \"{{type}}\" relationship between these entities already exists."
   },
   "events": {
     "budget_exhausted_reply": "Token budget for this conversation is exhausted — start a new session to continue.",
@@ -365,7 +376,9 @@
     "batch_rejected": "Draft rejected — nothing was written to the world.",
     "draft_failed": "Couldn't produce a draft:",
     "entity_updated": "Updated entity '{{title}}'.",
-    "edit_failed": "Edit failed: {{reason}}"
+    "edit_failed": "Edit failed: {{reason}}",
+    "relationships_committed": "Done — {{created}} relationships created, {{updated}} changed, {{removed}} removed.",
+    "relationships_failed": "Relationship step stopped: {{reason}}"
   },
   "integrations": {
     "heading": "Integrations",

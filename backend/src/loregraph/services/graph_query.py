@@ -1,8 +1,32 @@
 from collections import defaultdict, deque
+from collections.abc import Collection
 
 from loregraph.exceptions import EntityNotFoundError
+from loregraph.schemas.edge import EdgeOut
 from loregraph.schemas.graph import SubgraphOut
 from loregraph.storage.protocols import EdgeStore, EntityStore
+
+
+async def edges_among(
+    edge_store: EdgeStore,
+    project_id: str,
+    entity_ids: Collection[str],
+) -> list[EdgeOut]:
+    """Every relationship whose both ends are inside `entity_ids`.
+
+    Unlike get_subgraph this needs no root: retrieval returns a loose set of
+    entities, and what the model has to be shown is how those already connect
+    to each other. Both ends must be in the set — an edge to something the
+    model was never shown is context it cannot act on."""
+    if not entity_ids:
+        return []
+    wanted = set(entity_ids)
+    edges = await edge_store.list_all(project_id)
+    return [
+        edge
+        for edge in edges
+        if edge.source_entity_id in wanted and edge.target_entity_id in wanted
+    ]
 
 
 async def get_subgraph(

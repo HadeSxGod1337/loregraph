@@ -16,11 +16,20 @@ export interface DraftEntity {
   grounded_in: string[];
 }
 
+export type RelationshipOp = "create" | "update" | "delete";
+
 export interface DraftRelationship {
+  /** Absent on drafts persisted before ops existed — treat as "create". */
+  op?: RelationshipOp;
+  /** create: a draft ref or an existing entity id, on either side. */
   source_ref: string;
   target_ref: string;
+  /** update/delete: the existing relationship being acted on. */
+  edge_id?: string | null;
   type: string;
   reason: string;
+  /** update: flip the relationship's direction. */
+  reverse?: boolean;
   grounded_in: string[];
 }
 

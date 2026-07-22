@@ -1,7 +1,7 @@
 from collections import deque
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import pytest_asyncio
@@ -18,11 +18,17 @@ from loregraph.agent.graph import build_agent_graph
 from loregraph.agent.state import AgentState
 from loregraph.llm.structured import StructuredResult
 from loregraph.llm.usage import LLMCallUsage
-from loregraph.schemas.agent import DraftEntity, DraftRelationship, LoreDraft
+from loregraph.schemas.agent import (
+    DraftEntity,
+    DraftRelationship,
+    GroundingReport,
+    LoreDraft,
+)
 from loregraph.schemas.entity import EntityCreate
 from loregraph.schemas.project import ProjectCreate
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
+from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.sqlite.db import (
     create_engine_for,
     init_db,
@@ -32,6 +38,7 @@ from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
 from loregraph.storage.sqlite.usage_store import SqliteUsageStore
+from tests.fakes import FixedVectorIndex
 
 
 class ScriptedChatModel(BaseChatModel):
@@ -90,6 +97,7 @@ def make_graph(
     script: list[AIMessage],
     creative_results: list[BaseModel] | None = None,
     extraction_results: list[BaseModel] | None = None,
+    retrieved_entity_ids: list[str] | None = None,
 ) -> Any:
     entity_store = SqliteEntityStore(session)
     edge_store = SqliteEdgeStore(session)
@@ -97,7 +105,11 @@ def make_graph(
         chat_model=ScriptedChatModel(script=deque(script)),
         creative=FakeGenerator(creative_results or []),
         extraction=FakeGenerator(extraction_results or []),
-        vector_index=None,
+        vector_index=(
+            cast(VectorIndex, FixedVectorIndex(retrieved_entity_ids))
+            if retrieved_entity_ids is not None
+            else None
+        ),
         knowledge_index=None,
         entity_store=entity_store,
         edge_store=edge_store,
@@ -406,3 +418,86 @@ async def test_dm_edits_win_at_approve(db_session: AsyncSession) -> None:
     )
     entities = await SqliteEntityStore(db_session).list_entities(project.id)
     assert [e.title for e in entities] == ["Норвинтер"]
+
+
+@pytest.mark.asyncio
+async def test_propose_lore_may_connect_two_existing_entities(
+    db_session: AsyncSession,
+) -> None:
+    """The creative pipeline is subject to the same endpoint symmetry as the
+    relationship one: a proposal that links two entities already in the world
+    used to be dropped by verify_grounding as an "unknown source"."""
+    project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
+    store = SqliteEntityStore(db_session)
+    mira = await store.create(
+        EntityCreate(type="npc", title="Мира", fields=[]), project.id
+    )
+    guild = await store.create(
+        EntityCreate(type="faction", title="Гильдия", fields=[]), project.id
+    )
+
+    draft = LoreDraft(
+        relationships=[
+            DraftRelationship(
+                source_ref=mira.id,
+                target_ref=guild.id,
+                type="member_of",
+                reason="Мира вступила в гильдию.",
+            )
+        ]
+    )
+    graph = make_graph(
+        db_session,
+        [propose_call("свяжи Миру с гильдией")],
+        creative_results=[draft],
+        # Retrieval now returns lore, so verify_grounding's LLM-as-judge tier
+        # runs too — it has nothing to flag here.
+        extraction_results=[
+            GroundingReport(claims_checked=0, claims_flagged=0, warnings=[])
+        ],
+        retrieved_entity_ids=[mira.id, guild.id],
+    )
+    await graph.ainvoke(turn(project.id, "свяжи Миру с гильдией"), CONFIG)
+
+    state = AgentState.model_validate((await graph.aget_state(CONFIG)).values)
+    assert state.draft is not None
+    assert len(state.draft.relationships) == 1, (
+        "a relationship between two existing entities must survive the guard"
+    )
+
+
+@pytest.mark.asyncio
+async def test_relationship_only_commit_acks_without_entity_counts(
+    db_session: AsyncSession,
+) -> None:
+    """ "Committed 0 entities" reads like a failure when nothing was meant to
+    be created — a rewiring gets its own acknowledgement."""
+    project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
+    store = SqliteEntityStore(db_session)
+    a = await store.create(EntityCreate(type="npc", title="A", fields=[]), project.id)
+    b = await store.create(EntityCreate(type="npc", title="B", fields=[]), project.id)
+
+    draft = LoreDraft(
+        relationships=[
+            DraftRelationship(source_ref=a.id, target_ref=b.id, type="ally_of")
+        ]
+    )
+    graph = make_graph(
+        db_session,
+        [propose_call("свяжи их")],
+        creative_results=[draft],
+        # Retrieval now returns lore, so verify_grounding's LLM-as-judge tier
+        # runs too — it has nothing to flag here.
+        extraction_results=[
+            GroundingReport(claims_checked=0, claims_flagged=0, warnings=[])
+        ],
+        retrieved_entity_ids=[a.id, b.id],
+    )
+    await graph.ainvoke(turn(project.id, "свяжи их"), CONFIG)
+    await graph.ainvoke(Command(resume={"action": "approve"}), CONFIG)
+
+    state = AgentState.model_validate((await graph.aget_state(CONFIG)).values)
+    event = state.messages[-1].additional_kwargs["event"]
+    assert event["code"] == "relationships_committed"
+    assert event["params"]["created"] == "1"
+    assert len(await SqliteEdgeStore(db_session).list_all(project.id)) == 1

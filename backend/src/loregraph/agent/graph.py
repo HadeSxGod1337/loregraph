@@ -10,6 +10,7 @@ from loregraph.agent.nodes.assistant import (
     assistant,
     begin_edit,
     begin_proposal,
+    begin_relationships,
     route_after_assistant,
 )
 from loregraph.agent.nodes.check_duplicates import (
@@ -20,6 +21,7 @@ from loregraph.agent.nodes.check_duplicates import (
 from loregraph.agent.nodes.commit import commit
 from loregraph.agent.nodes.generate_edit import generate_edit
 from loregraph.agent.nodes.generate_lore import generate_lore
+from loregraph.agent.nodes.generate_relationships import generate_relationships
 from loregraph.agent.nodes.human_review import human_review, route_after_review
 from loregraph.agent.nodes.retrieve_context import retrieve_context
 from loregraph.agent.nodes.tools import run_tools
@@ -105,6 +107,7 @@ def build_agent_graph(
     )
     builder.add_node("begin_proposal", begin_proposal)
     builder.add_node("begin_edit", begin_edit)
+    builder.add_node("begin_relationships", begin_relationships)
 
     # --- Proposal pipeline (unchanged core)
     builder.add_node(
@@ -143,6 +146,7 @@ def build_agent_graph(
             verify_grounding,
             extraction=extraction,
             token_budget=token_budget,
+            edge_store=edge_store,
             usage_store=usage_store,
             model_name=extraction_model_name,
         ),
@@ -151,6 +155,21 @@ def build_agent_graph(
     builder.add_node(
         "commit",
         partial(commit, entity_service=entity_service, edge_service=edge_service),
+    )
+
+    # ── Relationship pipeline ───────────────────────────────────────────────────
+    builder.add_node(
+        "generate_relationships",
+        partial(
+            generate_relationships,
+            extraction=extraction,
+            token_budget=token_budget,
+            entity_store=entity_store,
+            edge_store=edge_store,
+            project_store=project_store,
+            usage_store=usage_store,
+            model_name=extraction_model_name,
+        ),
     )
 
     # ── Edit pipeline ───────────────────────────────────────────────────────────
@@ -211,7 +230,12 @@ def build_agent_graph(
     builder.add_conditional_edges(
         "human_review",
         route_after_review,
-        {"revise": "generate_lore", "commit": "commit"},
+        {
+            "revise_lore": "generate_lore",
+            "revise_edit": "generate_edit",
+            "revise_relationships": "generate_relationships",
+            "commit": "commit",
+        },
     )
     builder.add_edge("commit", END)
 
@@ -219,6 +243,12 @@ def build_agent_graph(
     # targeted single-entity edits).
     builder.add_edge("begin_edit", "generate_edit")
     builder.add_edge("generate_edit", "human_review")
+
+    # Relationship pipeline edges: scope comes from the ids the assistant
+    # passed, so there is nothing to retrieve or deduplicate, and the node
+    # validates its own output against what it read — straight to review.
+    builder.add_edge("begin_relationships", "generate_relationships")
+    builder.add_edge("generate_relationships", "human_review")
     # human_review → commit already wired above; commit → END already wired.
 
     return builder.compile(checkpointer=checkpointer)

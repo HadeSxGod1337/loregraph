@@ -367,7 +367,12 @@
       "editReason": "Почему",
       "editEntityTitle": "Сущность",
       "editCurrentHeading": "Текущее",
-      "editProposedHeading": "Новое"
+      "editProposedHeading": "Новое",
+      "op": {
+        "create": "связать",
+        "update": "изменить",
+        "delete": "убрать"
+      }
     }
   },
   "warnings": {
@@ -375,13 +380,19 @@
     "mentions_existing": "Запрос упоминает существующую сущность «{{title}}» ({{type}}) — черновик должен связаться с ней, а не дублировать.",
     "duplicate_of_existing": "«{{title}}» дублирует существующую сущность «{{existing_title}}».",
     "duplicate_in_batch": "В черновике два почти одинаковых названия: «{{title_a}}» и «{{title_b}}».",
-    "dropped_unknown_source": "Удалена связь с неизвестным источником ({{ref}}).",
-    "dropped_unknown_target": "Удалена связь с неизвестной целью ({{ref}}) — это не сущность черновика и не найденный лор.",
+    "dropped_unknown_source": "Удалена связь: источник ({{ref}}) — не сущность черновика и не найденный лор.",
+    "dropped_unknown_target": "Удалена связь: цель ({{ref}}) — не сущность черновика и не найденный лор.",
     "uncited_lore_id": "Черновик ссылается на id лора {{id}}, который не был найден при поиске — считай связанное утверждение непроверенным.",
     "relationship_failed": "Связь {{source}} → {{target}} не создана: {{detail}}",
     "import_linked_existing": "«{{title}}» связана с существующей сущностью ({{existing_id}}) вместо создания дубля.",
     "import_merged_duplicate": "«{{title}}» объединена с другим упоминанием той же сущности в другом месте документа.",
-    "import_relationship_unresolved": "Удалена связь, которую не удалось разрешить ({{source}} → {{target}})."
+    "import_relationship_unresolved": "Удалена связь, которую не удалось разрешить ({{source}} → {{target}}).",
+    "dropped_unknown_edge": "Операция «{{op}}» отброшена: связь ({{ref}}) не найдена среди показанных.",
+    "dropped_self_relationship": "Удалена связь сущности ({{ref}}) с самой собой.",
+    "dropped_draft_entity": "Отброшена новая сущность «{{title}}»: этот шаг меняет только связи.",
+    "relationship_scope_empty": "Не нашлось хотя бы двух сущностей из запроса — связывать нечего.",
+    "conflicting_relationship": "Между этими сущностями уже есть связь «{{existing_type}}», а предлагается «{{proposed_type}}».",
+    "duplicate_relationship": "Связь «{{type}}» между этими сущностями уже существует."
   },
   "events": {
     "budget_exhausted_reply": "Бюджет токенов на этот разговор исчерпан — начни новую сессию, чтобы продолжить.",
@@ -389,7 +400,9 @@
     "batch_rejected": "Черновик отклонён — в мир ничего не записано.",
     "draft_failed": "Не удалось подготовить черновик:",
     "entity_updated": "Сущность «{{title}}» обновлена.",
-    "edit_failed": "Ошибка редактирования: {{reason}}"
+    "edit_failed": "Ошибка редактирования: {{reason}}",
+    "relationships_committed": "Готово — связей создано: {{created}}, изменено: {{updated}}, убрано: {{removed}}.",
+    "relationships_failed": "Работа со связями остановлена: {{reason}}"
   },
   "integrations": {
     "heading": "Интеграции",

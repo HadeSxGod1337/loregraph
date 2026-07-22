@@ -52,7 +52,7 @@ uv run uvicorn loregraph.main:app --reload`}</pre>
   return (
     <div className="assistant-panel">
       <SessionPicker projectId={projectId} chat={chat} />
-      <Transcript chat={chat} entities={entities ?? []} />
+      <Transcript chat={chat} entities={entities ?? []} projectId={projectId} />
       <ChatInput chat={chat} entities={entities ?? []} projectId={projectId} />
     </div>
   );
@@ -96,9 +96,11 @@ function SessionPicker({ projectId, chat }: { projectId: string; chat: AgentChat
 function Transcript({
   chat,
   entities,
+  projectId,
 }: {
   chat: AgentChat;
   entities: Entity[];
+  projectId: string;
 }) {
   const { t } = useTranslation();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -148,6 +150,7 @@ function Transcript({
         <ReviewCard
           review={chat.pendingReview}
           entities={entities}
+          projectId={projectId}
           busy={chat.busy}
           onDecision={(action, draft, feedback) =>
             void chat.review({ action, draft, feedback })
@@ -401,11 +404,13 @@ function SuggestionHints({
 function ReviewCard({
   review,
   entities,
+  projectId,
   busy,
   onDecision,
 }: {
   review: AgentReviewPayload;
   entities: Entity[];
+  projectId: string;
   busy: boolean;
   onDecision: (
     action: "approve" | "reject" | "revise",
@@ -447,6 +452,19 @@ function ReviewCard({
     () => new Map(draft.entities.map((entity) => [entity.ref, entity.title])),
     [draft.entities],
   );
+  // Update/delete ops name an existing relationship by id; showing what that
+  // relationship currently says is the whole point of reviewing a change to
+  // it. Fetched live rather than snapshotted into the review payload, which
+  // would be stale by the time a session is reopened. Same query key as
+  // SuggestionHints, so this shares its cache instead of refetching.
+  const { data: existingEdges } = useQuery({
+    queryKey: ["edges", projectId],
+    queryFn: () => apiClient.get<Edge[]>(`/projects/${projectId}/edges`),
+  });
+  const edgeById = useMemo(
+    () => new Map((existingEdges ?? []).map((edge) => [edge.id, edge])),
+    [existingEdges],
+  );
 
   // Edit-only reviews are handled by EditReviewCard — this component only
   // renders when review.draft is present. Placed after every hook call.
@@ -455,18 +473,27 @@ function ReviewCard({
   const targetName = (ref: string) =>
     draftTitleByRef.get(ref) ?? existingTitleById.get(ref) ?? ref;
 
+  /** An endpoint survives review if it is an entity being created that the DM
+   * kept, or an entity that already exists. Applied to both sides — a
+   * relationship between two existing entities has no draft entity behind it
+   * at all and must not be dropped for lacking one. */
+  function endpointSurvives(ref: string, keptRefs: Set<string>): boolean {
+    return keptRefs.has(ref) || existingTitleById.has(ref);
+  }
+
   function keptDraft(): LoreDraft {
     const keptEntities = draft.entities.filter((e) => !removedRefs.has(e.ref));
     const keptRefs = new Set(keptEntities.map((e) => e.ref));
     return {
       entities: keptEntities,
-      relationships: draft.relationships.filter(
-        (relationship, index) =>
-          !removedRelationships.has(index) &&
-          keptRefs.has(relationship.source_ref) &&
-          (keptRefs.has(relationship.target_ref) ||
-            existingTitleById.has(relationship.target_ref)),
-      ),
+      relationships: draft.relationships.filter((relationship, index) => {
+        if (removedRelationships.has(index)) return false;
+        if ((relationship.op ?? "create") !== "create") return true;
+        return (
+          endpointSurvives(relationship.source_ref, keptRefs) &&
+          endpointSurvives(relationship.target_ref, keptRefs)
+        );
+      }),
     };
   }
 
@@ -479,7 +506,15 @@ function ReviewCard({
     }));
   }
 
-  const keptCount = draft.entities.length - removedRefs.size;
+  const keptRefs = new Set(
+    draft.entities.filter((e) => !removedRefs.has(e.ref)).map((e) => e.ref),
+  );
+  const keptEntityCount = draft.entities.length - removedRefs.size;
+  // Relationship ops count toward what "approve" applies: a proposal that
+  // only rewires the graph creates no entity, and counting entities alone
+  // would leave its approve button permanently disabled.
+  const keptOpCount = keptDraft().relationships.length;
+  const keptCount = keptEntityCount + keptOpCount;
 
   return (
     <div className="assistant-review">
@@ -563,17 +598,28 @@ function ReviewCard({
       {draft.relationships.length > 0 && (
         <div className="assistant-relationships">
           {draft.relationships.map((relationship, index) => {
+            const op = relationship.op ?? "create";
+            // Only a create can be orphaned by unchecking an entity; an
+            // update or delete points at a relationship that already exists
+            // independently of anything in this draft.
             const blocked =
-              removedRefs.has(relationship.source_ref) ||
-              (removedRefs.has(relationship.target_ref) &&
-                !existingTitleById.has(relationship.target_ref));
+              op === "create" &&
+              (!endpointSurvives(relationship.source_ref, keptRefs) ||
+                !endpointSurvives(relationship.target_ref, keptRefs));
             const removed = removedRelationships.has(index) || blocked;
+            const current = relationship.edge_id
+              ? edgeById.get(relationship.edge_id)
+              : undefined;
             return (
               <label
-                key={`${relationship.source_ref}-${relationship.type}-${relationship.target_ref}`}
-                className={
-                  removed ? "assistant-relationship removed" : "assistant-relationship"
-                }
+                key={`${op}-${relationship.edge_id ?? ""}-${relationship.source_ref}-${relationship.type}-${relationship.target_ref}`}
+                className={[
+                  "assistant-relationship",
+                  `assistant-relationship-${op}`,
+                  removed ? "removed" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
               >
                 <input
                   type="checkbox"
@@ -589,10 +635,54 @@ function ReviewCard({
                   }
                 />
                 <span>
-                  <strong>{targetName(relationship.source_ref)}</strong> —
-                  {relationship.type}→{" "}
-                  <strong>{targetName(relationship.target_ref)}</strong>
-                  <em> {relationship.reason}</em>
+                  <span className="assistant-relationship-op">
+                    {t(`assistant.review.op.${op}` as const)}
+                  </span>{" "}
+                  {op === "create" ? (
+                    <>
+                      <strong>{targetName(relationship.source_ref)}</strong> —
+                      {relationship.type}→{" "}
+                      <strong>{targetName(relationship.target_ref)}</strong>
+                      <em> {relationship.reason}</em>
+                    </>
+                  ) : (
+                    <>
+                      <span
+                        className={
+                          op === "delete" ? "assistant-relationship-struck" : undefined
+                        }
+                      >
+                        <strong>
+                          {targetName(current?.source_entity_id ?? "")}
+                        </strong>{" "}
+                        —{current?.type ?? "?"}→{" "}
+                        <strong>
+                          {targetName(current?.target_entity_id ?? "")}
+                        </strong>
+                      </span>
+                      {op === "update" && (
+                        <>
+                          {" → "}
+                          <strong>
+                            {targetName(
+                              relationship.reverse
+                                ? (current?.target_entity_id ?? "")
+                                : (current?.source_entity_id ?? ""),
+                            )}
+                          </strong>{" "}
+                          —{relationship.type || (current?.type ?? "?")}→{" "}
+                          <strong>
+                            {targetName(
+                              relationship.reverse
+                                ? (current?.source_entity_id ?? "")
+                                : (current?.target_entity_id ?? ""),
+                            )}
+                          </strong>
+                        </>
+                      )}
+                      {relationship.reason && <em> {relationship.reason}</em>}
+                    </>
+                  )}
                 </span>
               </label>
             );

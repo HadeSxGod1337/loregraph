@@ -58,12 +58,21 @@ class AgentState(BaseModel):
     # grounded_in target (see prompts/generate_lore.system.md).
     knowledge_context: str = ""
     context_entity_ids: list[str] = Field(default_factory=list)
+    # Ids of the relationships shown to the model in existing_lore — the
+    # whitelist an update/delete op must address, mirroring what
+    # context_entity_ids does for entities. Additive field with a default,
+    # safe for pre-existing checkpoints (STATE_VERSION unchanged).
+    context_edge_ids: list[str] = Field(default_factory=list)
     known_entity_types: list[str] = Field(default_factory=list)
     available_links: str = ""
     draft: LoreDraft | None = None
     # Edit pipeline: set when the assistant calls edit_entity
     entity_edit_draft: EntityEditDraft | None = None
     pending_edit_entity_id: str = ""
+    # Relationship pipeline: the entities manage_relationships was asked to
+    # work on — additive field with a default, safe for pre-existing
+    # checkpoints (STATE_VERSION unchanged).
+    pending_entity_ids: list[str] = Field(default_factory=list)
     warnings: list[AgentWarning] = Field(default_factory=list)
     # Set by verify_grounding's LLM-as-judge tier (agent/nodes/verify_
     # grounding.py); None when that tier didn't run (no lore to check

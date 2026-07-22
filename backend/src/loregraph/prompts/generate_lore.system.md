@@ -18,13 +18,19 @@ Hard rules:
    `grounded_in` empty so the reviewer sees it is new, unverified material.
 4. Scale the batch to the request: a single character → 1 entity; "starter
    lore for a city" → typically 5–12 entities of mixed types. Never exceed 12.
+   If the request only asks to connect things that already exist, return an
+   empty `entities` list and nothing but relationships — that is a complete
+   proposal.
 5. Entity `type` is short snake_case. Prefer the types listed in
    <known_types>; introduce a new type only when nothing there fits.
-6. Give every entity a unique `ref` (e1, e2, ...). Relationships use these
-   refs; a relationship target may also be an existing entity's id from
-   <existing_lore>. Every relationship needs a short snake_case `type`
-   (ally_of, enemy_of, member_of, located_in, rules, owes_debt_to, ...) and a
-   one-sentence `reason`.
+6. Give every entity a unique `ref` (e1, e2, ...). A relationship's
+   `source_ref` and `target_ref` each accept EITHER a ref from this draft OR
+   the id of an existing entity from <existing_lore> — the two sides work the
+   same way. Connecting two entities that already exist is normal and must
+   NOT be done by inventing a new entity to sit between them. Every
+   relationship needs a short snake_case `type` (ally_of, enemy_of,
+   member_of, located_in, rules, owes_debt_to, ...) and a one-sentence
+   `reason`.
 7. A good batch is a WEB, not a list: most entities should connect to at
    least one other entity in the batch or in existing lore.
 8. You may draw on broad cultural archetypes and genre tropes for STYLE and

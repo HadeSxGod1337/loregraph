@@ -48,22 +48,64 @@ class DraftEntity(BaseModel):
 
 
 class DraftRelationship(BaseModel):
-    source_ref: str = Field(description="ref of a draft entity.")
-    target_ref: str = Field(
-        description="ref of another draft entity, or the id of an existing "
-        "entity from <existing_lore>."
+    """One proposed operation on the world's relationship graph.
+
+    Flat, not a discriminated union: `op` defaults to "create" so drafts
+    persisted before ops existed (checkpoints on disk, review payloads in the
+    session registry) still validate — which is what lets STATE_VERSION stay
+    put. A union would also force `anyOf` at the top of the tool schema, which
+    the non-Anthropic providers behind StructuredGenerator handle poorly.
+
+    Endpoints are symmetric: both `source_ref` and `target_ref` accept either a
+    ref from this draft or the id of an existing entity from retrieval.
+    Connecting two entities that already exist is a normal proposal and does
+    not require inventing an entity to sit between them.
+
+    Loose on purpose — an invalid combination is dropped with a warning by
+    verify_grounding (or by generate_relationships), never raised. A strict
+    validator here would turn a model slip into retries and a GenerationError,
+    which contradicts "warnings never block, the DM sees them"."""
+
+    op: Literal["create", "update", "delete"] = "create"
+    source_ref: str = Field(
+        default="",
+        description="create: ref of a draft entity, or the id of an existing "
+        "entity from <existing_lore>. Unused by update/delete.",
     )
-    type: str = Field(description="Short snake_case relationship type.")
-    reason: str
+    target_ref: str = Field(
+        default="",
+        description="create: ref of another draft entity, or the id of an "
+        "existing entity from <existing_lore>. Unused by update/delete.",
+    )
+    edge_id: str | None = Field(
+        default=None,
+        description="update/delete: id of an existing relationship, taken "
+        "from the id attribute of a <relationship> in retrieved lore.",
+    )
+    type: str = Field(
+        default="",
+        description="Short snake_case relationship type. Required for "
+        "create/update, unused by delete.",
+    )
+    reason: str = ""
+    reverse: bool = Field(
+        default=False,
+        description="update: swap the relationship's direction. There is no "
+        "way to move an endpoint to a different entity — to change who is "
+        "involved, delete the relationship and create a new one.",
+    )
     grounded_in: list[str] = Field(default_factory=list)
 
 
 class LoreDraft(BaseModel):
-    """What one agent run proposes: a coherent batch of entities plus the web
-    of relationships between them (and to existing lore). This is the unit
-    the DM reviews — a piece of world, not a single card."""
+    """What one agent run proposes: a coherent change to the world — new
+    entities, operations on the relationship graph, or both. This is the unit
+    the DM reviews: a piece of world, not a single card.
 
-    entities: list[DraftEntity]
+    `entities` may be empty: "connect these two existing characters" is a
+    complete, committable proposal on its own."""
+
+    entities: list[DraftEntity] = Field(default_factory=list)
     relationships: list[DraftRelationship] = Field(default_factory=list)
 
 

@@ -15,6 +15,7 @@ from loregraph.agent.nodes.verify_grounding import verify_grounding
 from loregraph.agent.state import AgentState
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.schemas.agent import AgentWarning
+from tests.fakes import EmptyEdgeStore
 
 _GUARD_CODES = frozenset(
     {"dropped_unknown_source", "dropped_unknown_target", "uncited_lore_id"}
@@ -32,6 +33,7 @@ async def _guard_warnings(case: HallucinationCase) -> list[AgentWarning]:
         state,
         extraction=cast(StructuredGenerator, None),  # unused: token_budget=0 below
         token_budget=0,
+        edge_store=EmptyEdgeStore(),
         usage_store=None,
         model_name="eval",
     )

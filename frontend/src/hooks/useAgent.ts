@@ -107,6 +107,10 @@ export function useAgentChat(
             onCommitted?.(session.committed_entity_ids);
             void queryClient.invalidateQueries({ queryKey: ["entities", projectId] });
             void queryClient.invalidateQueries({ queryKey: ["edges", projectId] });
+            // The graph canvas reads ["subgraph", ...], not ["edges", ...] —
+            // without this a commit that only rewires relationships leaves
+            // the graph showing the connections as they were.
+            void queryClient.invalidateQueries({ queryKey: ["subgraph", projectId] });
           }
           void queryClient.invalidateQueries({
             queryKey: ["agent-sessions", projectId],

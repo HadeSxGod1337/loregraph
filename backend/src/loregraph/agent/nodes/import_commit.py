@@ -8,9 +8,7 @@ from loregraph.agent.nodes.commit import (
     _build_title_to_id,
     _rollback_created,
 )
-from loregraph.exceptions import CampaignError
-from loregraph.schemas.agent import AgentWarning
-from loregraph.schemas.edge import EdgeCreate
+from loregraph.agent.relationships import apply_relationship_ops
 from loregraph.schemas.entity import EntityCreate, EntityFieldIn, FieldType
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
@@ -105,36 +103,12 @@ async def commit_relationships(
     later page that hadn't committed yet when an earlier page was written.
     A relationship whose endpoint was on a rejected page (never in
     ref_to_id, and not an existing entity id either) fails at the edge
-    service and is dropped with a warning — the same per-edge tolerance as
-    commit.py's batch-create path."""
-    warnings = list(state.warnings)
-    for relationship in state.pending_relationships:
-        source_id = state.ref_to_id.get(
-            relationship.source_ref, relationship.source_ref
-        )
-        target_id = state.ref_to_id.get(
-            relationship.target_ref, relationship.target_ref
-        )
-        try:
-            await edge_service.create(
-                state.project_id,
-                EdgeCreate(
-                    source_entity_id=source_id,
-                    target_entity_id=target_id,
-                    type=relationship.type,
-                    label=relationship.reason or None,
-                ),
-            )
-        except CampaignError as exc:
-            logger.warning("Skipping unresolved import relationship: %s", exc)
-            warnings.append(
-                AgentWarning(
-                    code="relationship_failed",
-                    params={
-                        "source": relationship.source_ref,
-                        "target": relationship.target_ref,
-                        "detail": str(exc),
-                    },
-                )
-            )
-    return {"warnings": warnings}
+    service and is dropped with a warning — the same per-edge tolerance the
+    shared write path gives every other pipeline."""
+    ops = await apply_relationship_ops(
+        state.pending_relationships,
+        edge_service=edge_service,
+        project_id=state.project_id,
+        ref_to_id=state.ref_to_id,
+    )
+    return {"warnings": [*state.warnings, *ops.warnings]}

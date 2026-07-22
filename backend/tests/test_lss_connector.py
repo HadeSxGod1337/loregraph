@@ -118,9 +118,7 @@ def test_parse_native_export_file() -> None:
     assert "traits" not in by_key
 
 
-def test_import_native_export_through_api(
-    client: TestClient, project_id: str
-) -> None:
+def test_import_native_export_through_api(client: TestClient, project_id: str) -> None:
     connection_id = _make_connection(client, project_id)
     raw = NATIVE_EXPORT_PATH.read_text(encoding="utf-8")
     result = client.post(

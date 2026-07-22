@@ -85,6 +85,22 @@ class propose_lore(BaseModel):
     )
 
 
+class manage_relationships(BaseModel):
+    """Connect, re-type, reverse or remove relationships between entities that
+    ALREADY exist. Use this — never propose_lore, which is for creating new
+    content — whenever the game master asks to link, unlink or fix a
+    connection between things already in the world. Call search_lore or
+    get_entity_details first so you pass real entity ids."""
+
+    entity_ids: list[str] = Field(
+        description="Ids of every entity involved, at least two."
+    )
+    brief: str = Field(
+        description="Concise description of which connections to add, change "
+        "or remove and why, carrying all user constraints."
+    )
+
+
 class edit_entity(BaseModel):
     """Propose edits to an existing entity for the game master's review.
     Always call get_entity_details first to read the current state.
@@ -176,6 +192,13 @@ SKILLS: dict[str, SkillManifest] = {
             entry_node="begin_edit",
         ),
         SkillManifest(
+            name="manage_relationships",
+            description=manage_relationships.__doc__ or "",
+            input_schema=manage_relationships,
+            kind="propose",
+            entry_node="begin_relationships",
+        ),
+        SkillManifest(
             name="import_document",
             description=import_document.__doc__ or "",
             input_schema=import_document,
@@ -200,6 +223,9 @@ _BASE_CHAT_TOOL_NAMES = (
     "search_knowledge_base",
     "propose_lore",
     "edit_entity",
+    # Appended, not inserted: the order above is the pre-registry tool order
+    # and moving an entry would shift the prompt prefix every turn.
+    "manage_relationships",
 )
 
 

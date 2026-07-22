@@ -33,9 +33,13 @@ export function DraftPreviewDrawer({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
+  // Creates only: an update or delete op addresses an existing relationship
+  // by id and carries no refs, so it can never be "this entity's".
   const related = relationships.filter(
     (relationship) =>
-      relationship.source_ref === entity.ref || relationship.target_ref === entity.ref,
+      (relationship.op ?? "create") === "create" &&
+      (relationship.source_ref === entity.ref ||
+        relationship.target_ref === entity.ref),
   );
 
   return (

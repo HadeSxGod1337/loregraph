@@ -10,6 +10,7 @@ from loregraph.agent.state import NO_LORE_SENTINEL, AgentState
 from loregraph.llm.structured import StructuredResult
 from loregraph.llm.usage import LLMCallUsage
 from loregraph.schemas.agent import DraftEntity, GroundingReport, LoreDraft
+from tests.fakes import EmptyEdgeStore
 
 pytestmark = pytest.mark.asyncio
 
@@ -50,6 +51,7 @@ async def test_hallucination_rate_is_computed_from_claim_counts() -> None:
         _state(),
         extraction=FakeExtraction(report),
         token_budget=1000,
+        edge_store=EmptyEdgeStore(),
         usage_store=None,
         model_name="test",
     )
@@ -63,6 +65,7 @@ async def test_zero_claims_checked_reports_no_rate() -> None:
         _state(),
         extraction=FakeExtraction(report),
         token_budget=1000,
+        edge_store=EmptyEdgeStore(),
         usage_store=None,
         model_name="test",
     )
@@ -77,6 +80,7 @@ async def test_claims_flagged_is_clamped_to_claims_checked() -> None:
         _state(),
         extraction=FakeExtraction(report),
         token_budget=1000,
+        edge_store=EmptyEdgeStore(),
         usage_store=None,
         model_name="test",
     )
@@ -89,6 +93,7 @@ async def test_llm_judge_tier_skipped_without_lore_reports_no_rate() -> None:
         _state(existing_lore=NO_LORE_SENTINEL),
         extraction=FakeExtraction(report),
         token_budget=1000,
+        edge_store=EmptyEdgeStore(),
         usage_store=None,
         model_name="test",
     )
@@ -101,6 +106,7 @@ async def test_llm_judge_tier_skipped_over_budget_reports_no_rate() -> None:
         _state(),
         extraction=FakeExtraction(report),
         token_budget=0,
+        edge_store=EmptyEdgeStore(),
         usage_store=None,
         model_name="test",
     )

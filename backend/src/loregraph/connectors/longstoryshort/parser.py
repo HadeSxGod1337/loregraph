@@ -122,9 +122,7 @@ _ALLOWED_PM_NODES = frozenset(
         "image",
     }
 )
-_ALLOWED_PM_MARKS = frozenset(
-    {"bold", "italic", "strike", "underline", "code", "link"}
-)
+_ALLOWED_PM_MARKS = frozenset({"bold", "italic", "strike", "underline", "code", "link"})
 
 
 def parse_character(
@@ -200,9 +198,7 @@ def parse_character(
     avatar_url = _first_string(data, _AVATAR_PATHS)
     if avatar_url:
         fields.append(
-            EntityFieldIn(
-                key="avatar_url", field_type=FieldType.TEXT, value=avatar_url
-            )
+            EntityFieldIn(key="avatar_url", field_type=FieldType.TEXT, value=avatar_url)
         )
     if share_url:
         fields.append(

@@ -204,6 +204,7 @@ def _begin_skill(
         "retry_feedback": "",
         "draft_committed": False,
         "decision_action": None,
+        "pending_entity_ids": [],
         **specific,
     }
 
@@ -220,6 +221,29 @@ def begin_proposal(state: AgentState) -> dict[str, Any]:
             "pending_brief": str(call["args"].get("brief", ""))
         },
         from_kickoff=lambda data: {"pending_brief": str(data.get("brief", ""))},
+    )
+
+
+def begin_relationships(state: AgentState) -> dict[str, Any]:
+    """Entry node for the manage_relationships skill, reached either from a
+    chat tool call (route_after_assistant) or a direct skill_kickoff."""
+    return _begin_skill(
+        state,
+        skill_name="manage_relationships",
+        started_message="Relationship pipeline started; the result goes to "
+        "the game master's review.",
+        from_tool_call=lambda call: {
+            "pending_brief": str(call["args"].get("brief", "")),
+            "pending_entity_ids": [
+                str(entity_id) for entity_id in call["args"].get("entity_ids", [])
+            ],
+        },
+        from_kickoff=lambda data: {
+            "pending_brief": str(data.get("brief", "")),
+            "pending_entity_ids": [
+                str(entity_id) for entity_id in data.get("entity_ids", [])
+            ],
+        },
     )
 
 

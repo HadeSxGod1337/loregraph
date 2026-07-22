@@ -60,9 +60,7 @@ class ImportSourceResolver:
             extract_text, content, source.content_type, source.original_filename
         )
         return [
-            SourceDocument(
-                ref=source_id, title=source.original_filename, text=text
-            )
+            SourceDocument(ref=source_id, title=source.original_filename, text=text)
         ]
 
     async def _load_connection(

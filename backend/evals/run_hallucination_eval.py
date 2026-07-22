@@ -21,10 +21,23 @@ from loregraph.agent.nodes.verify_grounding import verify_grounding
 from loregraph.agent.state import AgentState
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.schemas.agent import AgentWarning
+from loregraph.schemas.edge import EdgeOut
+from loregraph.storage.protocols import EdgeStore
 
 _GUARD_CODES = frozenset(
     {"dropped_unknown_source", "dropped_unknown_target", "uncited_lore_id"}
 )
+
+
+class _NoEdges:
+    """The cases here plant hallucinated endpoints and citations, not
+    contradictions with an existing graph — so this harness runs against a
+    world with no relationships and only the guard under test speaks up."""
+
+    async def list_all(
+        self, project_id: str, edge_types: frozenset[str] | None = None
+    ) -> list[EdgeOut]:
+        return []
 
 
 async def _run_case(case: HallucinationCase) -> list[AgentWarning]:
@@ -40,6 +53,7 @@ async def _run_case(case: HallucinationCase) -> list[AgentWarning]:
         # the extraction client is never called.
         extraction=cast(StructuredGenerator, None),
         token_budget=0,
+        edge_store=cast(EdgeStore, _NoEdges()),
         usage_store=None,
         model_name="eval",
     )

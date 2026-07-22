@@ -5,9 +5,10 @@ from typing import Any
 from loregraph.agent.state import NO_LORE_SENTINEL, AgentState
 from loregraph.connectors.live import LiveSourceEntry, LiveSourceProvider
 from loregraph.connectors.protocols import ExternalChunk
+from loregraph.schemas.edge import EdgeOut
 from loregraph.schemas.entity import EntityOut
 from loregraph.schemas.graph import SubgraphOut
-from loregraph.services.graph_query import get_subgraph
+from loregraph.services.graph_query import edges_among, get_subgraph
 from loregraph.services.knowledge_index import KB_RETRIEVAL_K, KnowledgeIndex
 from loregraph.services.vector_index import VectorIndex, entity_to_text
 from loregraph.storage.protocols import EdgeStore, EntityStore
@@ -18,6 +19,11 @@ logger = logging.getLogger(__name__)
 RETRIEVAL_K = 6
 ANCHOR_SUBGRAPH_DEPTH = 2
 LORE_TEXT_LIMIT = 600  # chars per entity in the prompt — context, not a dump
+# Relationships between retrieved entities are cheap per line but a dense
+# graph can produce far more of them than entities. Truncation is stated in
+# the prompt rather than silent: the model must not read a partial list as
+# "these two are unconnected".
+MAX_CONTEXT_EDGES = 40
 KB_TEXT_LIMIT = 800  # chars per chunk — reference material, not a full dump
 # External live sources (Foundry, LSS…) contribute grounding on a strict
 # budget: they are optional flavor, never a reason to stall or fail a run.
@@ -122,12 +128,28 @@ async def retrieve_context(
     # RETRIEVAL_K, enough for the LLM to create valid [[wikilinks]].
     # Full entity list is NOT dumped into the prompt (token-efficient).
     available_links = "\n".join(f"{entity.title} → {entity.id}" for entity in entities)
-    if subgraph is not None:
-        lore_lines.extend(
-            f'<relationship source="graph_store">'
-            f"{edge.source_entity_id} --{edge.type}--> {edge.target_entity_id}"
-            f"{f' ({edge.label})' if edge.label else ''}</relationship>"
-            for edge in subgraph.edges
+
+    # How the retrieved entities already connect. Deliberately not limited to
+    # the anchor subgraph: with vector-only retrieval that branch is None and
+    # the model used to see no relationships at all, which is exactly when it
+    # guesses at connections that already exist. Runs after the TaskGroup
+    # because entity_store and edge_store share one AsyncSession.
+    title_by_id = {entity.id: entity.title for entity in entities}
+    context_edges = list(
+        {
+            edge.id: edge
+            for edge in [
+                *(subgraph.edges if subgraph is not None else []),
+                *await edges_among(edge_store, state.project_id, context_ids),
+            ]
+        }.values()
+    )
+    shown_edges = context_edges[:MAX_CONTEXT_EDGES]
+    lore_lines.extend(_relationship_line(edge, title_by_id) for edge in shown_edges)
+    if len(context_edges) > len(shown_edges):
+        lore_lines.append(
+            f"<!-- {len(context_edges) - len(shown_edges)} further relationships "
+            f"between these entities exist but are not shown -->"
         )
 
     kb_lines = [_kb_chunk_line(chunk) for chunk in kb_chunks]
@@ -142,9 +164,27 @@ async def retrieve_context(
             "\n".join(kb_lines) if kb_lines else NO_KNOWLEDGE_SENTINEL
         ),
         "context_entity_ids": context_ids,
+        "context_edge_ids": [edge.id for edge in shown_edges],
         "known_entity_types": known_types,
         "available_links": available_links,
     }
+
+
+def _relationship_line(edge: EdgeOut, title_by_id: dict[str, str]) -> str:
+    """One existing relationship, addressable by id.
+
+    The id is what makes an existing relationship editable at all: an update
+    or delete op has to name the edge it acts on, and this line is the only
+    place the model ever learns that id. Titles ride along so it does not have
+    to resolve opaque ids against the entity lines to understand the graph."""
+    source = title_by_id.get(edge.source_entity_id, edge.source_entity_id)
+    target = title_by_id.get(edge.target_entity_id, edge.target_entity_id)
+    label = f" ({edge.label})" if edge.label else ""
+    return (
+        f'<relationship id="{edge.id}" source="graph_store">'
+        f"{edge.source_entity_id} ({source}) --{edge.type}--> "
+        f"{edge.target_entity_id} ({target}){label}</relationship>"
+    )
 
 
 def _entity_line(entity: EntityOut) -> str:
