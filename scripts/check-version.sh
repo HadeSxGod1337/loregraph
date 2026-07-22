@@ -29,10 +29,24 @@ if [ "$frontend_version" != "$version" ]; then
     status=1
 fi
 
+# uv.lock pins the project's own version too, so bumping pyproject.toml alone
+# leaves it stale — and CI runs `uv sync --locked`, which refuses to proceed.
+# Caught here rather than eight minutes into a release run.
+lock_version="$(
+    sed -n '/^name = "loregraph"$/,/^version = /s/^version = "\(.*\)"/\1/p' \
+        "$repo_root/backend/uv.lock" | head -1
+)"
+
+if [ "$lock_version" != "$version" ]; then
+    echo "backend/uv.lock says '$lock_version', tag says '$version'" >&2
+    echo "  run: cd backend && uv lock" >&2
+    status=1
+fi
+
 if [ "$status" -ne 0 ]; then
     echo "" >&2
-    echo "Bump both files, commit, then move the tag before it is pushed." >&2
+    echo "Fix the versions, commit, then move the tag before it is pushed." >&2
     exit 1
 fi
 
-echo "Version $version is consistent across backend, frontend and tag."
+echo "Version $version is consistent across backend, frontend, uv.lock and tag."
