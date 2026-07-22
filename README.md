@@ -20,6 +20,11 @@
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-4b5563?style=flat-square" alt="Windows, macOS, Linux">
 </p>
 
+<p align="center">
+  <a href="https://t.me/loregraph_dev"><img src="https://img.shields.io/badge/Telegram-%40loregraph__dev-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram: @loregraph_dev"></a>
+  <a href="https://boosty.to/loregraph"><img src="https://img.shields.io/badge/Boosty-support-F15F2C?style=for-the-badge&logoColor=white" alt="Boosty: support the project"></a>
+</p>
+
 <br>
 
 <details>
@@ -139,6 +144,14 @@ npx oxlint src
 npm run build
 ```
 
+## Community & support
+
+- **[Telegram — @loregraph_dev](https://t.me/loregraph_dev)** — release notes,
+  work-in-progress demos, and a place to ask questions or report what broke.
+- **[Boosty — boosty.to/loregraph](https://boosty.to/loregraph)** — if the project
+  is useful to you, support keeps development going. Loregraph stays free and
+  self-hosted either way.
+
 ## License
 
 [PolyForm Noncommercial 1.0.0](LICENSE) — free to use, modify, and fork for
@@ -252,6 +265,14 @@ npx tsc -b
 npx oxlint src
 npm run build
 ```
+
+## Сообщество и поддержка
+
+- **[Telegram — @loregraph_dev](https://t.me/loregraph_dev)** — анонсы релизов,
+  демки того, что в работе, и место, где можно спросить или сообщить о баге.
+- **[Boosty — boosty.to/loregraph](https://boosty.to/loregraph)** — если проект
+  вам полезен, поддержка помогает ему развиваться. Loregraph в любом случае
+  остаётся бесплатным и self-hosted.
 
 ## Лицензия
 
