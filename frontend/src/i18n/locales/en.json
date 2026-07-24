@@ -1,4 +1,9 @@
 {
+  "demo": {
+    "badge": "DEMO",
+    "banner": "Demo — your edits reset on reload, and the AI assistant is scripted (no live model). In a real install you bring your own API key and pay your LLM provider for tokens.",
+    "source": "Source & self-hosting"
+  },
   "common": {
     "loading": "Loading...",
     "save": "Save",

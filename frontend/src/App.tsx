@@ -1,6 +1,12 @@
-import { Outlet, RouterProvider, createBrowserRouter } from "react-router-dom";
+import {
+  Outlet,
+  RouterProvider,
+  createBrowserRouter,
+  createHashRouter,
+} from "react-router-dom";
 
 import "./App.css";
+import { DemoBanner } from "./components/DemoBanner";
 import { Layout } from "./components/layout/Layout";
 import { AssistantPage } from "./pages/AssistantPage";
 import { EntityEditPage } from "./pages/EntityEditPage";
@@ -12,8 +18,14 @@ import { ProjectSettingsPage } from "./pages/ProjectSettingsPage";
 
 // Data router (not <BrowserRouter>) — pages with unsaved edits use
 // useBlocker to intercept in-app navigation, which plain routers don't
-// support.
-const router = createBrowserRouter([
+// support. The GitHub Pages demo build uses a hash router so deep links work
+// without server-side SPA rewrites; createHashRouter keeps the same data
+// router APIs (useBlocker included).
+const createRouter = import.meta.env.VITE_DEMO
+  ? createHashRouter
+  : createBrowserRouter;
+
+const router = createRouter([
   {
     element: (
       <Layout>
@@ -34,7 +46,12 @@ const router = createBrowserRouter([
 ]);
 
 function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      {import.meta.env.VITE_DEMO && <DemoBanner />}
+    </>
+  );
 }
 
 export default App;

@@ -41,6 +41,14 @@ function buildUrl(path: string, params?: RequestOptions["params"]): string {
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", json, body, params } = options;
 
+  // GitHub Pages demo: no server exists, so every call is answered by the
+  // in-memory fake backend instead. The dynamic import keeps demo code out of
+  // the real bundle (import.meta.env.VITE_DEMO folds to false there).
+  if (import.meta.env.VITE_DEMO) {
+    const { demoRequest } = await import("./demo/backend");
+    return demoRequest(method, path, params, json ?? body) as Promise<T>;
+  }
+
   const init: RequestInit = { method };
   if (json !== undefined) {
     init.headers = { "Content-Type": "application/json" };
@@ -84,6 +92,11 @@ export async function streamSse<TEvent>(
   body: unknown,
   onEvent: (event: TEvent) => void,
 ): Promise<void> {
+  if (import.meta.env.VITE_DEMO) {
+    const { demoStream } = await import("./demo/backend");
+    return demoStream<TEvent>(path, body, onEvent);
+  }
+
   const response = await fetch(API_URL + path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

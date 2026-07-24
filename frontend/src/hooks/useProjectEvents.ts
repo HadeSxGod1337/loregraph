@@ -113,7 +113,10 @@ export function useProjectEvent<TPayload = Record<string, unknown>>(
   handlerRef.current = handler;
 
   useEffect(() => {
-    if (!projectId) return;
+    // The GitHub Pages demo has no WebSocket server; skip subscribing so the
+    // channel doesn't thrash on endless failed reconnects (commits invalidate
+    // react-query directly instead — see useAgent.ts).
+    if (!projectId || import.meta.env.VITE_DEMO) return;
     const channel = getChannel(projectId);
     return channel.subscribe((event) => {
       if (event.type === type) {

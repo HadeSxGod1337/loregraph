@@ -4869,3 +4869,68 @@ label.checkbox-wrapper.checkbox-disabled {
   line-height: 1.55;
   color: var(--text-muted);
 }
+
+/* ---------- Demo banner (GitHub Pages build only) ----------
+   Fixed to the bottom-centre so it never disturbs the sticky sidebar or the
+   full-bleed graph canvas; dismissible. */
+.demo-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: min(760px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.22);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.demo-banner-badge {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--warning);
+  color: #1a1205;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.demo-banner-text {
+  color: var(--text-muted);
+}
+
+.demo-banner-link {
+  flex: none;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.demo-banner-link:hover {
+  text-decoration: underline;
+}
+
+.demo-banner-close {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.demo-banner-close:hover {
+  color: var(--text);
+}

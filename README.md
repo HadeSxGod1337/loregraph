@@ -21,9 +21,26 @@
 </p>
 
 <p align="center">
+  <a href="https://hadesxgod1337.github.io/loregraph/"><img src="https://img.shields.io/badge/%F0%9F%94%8E%20Live%20demo-try%20in%20browser-2ea44f?style=for-the-badge" alt="Live demo"></a>
   <a href="https://t.me/loregraph_dev"><img src="https://img.shields.io/badge/Telegram-%40loregraph__dev-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram: @loregraph_dev"></a>
   <a href="https://boosty.to/loregraph"><img src="https://img.shields.io/badge/Boosty-support-F15F2C?style=for-the-badge&logoColor=white" alt="Boosty: support the project"></a>
 </p>
+
+<p align="center">
+  <b><a href="https://hadesxgod1337.github.io/loregraph/">▶ Open the live demo</a></b> — a full in-browser sandbox with a sample campaign.
+</p>
+
+> [!IMPORTANT]
+> **The AI agent is not free, and Loregraph does not provide it.** Loregraph is
+> **BYOK (Bring Your Own Key)**: in a real install you connect **your own** LLM
+> API key (Anthropic by default; OpenAI/Ollama optional) and **you pay your LLM
+> provider for every token the agent uses**. There is no bundled key, hosted
+> model, or subscription from this project.
+>
+> **The live demo does *not* call any LLM** — nothing is billed. Its AI Assistant
+> runs a **pre-scripted** draft → review → commit flow so you can feel the
+> human-in-the-loop UX; it does not actually generate content. Demo edits are
+> **in-memory and reset on reload**.
 
 <br>
 
@@ -169,6 +186,22 @@ others, or selling a modified version) is not permitted without permission.
   Локальное self-hosted приложение для подготовки и ведения настольных RPG-кампаний —
   сущности и связи в графе, поверх — слой AI-агента.
 </p>
+
+<p align="center">
+  <b><a href="https://hadesxgod1337.github.io/loregraph/">▶ Открыть live-демо</a></b> — полноценная песочница в браузере с готовой кампанией.
+</p>
+
+> [!IMPORTANT]
+> **AI-агент не бесплатный, и Loregraph его не предоставляет.** Модель работы —
+> **BYOK (Bring Your Own Key)**: в реальной установке вы подключаете **свой**
+> ключ к LLM (по умолчанию Anthropic; опционально OpenAI/Ollama) и **сами
+> оплачиваете каждый токен** своему LLM-провайдеру. Никакого встроенного ключа,
+> хостящейся модели или подписки от проекта нет.
+>
+> **Live-демо не обращается к LLM** — ничего не тарифицируется. Ассистент в демо
+> проигрывает **заранее заготовленный** сценарий draft → review → commit, чтобы
+> можно было пощупать human-in-the-loop UX; реальной генерации там нет. Правки в
+> демо живут **в памяти и сбрасываются при перезагрузке**.
 
 ## Что это
 
