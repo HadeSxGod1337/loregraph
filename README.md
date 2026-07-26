@@ -100,6 +100,13 @@ fully; the Assistant tab shows setup instructions. Semantic retrieval uses a
 local multilingual embedding model by default (downloaded on first use); the
 lore never leaves your machine except for the LLM calls you configure.
 
+### Character sheets & templates
+
+Entities can be bound to a **template** — a set of fields plus a sheet layout that
+drives the drawer, the full sheet and printing at once, including computed values
+(skill bonuses, AC, carrying capacity) written as small formulas over other fields.
+See [docs/templates.md](docs/templates.md).
+
 ## Stack
 
 - **Backend**: FastAPI + Pydantic v2, SQLAlchemy 2.0 (async) + SQLite, `uv` for
@@ -237,6 +244,13 @@ MCP-сервер (`loregraph-mcp`) для внешних MCP-клиентов. �
 по умолчанию использует локальную многоязычную embedding-модель (скачивается при
 первом запуске); лор не покидает вашу машину, кроме LLM-вызовов, которые вы сами
 настроите.
+
+### Листы персонажей и шаблоны
+
+Сущность можно привязать к **шаблону** — это набор полей плюс раскладка листа,
+которая разом задаёт вид в шторке, полный лист и печать, включая вычисляемые
+значения (бонусы навыков, КД, лимит переносимого веса) — они пишутся маленькими
+формулами по другим полям. Подробности — [docs/templates.md](docs/templates.md).
 
 ## Стек
 
