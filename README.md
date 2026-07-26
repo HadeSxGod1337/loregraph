@@ -105,7 +105,7 @@ lore never leaves your machine except for the LLM calls you configure.
 Entities can be bound to a **template** — a set of fields plus a sheet layout that
 drives the drawer, the full sheet and printing at once, including computed values
 (skill bonuses, AC, carrying capacity) written as small formulas over other fields.
-See [docs/templates.md](docs/templates.md).
+See [docs/templates.en.md](docs/templates.en.md).
 
 ## Stack
 
