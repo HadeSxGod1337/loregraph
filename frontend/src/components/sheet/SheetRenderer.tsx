@@ -200,9 +200,16 @@ function RegionView({
   // (with its title as a heading) in compact/print — paper/narrow-drawer
   // have no room for interactive switching.
   const showTabBar = region.kind === "tabs" && (mode === "full" || mode === "fill");
-  const shownContainers = showTabBar
-    ? [region.containers[activeIndex]].filter((c): c is SheetContainer => c !== undefined)
-    : region.containers;
+  // Carries each container's index in the region, not its position in the
+  // rendered slice: with a tab bar the slice is always length 1, so keying by
+  // that index made every tab the same React key. The subtree was then reused
+  // across tab switches, and stateful children (rich-text editors) kept the
+  // previous tab's document.
+  const shownContainers: { container: SheetContainer; index: number }[] = showTabBar
+    ? region.containers
+        .map((container, index) => ({ container, index }))
+        .filter(({ index }) => index === activeIndex)
+    : region.containers.map((container, index) => ({ container, index }));
 
   return (
     <div className={region.kind === "columns" ? "sheet-region-columns" : "sheet-region-tabs"}>
@@ -230,14 +237,14 @@ function RegionView({
           and the designer's preview pane, and only the container knows how
           much room there actually is. */}
       <div className="sheet-columns">
-        {shownContainers.map((container, i) => (
-          <div className="sheet-column" key={container.id ?? i}>
+        {shownContainers.map(({ container, index }) => (
+          <div className="sheet-column" key={container.id ?? index}>
             {!showTabBar && container.title && region.containers.length > 1 && (
               <h5 className="sheet-container-title">{container.title}</h5>
             )}
             {container.sections.map((section, si) => (
               <SectionView
-                key={section.id ?? si}
+                key={section.id ?? `${index}-${si}`}
                 section={section}
                 compact={compact}
                 {...sectionProps}

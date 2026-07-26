@@ -112,9 +112,24 @@ function setBlocks(
   };
 }
 
-/** Every block in the layout, regardless of region/container/section. */
+/** Every block in the layout, regardless of region/container/section.
+ *
+ * Walks the structure rather than going through `containerIds`: those ids
+ * only exist after `ensureIds`, which the designer runs but the renderer
+ * does not. On a builtin layout (no ids at all) the id-keyed route matched
+ * `undefined === undefined` on the first band region and reported its six
+ * blocks as the whole sheet — so the renderer thought every other field was
+ * unplaced and dumped the entire entity into "Other fields".
+ * Mirrors SheetLayout.all_blocks() on the backend. */
 export function allBlocks(layout: SheetLayout): SheetBlock[] {
-  return containerIds(layout).flatMap((id) => getBlocks(layout, id));
+  const blocks: SheetBlock[] = [];
+  for (const region of layout.regions) {
+    blocks.push(...region.blocks);
+    for (const container of region.containers) {
+      for (const section of container.sections) blocks.push(...section.blocks);
+    }
+  }
+  return blocks;
 }
 
 export function findContainerOfBlock(

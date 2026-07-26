@@ -52,6 +52,8 @@ _TEXT_FIELDS: dict[str, list[tuple[str, ...]]] = {
         ("subclassName",),
         ("info", "charSubclass", "value"),
     ],
+    "player_name": [("playerName",), ("info", "playerName", "value")],
+    "hit_die": [("hitDie",), ("vitality", "hit-die", "value")],
     "ancestry": [
         ("race",),
         ("ancestry",),
@@ -83,16 +85,24 @@ _NUMBER_FIELDS: dict[str, list[tuple[str, ...]]] = {
     "max_hp": [("maxHp",), ("hpMax",), ("vitality", "hp-max", "value")],
     "ac": [("ac",), ("armorClass",), ("vitality", "ac", "value")],
     "speed": [("speed",), ("vitality", "speed", "value")],
+    "temp_hp": [("tempHp",), ("vitality", "hp-temp", "value")],
+    "hit_dice_current": [("vitality", "hp-dice-current", "value")],
+    "exhaustion": [("exhaustion",)],
 }
+# subInfo values are free text on the LSS sheet ("178", "178 см") — imported
+# as text so nothing is lost to a failed int() parse.
+_SUB_INFO_KEYS = ("age", "height", "weight", "eyes", "skin", "hair")
+_COIN_KEYS = ("pp", "gp", "ep", "sp", "cp")
 _ABILITY_CONTAINERS: list[tuple[str, ...]] = [("stats",), ("abilities",), ("scores",)]
 _ABILITY_KEYS = ("str", "dex", "con", "int", "wis", "cha")
 _NOTES_PATHS: list[tuple[str, ...]] = [("notes",), ("bio",), ("biography",)]
 _AVATAR_PATHS: list[tuple[str, ...]] = [("avatar", "jpeg"), ("avatar", "webp")]
 
-# Narrative TipTap blocks of the native export worth having in a lore tool,
-# as our field key -> LSS block name. Mechanical blocks (attacks, traits,
-# prof, notes-N…) are deliberately skipped: the sheet stays the source of
-# truth for mechanics, the iframe embed shows them live.
+# Every TipTap block of the native export, as our field key -> LSS block name.
+# The mechanical ones (attacks, equipment, features, traits, prof, items) used
+# to be skipped on the grounds that the live embed shows them — but the sheet
+# is printable from Loregraph now, and a printed sheet without attacks or
+# equipment is not a character sheet.
 _NATIVE_TEXT_BLOCKS: dict[str, str] = {
     "backstory": "background",
     "personality": "personality",
@@ -101,7 +111,16 @@ _NATIVE_TEXT_BLOCKS: dict[str, str] = {
     "flaws": "flaws",
     "allies": "allies",
     "quests": "quests",
+    "attacks": "attacks",
+    "equipment": "equipment",
+    "features": "features",
+    "extra_features": "traits",
+    "other_proficiencies": "prof",
+    "treasures": "items",
 }
+# LSS splits free notes across six fixed boxes; they carry no headings of
+# their own, so they are concatenated into one `notes` document in order.
+_NATIVE_NOTE_BLOCKS = tuple(f"notes-{index}" for index in range(1, 7))
 
 # ProseMirror node/mark types our editor renders (StarterKit v3 + Image +
 # Underline + entityLink). Anything else in an LSS doc (e.g. their custom
@@ -184,7 +203,19 @@ def parse_character(
                     )
             break
 
+    fields.extend(_sub_info_fields(data))
+    fields.extend(_coin_fields(data))
+    fields.extend(_proficiency_flag_fields(data))
     fields.extend(_native_text_fields(data))
+    fields.extend(_table_fields(data))
+
+    inspiration = data.get("inspiration")
+    if isinstance(inspiration, bool):
+        fields.append(
+            EntityFieldIn(
+                key="inspiration", field_type=FieldType.BOOLEAN, value=inspiration
+            )
+        )
 
     notes = _first_string(data, _NOTES_PATHS)
     if notes:
@@ -195,6 +226,14 @@ def parse_character(
                 value=markdown_to_prosemirror(notes),
             )
         )
+    else:
+        native_notes = _native_notes(data)
+        if native_notes is not None:
+            fields.append(
+                EntityFieldIn(
+                    key="notes", field_type=FieldType.RICH_TEXT, value=native_notes
+                )
+            )
     avatar_url = _first_string(data, _AVATAR_PATHS)
     if avatar_url:
         fields.append(
@@ -251,6 +290,199 @@ def _native_text_fields(data: dict[str, Any]) -> list[EntityFieldIn]:
                 )
             )
     return fields
+
+
+def _sub_info_fields(data: dict[str, Any]) -> list[EntityFieldIn]:
+    sub_info = data.get("subInfo")
+    if not isinstance(sub_info, dict):
+        return []
+    fields: list[EntityFieldIn] = []
+    for key in _SUB_INFO_KEYS:
+        value = _first_string(sub_info, [(key, "value"), (key,)])
+        if value:
+            fields.append(
+                EntityFieldIn(key=key, field_type=FieldType.TEXT, value=value)
+            )
+    return fields
+
+
+def _coin_fields(data: dict[str, Any]) -> list[EntityFieldIn]:
+    coins = data.get("coins")
+    if not isinstance(coins, dict):
+        return []
+    fields: list[EntityFieldIn] = []
+    for key in _COIN_KEYS:
+        amount = _first_number(coins, [(key, "value"), (key,)])
+        if amount is not None:
+            fields.append(
+                EntityFieldIn(
+                    key=f"coins_{key}", field_type=FieldType.NUMBER, value=amount
+                )
+            )
+    return fields
+
+
+def _proficiency_flag_fields(data: dict[str, Any]) -> list[EntityFieldIn]:
+    """LSS's save/skill proficiency flags -> the booleans the built-in
+    Character template's formulas read. Without them an imported character
+    shows every skill at its bare ability modifier.
+
+    LSS grades skills 0/1/2 (none/proficient/expertise) and our sheet has one
+    checkbox, so expertise imports as plain proficiency — the doubled bonus is
+    the one thing that needs re-adding by hand.
+    """
+    fields: list[EntityFieldIn] = []
+    saves = data.get("saves")
+    if isinstance(saves, dict):
+        for ability in _ABILITY_KEYS:
+            entry = saves.get(ability)
+            if isinstance(entry, dict):
+                fields.append(
+                    EntityFieldIn(
+                        key=f"prof_save_{ability}",
+                        field_type=FieldType.BOOLEAN,
+                        value=_is_proficient(entry.get("isProf")),
+                    )
+                )
+    skills = data.get("skills")
+    if isinstance(skills, dict):
+        for name, entry in skills.items():
+            if not isinstance(entry, dict):
+                continue
+            fields.append(
+                EntityFieldIn(
+                    # "sleight of hand" -> "sleight_of_hand"
+                    key=f"prof_{name.replace(' ', '_')}",
+                    field_type=FieldType.BOOLEAN,
+                    value=_is_proficient(entry.get("isProf")),
+                )
+            )
+    return fields
+
+
+def _is_proficient(raw: Any) -> bool:
+    if isinstance(raw, bool):
+        return raw
+    return isinstance(raw, int | float) and raw >= 1
+
+
+def _table_fields(data: dict[str, Any]) -> list[EntityFieldIn]:
+    """The export's structured lists (weapons, resources, spell slots) have no
+    matching widget on a Loregraph sheet, so each becomes a plain rich-text
+    block — readable and printable, which is what they are needed for."""
+    fields: list[EntityFieldIn] = []
+    weapons = [
+        line
+        for entry in data.get("weaponsList") or []
+        if isinstance(entry, dict) and (line := _weapon_line(entry))
+    ]
+    if weapons:
+        fields.append(
+            EntityFieldIn(
+                key="weapons",
+                field_type=FieldType.RICH_TEXT,
+                value=_paragraphs(weapons),
+            )
+        )
+
+    resources = data.get("resources")
+    if isinstance(resources, dict):
+        lines = [
+            line
+            for entry in resources.values()
+            if isinstance(entry, dict) and (line := _resource_line(entry))
+        ]
+        if lines:
+            fields.append(
+                EntityFieldIn(
+                    key="resources",
+                    field_type=FieldType.RICH_TEXT,
+                    value=_paragraphs(lines),
+                )
+            )
+
+    spells = data.get("spells")
+    if isinstance(spells, dict):
+        lines = [
+            line
+            for name, entry in spells.items()
+            if isinstance(entry, dict) and (line := _spell_line(name, entry))
+        ]
+        if lines:
+            fields.append(
+                EntityFieldIn(
+                    key="spells",
+                    field_type=FieldType.RICH_TEXT,
+                    value=_paragraphs(lines),
+                )
+            )
+    return fields
+
+
+def _weapon_line(entry: dict[str, Any]) -> str | None:
+    name = _first_string(entry, [("name", "value"), ("name",)])
+    if not name:
+        return None
+    parts = [name]
+    modifier = _first_string(entry, [("mod", "value"), ("mod",)])
+    damage = _first_string(entry, [("dmg", "value"), ("dmg",)])
+    if modifier:
+        parts.append(f"атака {modifier}")
+    if damage:
+        parts.append(damage)
+    return " — ".join([parts[0], ", ".join(parts[1:])]) if len(parts) > 1 else parts[0]
+
+
+def _resource_line(entry: dict[str, Any]) -> str | None:
+    name = _first_string(entry, [("name",)])
+    if not name:
+        return None
+    current = _coerce_number(entry.get("current"))
+    maximum = _coerce_number(entry.get("max"))
+    if current is None and maximum is None:
+        return name
+    shown_current = "?" if current is None else current
+    shown_maximum = "?" if maximum is None else maximum
+    return f"{name} — {shown_current}/{shown_maximum}"
+
+
+def _spell_line(name: str, entry: dict[str, Any]) -> str | None:
+    """Spell slots come keyed `slots-<level>`; anything else in the map is
+    treated as a named spell. Written defensively — an unfamiliar shape
+    imports nothing rather than raising."""
+    if name.startswith("slots-"):
+        total = _coerce_number(entry.get("value"))
+        if total is None:
+            return None
+        used = _coerce_number(entry.get("filled")) or 0
+        return f"Ячейки {name.removeprefix('slots-')} круга — {used}/{total}"
+    title = _first_string(entry, [("name", "value"), ("name",), ("value",)])
+    return title
+
+
+def _paragraphs(lines: list[str]) -> dict[str, Any]:
+    return {
+        "type": "doc",
+        "content": [
+            {"type": "paragraph", "content": [{"type": "text", "text": line}]}
+            for line in lines
+        ],
+    }
+
+
+def _native_notes(data: dict[str, Any]) -> dict[str, Any] | None:
+    text_blocks = data.get("text")
+    if not isinstance(text_blocks, dict):
+        return None
+    content: list[dict[str, Any]] = []
+    for block_name in _NATIVE_NOTE_BLOCKS:
+        doc = _dig(text_blocks, (block_name, "value", "data"))
+        if not isinstance(doc, dict) or doc.get("type") != "doc":
+            continue
+        sanitized = _sanitize_prosemirror(doc)
+        if sanitized is not None:
+            content.extend(sanitized.get("content", []))
+    return {"type": "doc", "content": content} if content else None
 
 
 def _sanitize_prosemirror(doc: dict[str, Any]) -> dict[str, Any] | None:

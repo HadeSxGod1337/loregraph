@@ -145,7 +145,16 @@ _SKILLS: dict[str, list[tuple[str, str]]] = {
     ],
 }
 
-_LEFT_COLUMN_ABILITIES = frozenset({"str", "con", "int"})
+# Short ability tags for skill rows ("Акробатика (Лов)") — the skills live in
+# one flat list, so each row has to say which ability it derives from.
+_ABILITY_SHORT: dict[str, str] = {
+    "str": "Сил",
+    "dex": "Лов",
+    "con": "Тел",
+    "int": "Инт",
+    "wis": "Муд",
+    "cha": "Хар",
+}
 
 
 def _ability_bool_defs() -> list[TemplateFieldDef]:
@@ -162,20 +171,11 @@ def _ability_bool_defs() -> list[TemplateFieldDef]:
     return defs
 
 
-def _check_block(ability_key: str) -> Block:
-    # Ability checks are never proficiency-gated in 5e — plain modifier.
-    return Block(
-        widget=WidgetType.COMPUTED,
-        label="Проверка",
-        formula=f"floor(({ability_key} - 10) / 2)",
-    )
-
-
-def _save_block(ability_key: str) -> Block:
+def _save_block(ability_key: str, ability_label: str) -> Block:
     prof_key = f"prof_save_{ability_key}"
     return Block(
         widget=WidgetType.COMPUTED,
-        label="Спасбросок",
+        label=ability_label,
         formula=f"floor(({ability_key} - 10) / 2) + ({prof_key} ? proficiency : 0)",
         config={"toggleable": [prof_key]},
     )
@@ -191,44 +191,158 @@ def _skill_block(ability_key: str, skill_key: str, label: str) -> Block:
     )
 
 
-def _score_block(ability_key: str) -> Block:
-    """The editable ability score itself. Without it every derived row below
-    is stuck at the score-0 modifier with nowhere to type the real value.
-
-    The label is deliberately empty: the section around it already carries
-    the ability's name, and repeating it inside the box read as "Сила / Сила".
-    """
-    return Block(widget=WidgetType.STAT_MODIFIER, field_key=ability_key, label="")
-
-
-def _ability_section(ability_key: str, ability_label: str) -> Section:
-    blocks = [
-        _score_block(ability_key),
-        _check_block(ability_key),
-        _save_block(ability_key),
-    ]
-    blocks.extend(
-        _skill_block(ability_key, skill_key, skill_label)
-        for skill_key, skill_label in _SKILLS[ability_key]
+def _scores_section() -> Section:
+    """The six editable scores as one dense grid of boxes. Each box already
+    shows its own modifier, which is the ability check — no separate row for
+    it, the way a printed sheet does it."""
+    return Section(
+        title="Характеристики",
+        blocks=[
+            Block(widget=WidgetType.STAT_MODIFIER, field_key=key, label=label)
+            for key, label in _ABILITIES
+        ],
     )
-    return Section(title=ability_label, blocks=blocks)
+
+
+def _saves_section() -> Section:
+    return Section(
+        title="Спасброски",
+        blocks=[_save_block(key, label) for key, label in _ABILITIES],
+    )
+
+
+def _skills_section() -> Section:
+    """Every skill in one alphabetical list, each row tagged with its ability.
+
+    Grouping skills under per-ability cards cost six card frames and six
+    headings for eighteen rows of content, and pushed the sheet onto a second
+    printed page. One list reads the same and fits.
+    """
+    blocks = [
+        _skill_block(
+            ability_key, skill_key, f"{skill_label} ({_ABILITY_SHORT[ability_key]})"
+        )
+        for ability_key, _ in _ABILITIES
+        for skill_key, skill_label in _SKILLS[ability_key]
+    ]
+    blocks.sort(key=lambda block: (block.label or "").lower())
+    return Section(title="Навыки", blocks=blocks)
+
+
+def _passive_section() -> Section:
+    return Section(
+        title="Пассивные значения",
+        blocks=[
+            Block(
+                widget=WidgetType.COMPUTED,
+                label="Пассивная внимательность",
+                formula=(
+                    "10 + floor((wis - 10) / 2) + (prof_perception ? proficiency : 0)"
+                ),
+            )
+        ],
+    )
 
 
 def _ability_skill_region() -> Region:
-    left = [
-        _ability_section(key, label)
-        for key, label in _ABILITIES
-        if key in _LEFT_COLUMN_ABILITIES
-    ]
-    right = [
-        _ability_section(key, label)
-        for key, label in _ABILITIES
-        if key not in _LEFT_COLUMN_ABILITIES
-    ]
     return Region(
         name="Способности и навыки",
         kind=RegionKind.COLUMNS,
-        containers=[Container(sections=left), Container(sections=right)],
+        containers=[
+            Container(
+                sections=[_scores_section(), _saves_section(), _passive_section()]
+            ),
+            Container(sections=[_skills_section()]),
+        ],
+    )
+
+
+_COINS: list[tuple[str, str]] = [
+    ("pp", "ПМ"),
+    ("gp", "ЗМ"),
+    ("ep", "ЭМ"),
+    ("sp", "СМ"),
+    ("cp", "ММ"),
+]
+
+_APPEARANCE: list[tuple[str, str]] = [
+    ("age", "Возраст"),
+    ("height", "Рост"),
+    ("weight", "Вес"),
+    ("eyes", "Глаза"),
+    ("skin", "Кожа"),
+    ("hair", "Волосы"),
+]
+
+
+def _combat_region() -> Region:
+    """Everything the DM reaches for mid-fight, in the order a printed sheet
+    puts it: what you swing, what it costs, what you carry."""
+    return Region(
+        name="Бой и снаряжение",
+        kind=RegionKind.COLUMNS,
+        containers=[
+            Container(
+                sections=[
+                    Section(
+                        title="Атаки",
+                        blocks=[_rich_block("weapons"), _rich_block("attacks")],
+                    ),
+                    Section(title="Заклинания", blocks=[_rich_block("spells")]),
+                    Section(
+                        title="Хиты и кости",
+                        columns=2,
+                        blocks=[
+                            _plain("temp_hp"),
+                            _plain("hit_die"),
+                            _plain("hit_dice_current"),
+                            _plain("exhaustion"),
+                        ],
+                    ),
+                ]
+            ),
+            Container(
+                sections=[
+                    Section(title="Снаряжение", blocks=[_rich_block("equipment")]),
+                    Section(
+                        title="Монеты",
+                        columns=5,
+                        blocks=[_plain(f"coins_{key}") for key, _ in _COINS],
+                    ),
+                    Section(title="Сокровища", blocks=[_rich_block("treasures")]),
+                ]
+            ),
+        ],
+    )
+
+
+def _features_region() -> Region:
+    return Region(
+        name="Умения и владения",
+        kind=RegionKind.COLUMNS,
+        containers=[
+            Container(
+                sections=[
+                    Section(
+                        title="Умения и способности",
+                        blocks=[_rich_block("features")],
+                    ),
+                    Section(title="Ресурсы", blocks=[_rich_block("resources")]),
+                ]
+            ),
+            Container(
+                sections=[
+                    Section(
+                        title="Дополнительные способности",
+                        blocks=[_rich_block("extra_features")],
+                    ),
+                    Section(
+                        title="Прочие владения и языки",
+                        blocks=[_rich_block("other_proficiencies")],
+                    ),
+                ]
+            ),
+        ],
     )
 
 
@@ -252,8 +366,24 @@ def _character() -> EntityTemplateOut:
             _num("speed", "Скорость"),
             _num("hp", "Текущие хиты"),
             _num("max_hp", "Макс. хиты"),
+            _num("temp_hp", "Временные хиты"),
+            _text("hit_die", "Кость хитов"),
+            _num("hit_dice_current", "Осталось костей"),
+            _num("exhaustion", "Истощение"),
+            _bool("inspiration", "Вдохновение"),
+            _text("player_name", "Имя игрока"),
             *ability_defs,
             *_ability_bool_defs(),
+            _rich("weapons", "Оружие"),
+            _rich("attacks", "Атаки и заклинания"),
+            _rich("spells", "Заклинания"),
+            _rich("equipment", "Снаряжение"),
+            _rich("treasures", "Сокровища"),
+            _rich("features", "Умения и способности"),
+            _rich("extra_features", "Дополнительные способности"),
+            _rich("other_proficiencies", "Прочие владения и языки"),
+            _rich("resources", "Ресурсы"),
+            *[_num(f"coins_{key}", label) for key, label in _COINS],
             _rich("personality", "Черты характера"),
             _rich("ideals", "Идеалы"),
             _rich("bonds", "Привязанности"),
@@ -261,6 +391,8 @@ def _character() -> EntityTemplateOut:
             _rich("backstory", "Предыстория персонажа"),
             _rich("allies", "Союзники и организации"),
             _rich("quests", "Цели и задачи"),
+            _rich("notes", "Заметки"),
+            *[_text(key, label) for key, label in _APPEARANCE],
             _text("character_sheet_url", "Ссылка на лист"),
         ],
         layout=SheetLayout(
@@ -286,11 +418,14 @@ def _character() -> EntityTemplateOut:
                         _plain("ancestry"),
                         _plain("background"),
                         _plain("alignment"),
+                        _plain("player_name"),
                         _plain("max_hp"),
                         _plain("experience"),
                     ],
                 ),
                 _ability_skill_region(),
+                _combat_region(),
+                _features_region(),
                 Region(
                     name="Биография",
                     kind=RegionKind.TABS,
@@ -319,6 +454,19 @@ def _character() -> EntityTemplateOut:
                                     ]
                                 )
                             ],
+                        ),
+                        Container(
+                            title="Внешность",
+                            sections=[
+                                Section(
+                                    columns=3,
+                                    blocks=[_plain(key) for key, _ in _APPEARANCE],
+                                )
+                            ],
+                        ),
+                        Container(
+                            title="Заметки",
+                            sections=[Section(blocks=[_rich_block("notes")])],
                         ),
                     ],
                 ),

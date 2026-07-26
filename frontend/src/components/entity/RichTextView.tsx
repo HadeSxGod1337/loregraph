@@ -1,5 +1,5 @@
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useMatch } from "react-router-dom";
 
 import type { ProseMirrorDoc } from "../../api/types";
@@ -19,6 +19,16 @@ export function RichTextView({ value }: { value: ProseMirrorDoc }) {
     content: value as JSONContent,
     editable: false,
   });
+
+  // `content` above is only the editor's *initial* document. Without this the
+  // view keeps whatever it was first mounted with — a sheet that reuses one
+  // view for two tabs, or a field the server refreshed, silently showed stale
+  // (or blank) text. emitUpdate:false — nothing is editing here.
+  useEffect(() => {
+    if (!editor) return;
+    if (JSON.stringify(editor.getJSON()) === JSON.stringify(value)) return;
+    editor.commands.setContent(value as JSONContent, { emitUpdate: false });
+  }, [editor, value]);
 
   if (!editor) return null;
   return <EditorContent editor={editor} className="rich-text-content rich-text-view" />;

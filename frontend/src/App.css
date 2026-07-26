@@ -5231,6 +5231,13 @@ label.checkbox-wrapper.checkbox-disabled {
   font-size: 0.9rem;
 }
 
+/* Read-only rich text on a sheet: the editor reserves an 80px writing area,
+   which is right while typing and wrong while reading — four empty narrative
+   fields reserved most of a printed page between them. */
+.sheet .sheet-value-rich .ProseMirror {
+  min-height: 0;
+}
+
 .sheet-chips {
   display: flex;
   flex-wrap: wrap;
@@ -5276,6 +5283,19 @@ label.checkbox-wrapper.checkbox-disabled {
 .sheet-block-stat_modifier .sheet-stat {
   min-width: 92px;
   max-width: 132px;
+}
+
+/* Inside a section that is nothing but ability boxes, the grid already sizes
+   the tracks — so the box fills its track instead of shrinking to its own
+   label, which made "Сила" and "Телосложение" different widths in the same
+   row. The cap above still applies to a lone stat box in a mixed section. */
+.sheet-section-stats .sheet-block-stat_modifier {
+  align-items: stretch;
+}
+
+.sheet-section-stats .sheet-block-stat_modifier .sheet-stat {
+  min-width: 0;
+  max-width: none;
 }
 
 .sheet-stat {
@@ -5643,10 +5663,109 @@ label.checkbox-wrapper.checkbox-disabled {
     background: #eee !important;
     color: #000 !important;
   }
-  .sheet-print-root .sheet-section,
-  .sheet-print-root .sheet-block,
+  /* Density. Paper is not a screen: at screen sizing a character sheet spills
+     over two pages for no good reason. Every type step in the sheet is `rem`,
+     so the root font size is the single lever that scales all of them at once
+     (16px → 12px ≈ 9pt body, 6pt labels — the density a printed sheet uses);
+     the box metrics are px and are tightened here alongside it. */
+  :root {
+    font-size: 12px;
+  }
+  .sheet-print-root .sheet-headerband {
+    gap: 6px 10px;
+    padding-bottom: 6px;
+  }
+  .sheet-print-root .sheet-hb-portrait .sheet-portrait {
+    width: 52px;
+    height: 52px;
+  }
+  .sheet-print-root .sheet-hb-pill {
+    min-width: 46px;
+    padding: 3px 7px;
+  }
+  .sheet-print-root .sheet-band-row {
+    gap: 4px;
+  }
+  .sheet-print-root .sheet-band-fields {
+    gap: 4px 14px;
+  }
+  .sheet-print-root .sheet-band-field {
+    min-width: 74px;
+  }
+  .sheet-print-root .sheet-columns {
+    gap: 8px;
+  }
+  .sheet-print-root .sheet-section {
+    padding: 6px 8px;
+    gap: 5px;
+  }
+  .sheet-print-root .sheet-grid {
+    gap: 2px 8px;
+  }
+  .sheet-print-root .sheet-section-stats .sheet-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100px, 100%), 1fr));
+    gap: 4px;
+  }
+  .sheet-print-root .sheet-stat {
+    padding: 3px 3px 2px;
+    gap: 1px;
+  }
+  .sheet-print-root .sheet-block-stat_modifier .sheet-stat {
+    min-width: 56px;
+    max-width: 96px;
+  }
+  .sheet-print-root .sheet-stat-mod {
+    min-width: 26px;
+    padding: 0 5px;
+  }
+  .sheet-print-root .sheet-computed-row {
+    gap: 6px;
+    padding: 0;
+  }
+  .sheet-print-root .sheet-computed-toggle {
+    width: 9px;
+    height: 9px;
+  }
+  .sheet-print-root .sheet-print-title {
+    margin-bottom: 6px;
+  }
+
+  /* Pagination. On screen the sheet is a stack of nested flex containers;
+     paper needs plain block flow, because a fragmented flex container is
+     where browsers are weakest — that is what left the whole abilities
+     region stranded on its own page. `gap` goes with the flex box, so the
+     rhythm is restored with margins. */
+  .sheet-print-root .sheet,
+  .sheet-print-root .sheet-body,
   .sheet-print-root .sheet-column {
+    display: block;
+  }
+  .sheet-print-root .sheet-body {
+    margin-top: 14px;
+  }
+  .sheet-print-root .sheet-body > * {
+    margin-bottom: 14px;
+  }
+  .sheet-print-root .sheet-column > * + * {
+    margin-top: 10px;
+  }
+  /* Only the small units refuse to split. A column is a whole half-sheet —
+     forbidding a break inside it means it cannot start anywhere but a fresh
+     page, and once it is taller than a page it drags the rest of the sheet
+     with it. Let it fragment; the cards inside it stay whole. */
+  .sheet-print-root .sheet-column {
+    break-inside: auto;
+  }
+  .sheet-print-root .sheet-section,
+  .sheet-print-root .sheet-block {
     break-inside: avoid;
+  }
+  /* A heading alone at the foot of a page is the visible symptom of the
+     same problem — keep it with what it introduces. */
+  .sheet-print-root .sheet-region-title,
+  .sheet-print-root .sheet-section-title,
+  .sheet-print-root .sheet-container-title {
+    break-after: avoid;
   }
   @page {
     margin: 12mm;

@@ -113,9 +113,42 @@ def test_parse_native_export_file() -> None:
     # …sanitized: LSS's custom "resource" nodes must never reach the editor.
     for key in ("backstory", "personality", "ideals", "bonds", "flaws", "allies"):
         assert "resource" not in _pm_node_types(by_key[key].value), key
-    # Mechanical blocks stay out on purpose (sheet is the source of truth).
-    assert "attacks" not in by_key
-    assert "traits" not in by_key
+    # Mechanical blocks come in too — the sheet is printable from Loregraph,
+    # so attacks/equipment/features have to survive the import.
+    for key in (
+        "attacks",
+        "equipment",
+        "features",
+        "extra_features",
+        "other_proficiencies",
+        "treasures",
+    ):
+        assert by_key[key].field_type is FieldType.RICH_TEXT, key
+        assert "resource" not in _pm_node_types(by_key[key].value), key
+
+    # Proficiency flags drive the template's computed skills/saves.
+    assert by_key["prof_save_dex"].value is True
+    assert by_key["prof_save_str"].value is False
+    assert by_key["prof_stealth"].value is True  # expertise (2) — still a flag
+    assert by_key["prof_perception"].value is False
+    assert by_key["prof_sleight_of_hand"].key == "prof_sleight_of_hand"  # not " "
+    assert by_key["inspiration"].value is True
+
+    assert by_key["age"].value == "21"
+    assert by_key["eyes"].value == "серо-голубые"
+    assert by_key["coins_gp"].value == 354
+    assert by_key["temp_hp"].value == 0
+    assert by_key["hit_die"].value == "d10"
+
+    # The six notes-N boxes merge into one document, in order.
+    notes_json = json.dumps(by_key["notes"].value, ensure_ascii=False)
+    assert "Воинский адепт" in notes_json
+    # Structured lists have no widget of their own — they arrive as text.
+    weapons_json = json.dumps(by_key["weapons"].value, ensure_ascii=False)
+    assert "Рапира" in weapons_json
+    assert "Кости превосходства" in json.dumps(
+        by_key["resources"].value, ensure_ascii=False
+    )
 
 
 def test_import_native_export_through_api(client: TestClient, project_id: str) -> None:
@@ -134,12 +167,29 @@ def test_import_native_export_through_api(client: TestClient, project_id: str) -
     assert by_key["level"]["value"] == 7
     assert by_key["backstory"]["field_type"] == "rich_text"
 
+    # Binding the character to a sheet template must survive a refresh —
+    # an update replaces the whole row, so the connector has to carry it.
+    client.put(
+        f"/api/projects/{project_id}/entities/{victoria['id']}",
+        json={
+            "type": victoria["type"],
+            "title": victoria["title"],
+            "fields": victoria["fields"],
+            "template_id": "builtin_character",
+        },
+    )
+
     # Re-import of the same file refreshes in place (provenance by char id).
     again = client.post(
         f"/api/projects/{project_id}/connections/{connection_id}/import",
         json={"payload": {"raw_json": raw, "share_url": SHARE_URL}},
     ).json()
     assert again["updated"] == 1 and again["created"] == 0
+
+    refreshed = client.get(
+        f"/api/projects/{project_id}/entities/{victoria['id']}"
+    ).json()
+    assert refreshed["template_id"] == "builtin_character"
 
 
 def test_share_url_regex_extracts_24_hex_id() -> None:

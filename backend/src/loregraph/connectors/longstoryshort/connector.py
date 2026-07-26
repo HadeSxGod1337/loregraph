@@ -180,7 +180,15 @@ class LssConnector:
             entity = await context.entity_service.update(
                 context.project_id,
                 existing_id,
-                EntityUpdate(type=current.type, title=name, fields=merged),
+                EntityUpdate(
+                    type=current.type,
+                    title=name,
+                    fields=merged,
+                    # An update replaces the whole row: without this, refreshing
+                    # a character from LSS would silently unbind its sheet
+                    # template.
+                    template_id=current.template_id,
+                ),
             )
             result.updated += 1
         if char_id is not None:

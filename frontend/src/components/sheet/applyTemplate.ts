@@ -5,18 +5,24 @@ import type {
   FieldValue,
 } from "../../api/types";
 
+/** Mirrors EMPTY_FIELD_DEFAULTS in schemas/entity_template.py — the backend
+ * rejects a value whose shape does not match its field type, so every type
+ * needs its own empty here. Exhaustive on purpose: a `default:` branch is what
+ * let `boolean` silently fall through to `""` and 422 the whole save. */
 export function emptyValue(fieldType: FieldType): FieldValue {
   switch (fieldType) {
+    case "text":
+      return "";
     case "rich_text":
       return { type: "doc", content: [{ type: "paragraph" }] };
     case "number":
       return 0;
+    case "boolean":
+      return false;
     case "tag":
       return [];
     case "attachment":
       return { attachment_id: "", url: "" };
-    default:
-      return "";
   }
 }
 

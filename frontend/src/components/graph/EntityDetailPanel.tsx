@@ -148,6 +148,8 @@ export function EntityDetailPanel({
         return t("entityDetail.attachmentPreview");
       case "rich_text":
         return "";
+      case "boolean":
+        return field.value ? "✓" : "—";
       default:
         return String(field.value);
     }
