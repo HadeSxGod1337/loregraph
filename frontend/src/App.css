@@ -6323,6 +6323,10 @@ label.checkbox-wrapper.checkbox-disabled {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* `.entity-edit-page label` adds a 12px bottom margin for stacked forms;
+     inside this row it lands below the select and drags the flex-end-aligned
+     "Управление шаблонами" button down with it. */
+  margin-bottom: 0;
   font-size: 0.8rem;
   color: var(--text-muted);
   flex: 1;
