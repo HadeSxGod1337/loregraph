@@ -144,3 +144,24 @@ def test_import_rejects_unsupported_format_version(client: TestClient) -> None:
         },
     )
     assert resp.status_code == 422
+
+
+def test_export_import_preserves_template_binding(
+    client: TestClient, project_id: str
+) -> None:
+    """A sheet-template binding must survive a round trip — import writes each
+    entity twice (create, then a rewrite pass for attachment/link fixups) and
+    the second write used to clear template_id."""
+    created = client.post(
+        f"/api/projects/{project_id}/templates/builtin_character/instantiate",
+        json={"title": "Джек"},
+    ).json()
+    assert created["template_id"] == "builtin_character"
+
+    exported = client.get(f"/api/projects/{project_id}/export").json()
+    entry = next(e for e in exported["entities"] if e["id"] == created["id"])
+    assert entry["template_id"] == "builtin_character"
+
+    new_project_id = client.post("/api/projects/import", json=exported).json()["id"]
+    imported = client.get(f"/api/projects/{new_project_id}/entities").json()
+    assert [e["template_id"] for e in imported] == ["builtin_character"]

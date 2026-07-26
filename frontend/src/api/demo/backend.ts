@@ -341,6 +341,7 @@ function importProject(payload: ProjectExport): Project {
       type: e.type,
       title: e.title,
       fields: e.fields,
+      template_id: null,
       icon: null,
       pos_x: e.pos_x,
       pos_y: e.pos_y,
@@ -389,6 +390,7 @@ function createEntity(projectId: string, data: EntityCreate): Entity {
     type: data.type,
     title: data.title,
     fields: data.fields,
+    template_id: data.template_id ?? null,
     icon: null,
     pos_x: null,
     pos_y: null,
@@ -404,6 +406,7 @@ function updateEntity(id: string, data: EntityUpdate): Entity {
   entity.type = data.type;
   entity.title = data.title;
   entity.fields = data.fields;
+  entity.template_id = data.template_id ?? null;
   entity.updated_at = nowIso();
   return entity;
 }

@@ -197,6 +197,42 @@ class NotAwaitingReviewError(CampaignError):
         self.status = status
 
 
+class EntityTemplateNotFoundError(CampaignError):
+    def __init__(self, template_id: str) -> None:
+        super().__init__(f"Entity template not found: {template_id}")
+        self.template_id = template_id
+
+
+class BuiltinTemplateReadOnlyError(CampaignError):
+    """Raised on an attempt to edit or delete a built-in template — those are
+    defined in code, not stored; duplicate into a project template instead."""
+
+    def __init__(self, template_id: str) -> None:
+        super().__init__(
+            f"Built-in template is read-only: {template_id} "
+            f"(duplicate it to create an editable copy)"
+        )
+        self.template_id = template_id
+
+
+class SheetPresetNotFoundError(CampaignError):
+    def __init__(self, preset_id: str) -> None:
+        super().__init__(f"Sheet preset not found: {preset_id}")
+        self.preset_id = preset_id
+
+
+class BuiltinPresetReadOnlyError(CampaignError):
+    """Raised on an attempt to delete a built-in preset — those are defined
+    in code, not stored; duplicate into a project preset instead."""
+
+    def __init__(self, preset_id: str) -> None:
+        super().__init__(
+            f"Built-in preset is read-only: {preset_id} "
+            f"(duplicate it to create an editable copy)"
+        )
+        self.preset_id = preset_id
+
+
 class ConnectorError(CampaignError):
     """Base class for external-tool connector errors (Obsidian, Foundry, …)."""
 

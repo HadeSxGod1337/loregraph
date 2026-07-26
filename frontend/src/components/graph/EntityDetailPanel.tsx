@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { API_URL } from "../../api/client";
-import type { Edge, EntityField, ProseMirrorDoc } from "../../api/types";
+import type { Edge, EntityField, EntityTemplate, ProseMirrorDoc } from "../../api/types";
 import { useEntities } from "../../hooks/useEntities";
 import { useEntity, useDeleteEntity, useUpdateEntity } from "../../hooks/useEntity";
 import { useCreateEdge, useDeleteEdge, useEdgesForEntity } from "../../hooks/useEdgesForEntity";
+import { useTemplateById } from "../../hooks/useTemplates";
+import { syncTemplateFields } from "../sheet/applyTemplate";
+import { ExternalSheetEmbed } from "../sheet/ExternalSheetEmbed";
+import { LSS_EMBED } from "../sheet/externalSheet";
+import { SheetModal } from "../sheet/SheetModal";
+import { SheetRenderer } from "../sheet/SheetRenderer";
+import { TemplateSelect } from "../sheet/TemplateSelect";
 import { EdgeEditPopover } from "../graph/EdgeEditPopover";
 import { EdgeList } from "../edges/EdgeList";
-import { CharacterSheetEmbed } from "../entity/CharacterSheetEmbed";
 import { FieldEditor } from "../entity/FieldEditor";
 import { IconPicker } from "../entity/IconPicker";
 import { RichTextView } from "../entity/RichTextView";
@@ -46,6 +52,7 @@ export function EntityDetailPanel({
   onFocusCamera,
 }: EntityDetailPanelProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { data: entity } = useEntity(projectId, entityId ?? undefined);
   const { data: edges } = useEdgesForEntity(projectId, entityId ?? undefined);
   const { data: entities } = useEntities(projectId);
@@ -54,10 +61,14 @@ export function EntityDetailPanel({
   const deleteEdge = useDeleteEdge(projectId);
   const createEdge = useCreateEdge(projectId);
 
+  const [showSheet, setShowSheet] = useState(false);
+
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [title, setTitle] = useState("");
   const [type, setType] = useState("");
   const [fields, setFields] = useState<EntityField[]>([]);
+  const [templateId, setTemplateId] = useState<string | null>(null);
+  const [templateAddedKeys, setTemplateAddedKeys] = useState<string[]>([]);
   const [editingEdge, setEditingEdge] = useState<Edge | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [expandedReasons, setExpandedReasons] = useState<Set<string>>(new Set());
@@ -66,13 +77,25 @@ export function EntityDetailPanel({
   const [newEdgeType, setNewEdgeType] = useState("");
   const [newEdgeLabel, setNewEdgeLabel] = useState("");
 
+  // Bound template (opt-in via entity.template_id) — drives the sheet view.
+  const template = useTemplateById(projectId, templateId);
+
   useEffect(() => {
     if (entity) {
       setTitle(entity.title);
       setType(entity.type);
       setFields(entity.fields);
+      setTemplateId(entity.template_id);
+      setTemplateAddedKeys([]);
     }
   }, [entity]);
+
+  function handleSelectTemplate(next: EntityTemplate | null) {
+    const sync = syncTemplateFields(fields, templateAddedKeys, next);
+    setFields(sync.fields);
+    setTemplateAddedKeys(sync.addedKeys);
+    setTemplateId(next?.id ?? null);
+  }
 
   const otherEntities = useMemo(
     () => (entities ?? []).filter((e) => e.id !== entityId),
@@ -84,7 +107,7 @@ export function EntityDetailPanel({
   const titleFor = (id: string) => entities?.find((e) => e.id === id)?.title ?? id;
 
   function handleSave() {
-    updateEntity.mutate({ type, title, fields });
+    updateEntity.mutate({ type, title, fields, template_id: templateId });
     setMode("view");
   }
 
@@ -170,26 +193,52 @@ export function EntityDetailPanel({
 
           {mode === "view" ? (
             <>
-              <div className="panel-section">
-                <h3>{t("entityDetail.fields")}</h3>
-                {fields.length === 0 && (
-                  <p className="field-line">{t("entityDetail.noFields")}</p>
-                )}
-                {fields.map((f) => (
-                  <div className="field-line" key={f.key}>
-                    <span className="k">{f.key}</span>
-                    {f.field_type === "rich_text" ? (
-                      <div className="v v-rich-text">
-                        <RichTextView value={f.value as ProseMirrorDoc} />
-                      </div>
-                    ) : (
-                      <span className="v">{renderFieldPreview(f)}</span>
-                    )}
+              {template ? (
+                <div className="panel-section">
+                  <div className="rel-section-head">
+                    <h3>{t("sheet.sheetTitle")}</h3>
+                    <button
+                      type="button"
+                      className="button-sm"
+                      onClick={() => setShowSheet(true)}
+                      title={t("sheet.openSheet")}
+                    >
+                      <Icon name="expand" size={13} />
+                      {t("sheet.openSheet")}
+                    </button>
                   </div>
-                ))}
-              </div>
+                  <SheetRenderer
+                    entity={entity}
+                    layout={template.layout}
+                    fieldDefs={template.field_defs}
+                    mode="compact"
+                  />
+                </div>
+              ) : (
+                <div className="panel-section">
+                  <h3>{t("entityDetail.fields")}</h3>
+                  {fields.length === 0 && (
+                    <p className="field-line">{t("entityDetail.noFields")}</p>
+                  )}
+                  {fields.map((f) => (
+                    <div className="field-line" key={f.key}>
+                      <span className="k">{f.key}</span>
+                      {f.field_type === "rich_text" ? (
+                        <div className="v v-rich-text">
+                          <RichTextView value={f.value as ProseMirrorDoc} />
+                        </div>
+                      ) : (
+                        <span className="v">{renderFieldPreview(f)}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
-              <CharacterSheetEmbed fields={fields} />
+              <ExternalSheetEmbed
+                fields={fields}
+                embed={template?.external_embed ?? LSS_EMBED}
+              />
 
               <div className="panel-section">
                 <div className="rel-section-head">
@@ -333,9 +382,32 @@ export function EntityDetailPanel({
                 <input value={type} onChange={(e) => setType(e.target.value)} />
               </div>
               <div className="panel-section">
-                <h3>{t("entityDetail.fields")}</h3>
-                <FieldEditor fields={fields} entityId={entityId} onChange={setFields} />
+                <TemplateSelect
+                  projectId={projectId}
+                  value={templateId}
+                  onSelect={handleSelectTemplate}
+                />
               </div>
+              {template ? (
+                <div className="panel-section entity-sheet-wrap">
+                  <SheetRenderer
+                    entity={{ ...entity, type, title, fields, template_id: templateId }}
+                    layout={template.layout}
+                    fieldDefs={template.field_defs}
+                    mode="fill"
+                    onFieldChange={(key, value) =>
+                      setFields((prev) =>
+                        prev.map((f) => (f.key === key ? { ...f, value } : f)),
+                      )
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="panel-section">
+                  <h3>{t("entityDetail.fields")}</h3>
+                  <FieldEditor fields={fields} entityId={entityId} onChange={setFields} />
+                </div>
+              )}
               <div className="panel-section">
                 <EdgeList projectId={projectId} entityId={entityId} />
               </div>
@@ -358,12 +430,14 @@ export function EntityDetailPanel({
               {t("common.save")}
             </button>
           )}
-          <Link
-            to={`/projects/${projectId}/entities/${entityId}`}
-            className="link-button"
+          <button
+            type="button"
+            className="button-sm button-ghost"
+            onClick={() => navigate(`/projects/${projectId}/entities/${entityId}`)}
           >
+            <Icon name="external-link" size={13} />
             {t("entityDetail.openFullEditor")}
-          </Link>
+          </button>
           <span className="spacer" />
           <button
             type="button"
@@ -390,6 +464,14 @@ export function EntityDetailPanel({
               });
             }}
             onCancel={() => setConfirmingDelete(false)}
+          />
+        )}
+
+        {showSheet && template && (
+          <SheetModal
+            entity={entity}
+            template={template}
+            onClose={() => setShowSheet(false)}
           />
         )}
       </div>

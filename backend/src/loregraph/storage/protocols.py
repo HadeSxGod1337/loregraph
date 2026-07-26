@@ -20,6 +20,11 @@ from loregraph.schemas.entity import (
     EntityPositionEntry,
     EntityUpdate,
 )
+from loregraph.schemas.entity_template import (
+    EntityTemplateCreate,
+    EntityTemplateOut,
+    EntityTemplateUpdate,
+)
 from loregraph.schemas.import_job import (
     ImportJobOut,
     ImportJobStatus,
@@ -27,6 +32,7 @@ from loregraph.schemas.import_job import (
 )
 from loregraph.schemas.knowledge import KnowledgeSourceOut
 from loregraph.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
+from loregraph.schemas.sheet_preset import SheetPresetCreate, SheetPresetOut
 from loregraph.schemas.usage import UsageEvent, UsageRollupRow
 
 
@@ -69,6 +75,35 @@ class EdgeStore(Protocol):
     async def create(self, data: EdgeCreate, project_id: str) -> EdgeOut: ...
     async def update(self, edge_id: str, data: EdgeUpdate) -> EdgeOut: ...
     async def delete(self, edge_id: str) -> None: ...
+
+
+@runtime_checkable
+class EntityTemplateStore(Protocol):
+    """User-defined templates only. Built-in templates are merged in above the
+    store, at the service layer (see services/entity_template_service.py)."""
+
+    async def list_for_project(self, project_id: str) -> list[EntityTemplateOut]: ...
+    async def get(self, template_id: str) -> EntityTemplateOut: ...
+    async def create(
+        self, project_id: str, data: EntityTemplateCreate
+    ) -> EntityTemplateOut: ...
+    async def update(
+        self, template_id: str, data: EntityTemplateUpdate
+    ) -> EntityTemplateOut: ...
+    async def delete(self, template_id: str) -> None: ...
+
+
+@runtime_checkable
+class SheetPresetStore(Protocol):
+    """User-saved presets only. Built-in presets are merged in above the
+    store, at the service layer (see services/sheet_preset_service.py)."""
+
+    async def list_for_project(self, project_id: str) -> list[SheetPresetOut]: ...
+    async def get(self, preset_id: str) -> SheetPresetOut: ...
+    async def create(
+        self, project_id: str, data: SheetPresetCreate
+    ) -> SheetPresetOut: ...
+    async def delete(self, preset_id: str) -> None: ...
 
 
 @runtime_checkable

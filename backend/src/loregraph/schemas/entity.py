@@ -11,6 +11,7 @@ class FieldType(StrEnum):
     TEXT = "text"
     RICH_TEXT = "rich_text"
     NUMBER = "number"
+    BOOLEAN = "boolean"
     TAG = "tag"
     ATTACHMENT = "attachment"
 
@@ -51,6 +52,10 @@ def _coerce_field_value(field_type: FieldType, value: object) -> object:
         if not isinstance(value, int | float) or isinstance(value, bool):
             raise ValueError("number field requires an int or float value")
         return value
+    if field_type is FieldType.BOOLEAN:
+        if not isinstance(value, bool):
+            raise ValueError("boolean field requires a bool value")
+        return value
     if field_type is FieldType.TAG:
         if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
             raise ValueError("tag field requires a list of strings")
@@ -64,12 +69,14 @@ class EntityCreate(BaseModel):
     type: str
     title: str
     fields: list[EntityFieldIn] = []
+    template_id: str | None = None
 
 
 class EntityUpdate(BaseModel):
     type: str
     title: str
     fields: list[EntityFieldIn] = []
+    template_id: str | None = None
 
 
 class EntityOut(BaseModel):
@@ -78,6 +85,7 @@ class EntityOut(BaseModel):
     type: str
     title: str
     fields: list[EntityFieldOut]
+    template_id: str | None = None
     icon: AttachmentRef | None = None
     pos_x: float | None = None
     pos_y: float | None = None

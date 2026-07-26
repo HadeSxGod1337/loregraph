@@ -17,11 +17,13 @@ from loregraph.api.routers import (
     connections,
     edges,
     entities,
+    entity_templates,
     graph,
     import_jobs,
     knowledge,
     projects,
     realtime,
+    sheet_presets,
     usage,
 )
 from loregraph.config import Settings
@@ -30,6 +32,8 @@ from loregraph.connectors.setup import build_default_registry
 from loregraph.exceptions import (
     AgentSessionNotFoundError,
     AttachmentNotFoundError,
+    BuiltinPresetReadOnlyError,
+    BuiltinTemplateReadOnlyError,
     CampaignError,
     ChatAttachmentLimitExceededError,
     ConfigurationError,
@@ -39,6 +43,7 @@ from loregraph.exceptions import (
     CrossProjectEdgeError,
     EdgeNotFoundError,
     EntityNotFoundError,
+    EntityTemplateNotFoundError,
     ExportConflictError,
     ExternalDataParseError,
     GenerationError,
@@ -49,6 +54,7 @@ from loregraph.exceptions import (
     KnowledgeSourceNotFoundError,
     KnowledgeSourceNotReadyError,
     ProjectNotFoundError,
+    SheetPresetNotFoundError,
     SkillInputInvalidError,
     UnknownConnectorTypeError,
     UnknownSkillError,
@@ -78,9 +84,11 @@ from loregraph.storage.sqlite.db import (
 )
 from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
+from loregraph.storage.sqlite.entity_template_store import SqliteEntityTemplateStore
 from loregraph.storage.sqlite.import_job_store import SqliteImportJobStore
 from loregraph.storage.sqlite.knowledge_source_store import SqliteKnowledgeSourceStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
+from loregraph.storage.sqlite.sheet_preset_store import SqliteSheetPresetStore
 from loregraph.storage.sqlite.usage_store import SqliteUsageStore
 from loregraph.storage.vectorstore.chroma_store import ChromaVectorStore
 
@@ -152,6 +160,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.store_factories = StoreFactories(
             project=SqliteProjectStore,
             entity=SqliteEntityStore,
+            entity_template=SqliteEntityTemplateStore,
+            sheet_preset=SqliteSheetPresetStore,
             edge=SqliteEdgeStore,
             attachment=lambda session: SqliteAttachmentStore(
                 session, settings.attachments_dir
@@ -245,6 +255,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     _API_PREFIX = "/api"
     app.include_router(projects.router, prefix=_API_PREFIX)
     app.include_router(entities.router, prefix=_API_PREFIX)
+    app.include_router(entity_templates.router, prefix=_API_PREFIX)
+    app.include_router(sheet_presets.router, prefix=_API_PREFIX)
     app.include_router(edges.router, prefix=_API_PREFIX)
     app.include_router(graph.router, prefix=_API_PREFIX)
     app.include_router(attachments.router, prefix=_API_PREFIX)
@@ -287,6 +299,8 @@ def _register_exception_handlers(app: FastAPI) -> None:
         ConnectionNotFoundError,
         UnknownSkillError,
         ImportJobNotFoundError,
+        EntityTemplateNotFoundError,
+        SheetPresetNotFoundError,
     )
     for exc_type in _not_found:
         app.add_exception_handler(exc_type, lambda _r, e: _error_response(404, e))
@@ -322,6 +336,12 @@ def _register_exception_handlers(app: FastAPI) -> None:
     )
     app.add_exception_handler(
         KnowledgeSourceNotReadyError, lambda _r, e: _error_response(409, e)
+    )
+    app.add_exception_handler(
+        BuiltinTemplateReadOnlyError, lambda _r, e: _error_response(409, e)
+    )
+    app.add_exception_handler(
+        BuiltinPresetReadOnlyError, lambda _r, e: _error_response(409, e)
     )
     # Fallback for every other CampaignError subclass (including the
     # HITL/session-state guards in api/routers/agent.py) — 400, code still

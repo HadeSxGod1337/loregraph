@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useBlocker, useNavigate, useParams } from "react-router-dom";
+import { useBlocker, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { IntegrationsPanel } from "../components/integrations/IntegrationsPanel";
 import { KnowledgeBasePanel } from "../components/knowledge/KnowledgeBasePanel";
+import { TemplatesPanel } from "../components/sheet/designer/TemplatesPanel";
 import { TokenUsagePanel } from "../components/usage/TokenUsagePanel";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { Icon, type IconName } from "../components/ui/Icon";
@@ -16,14 +17,30 @@ import {
 } from "../hooks/useProjects";
 import { translateApiError } from "../i18n/eventText";
 
-type SettingsSection = "general" | "knowledge" | "integrations" | "usage" | "danger";
+type SettingsSection =
+  | "general"
+  | "templates"
+  | "knowledge"
+  | "integrations"
+  | "usage"
+  | "danger";
 
 const NAV_SECTIONS: { id: SettingsSection; icon: IconName; labelKey: string }[] = [
   { id: "general", icon: "settings", labelKey: "projectSettings.navGeneral" },
+  { id: "templates", icon: "layers", labelKey: "projectSettings.navTemplates" },
   { id: "knowledge", icon: "folder", labelKey: "projectSettings.navKnowledge" },
   { id: "integrations", icon: "plug", labelKey: "projectSettings.navIntegrations" },
   { id: "usage", icon: "bar-chart", labelKey: "projectSettings.navUsage" },
 ];
+
+const SETTINGS_SECTIONS: SettingsSection[] = [
+  ...NAV_SECTIONS.map((s) => s.id),
+  "danger",
+];
+
+function isSettingsSection(value: string | null): value is SettingsSection {
+  return value !== null && (SETTINGS_SECTIONS as string[]).includes(value);
+}
 
 /** Project-level agent setup: DM style/format preferences that get blended
  * into every system prompt (assistant chat + lore generation). The project's
@@ -38,7 +55,12 @@ export function ProjectSettingsPage() {
   const reindexProject = useReindexProject(projectId!);
   const deleteProject = useDeleteProject();
 
-  const [section, setSection] = useState<SettingsSection>("general");
+  const [searchParams] = useSearchParams();
+  const [section, setSection] = useState<SettingsSection>(
+    isSettingsSection(searchParams.get("section"))
+      ? (searchParams.get("section") as SettingsSection)
+      : "general",
+  );
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [agentInstructions, setAgentInstructions] = useState("");
@@ -202,6 +224,8 @@ export function ProjectSettingsPage() {
               </div>
             </section>
           )}
+
+          {section === "templates" && <TemplatesPanel projectId={projectId!} />}
 
           {section === "knowledge" && (
             <section className="settings-card">

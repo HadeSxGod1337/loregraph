@@ -32,6 +32,8 @@ class EntityRow(Base):
     type: Mapped[str] = mapped_column(index=True)
     title: Mapped[str]
     fields: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
+    # Not an FK: built-in template ids are code strings, not rows.
+    template_id: Mapped[str | None] = mapped_column(default=None)
     icon_attachment_id: Mapped[str | None] = mapped_column(
         ForeignKey("attachments.id", ondelete="SET NULL"), default=None
     )
@@ -66,6 +68,48 @@ class EdgeRow(Base):
     type: Mapped[str] = mapped_column(index=True)
     label: Mapped[str | None]
     created_at: Mapped[datetime]
+
+
+class EntityTemplateRow(Base):
+    """A user-defined entity template (field skeleton + sheet layout) scoped to
+    one project. Built-in templates are NOT stored here — they live in code
+    (see templates/builtins.py) and are merged in at the service layer. Layout
+    and field defs are JSON blobs for the same reason EntityRow.fields is: the
+    template shape is data, not a rigid table schema."""
+
+    __tablename__ = "entity_templates"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str]
+    entity_type: Mapped[str] = mapped_column(index=True)
+    icon: Mapped[str | None] = mapped_column(default=None)
+    field_defs: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
+    layout: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    external_embed: Mapped[dict[str, object] | None] = mapped_column(JSON, default=None)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
+
+
+class SheetPresetRow(Base):
+    """A user-saved sheet preset (field defs + one Section) scoped to one
+    project. Built-in presets are NOT stored here — they live in code (see
+    templates/presets.py) and are merged in at the service layer, same split
+    as EntityTemplateRow/builtins.py."""
+
+    __tablename__ = "sheet_presets"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str]
+    field_defs: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
+    section: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
 
 
 class AgentSessionRow(Base):

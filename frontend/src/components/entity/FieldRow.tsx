@@ -6,7 +6,7 @@ import { RichTextField } from "./RichTextField";
 
 // rich_text/attachment values aren't useful as a compact card preview, so
 // the toggle to show a field on the graph card only applies to these.
-const CARD_ELIGIBLE_TYPES = new Set(["text", "number", "tag"]);
+const CARD_ELIGIBLE_TYPES = new Set(["text", "number", "boolean", "tag"]);
 
 interface FieldRowProps {
   field: EntityField;
@@ -77,6 +77,14 @@ function renderValueInput(
           type="number"
           value={field.value as number}
           onChange={(e) => onChange({ ...field, value: Number(e.target.value) })}
+        />
+      );
+    case "boolean":
+      return (
+        <input
+          type="checkbox"
+          checked={field.value as boolean}
+          onChange={(e) => onChange({ ...field, value: e.target.checked })}
         />
       );
     case "tag":

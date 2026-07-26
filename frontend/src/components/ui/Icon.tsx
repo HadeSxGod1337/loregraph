@@ -7,11 +7,13 @@ export type IconName =
   | "bar-chart"
   | "check"
   | "chevron-down"
+  | "chevron-up"
   | "download"
   | "expand"
   | "external-link"
   | "filter"
   | "folder"
+  | "grip"
   | "help"
   | "layers"
   | "more"
@@ -19,7 +21,9 @@ export type IconName =
   | "paperclip"
   | "plug"
   | "plus"
+  | "printer"
   | "refresh"
+  | "save"
   | "search"
   | "settings"
   | "sparkles"
@@ -54,6 +58,7 @@ const PATHS: Record<IconName, ReactNode> = {
   "bar-chart": <path d="M4 20V10M12 20V4M20 20v-7" />,
   check: <path d="M20 6 9 17l-5-5" />,
   "chevron-down": <path d="m6 9 6 6 6-6" />,
+  "chevron-up": <path d="m18 15-6-6-6 6" />,
   download: (
     <>
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -84,6 +89,18 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   folder: <path d="M3 7a2 2 0 0 1 2-2h4.2l1.6 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />,
+  // Classic 2x3 drag-grip dots — reads as "grab me", unlike the horizontal
+  // "more" ellipsis it replaces (which reads as an overflow menu).
+  grip: (
+    <>
+      <circle cx="9" cy="6" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="6" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="18" r="1.4" fill="currentColor" stroke="none" />
+    </>
+  ),
   help: (
     <>
       <circle cx="12" cy="12" r="10" />
@@ -129,12 +146,26 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M5 12h14" />
     </>
   ),
+  printer: (
+    <>
+      <path d="M6 9V2h12v7" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" rx="1" />
+    </>
+  ),
   refresh: (
     <>
       <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
       <path d="M21 3v5h-5" />
       <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
       <path d="M3 21v-5h5" />
+    </>
+  ),
+  save: (
+    <>
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+      <path d="M17 21v-8H7v8" />
+      <path d="M7 3v5h8" />
     </>
   ),
   search: (

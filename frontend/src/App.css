@@ -4934,3 +4934,1403 @@ label.checkbox-wrapper.checkbox-disabled {
 .demo-banner-close:hover {
   color: var(--text);
 }
+
+/* ============================================================
+   Entity templates — sheet layout, modal, print
+   ============================================================ */
+
+.entity-list-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Entity edit page: the fillable sheet replaces the plain field list
+   whenever a template is bound. --- */
+.entity-sheet-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.sheet-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.sheet-toolbar .spacer {
+  flex: 1;
+}
+
+.entity-sheet-wrap .sheet {
+  padding: 16px;
+}
+
+.tpl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* --- Sheet renderer (compact / full / print / fill) --- */
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Header band: portrait + identity + a strip of framed stat pills. */
+.sheet-headerband {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet-hb-portrait .sheet-portrait {
+  width: 72px;
+  height: 72px;
+  margin: 0;
+}
+
+.sheet-hb-identity {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.sheet-hb-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.sheet-hb-type {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sheet-hb-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.sheet-hb-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 62px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+  text-align: center;
+}
+
+.sheet-hb-pill .sheet-label {
+  font-size: 0.6rem;
+}
+
+.sheet-hb-pill .sheet-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+/* Body = the DM's own ordered regions (band | columns | tabs), stacked. */
+.sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* band region — a flat row of framed fields (e.g. "Владения"). */
+.sheet-band-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sheet-region-title {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sheet-band-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+
+.sheet-band-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 100px;
+}
+
+/* columns/tabs region wrapper. */
+.sheet-region-columns,
+.sheet-region-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* auto-fit: as many columns as actually fit, collapsing to one in a drawer
+   or the designer's preview pane. Empty tracks collapse, so a two-container
+   region still fills the full width when there is room for four. */
+.sheet-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.sheet-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.sheet-container-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sheet-tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet-tab {
+  padding: 8px 16px;
+  margin-bottom: -1px;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-control) var(--radius-control) 0 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.86rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sheet-tab:hover {
+  color: var(--text);
+}
+
+.sheet-tab.active {
+  color: var(--accent);
+  border-color: var(--border);
+  border-bottom-color: var(--accent);
+  background: var(--bg-subtle);
+}
+
+/* Section = framed card with an uppercase header. */
+.sheet-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.sheet-grid {
+  min-width: 0;
+}
+
+.sheet-section-title {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sheet-grid {
+  display: grid;
+  gap: 10px 14px;
+}
+
+/* Ability/rating sections pack into a dense auto-fill grid of boxes. */
+.sheet-section-stats .sheet-grid {
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+
+.sheet-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sheet-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* A block can deliberately carry no caption (see WidgetView) — don't leave
+   an empty line box where the label would have been. */
+.sheet-label:empty {
+  display: none;
+}
+
+.sheet-value {
+  font-size: 0.92rem;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.sheet-value-empty {
+  display: block;
+  min-height: 1.1em;
+  border-bottom: 1px dashed var(--border);
+}
+
+.sheet-value-rich {
+  font-size: 0.9rem;
+}
+
+.sheet-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.sheet-chip {
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.78rem;
+}
+
+.sheet-portrait {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-control);
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.sheet-heading {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.sheet-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2px 0;
+  width: 100%;
+}
+
+/* stat_modifier — framed ability box: label, big score, modifier pill.
+   Capped so a lone ability score inside a full-width section reads as a
+   compact box instead of a stretched banner. */
+.sheet-block-stat_modifier {
+  align-items: flex-start;
+}
+
+.sheet-block-stat_modifier .sheet-stat {
+  min-width: 92px;
+  max-width: 132px;
+}
+
+.sheet-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 6px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+}
+
+.sheet-stat-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.sheet-stat-score {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.sheet-stat-mod {
+  min-width: 34px;
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: center;
+}
+
+.sheet-stat-empty .sheet-stat-score,
+.sheet-stat-empty .sheet-stat-mod {
+  color: var(--text-muted);
+}
+
+/* dots */
+.sheet-dots-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sheet-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.sheet-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+}
+
+.sheet-dot.filled {
+  background: var(--text);
+  border-color: var(--text);
+}
+
+/* tracker */
+.sheet-tracker {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sheet-tracker .sheet-value {
+  font-weight: 700;
+}
+
+.sheet-tracker-edit {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.sheet .sheet-tracker-input {
+  width: 64px;
+}
+
+.sheet-tracker-max {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* computed — formula-derived value, never itself an input; only its
+ * `toggleable` dependencies (proficiency-style booleans) are editable. */
+.sheet-computed-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 3px 0;
+}
+
+.sheet-computed-toggle {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.sheet-computed-toggle:disabled {
+  cursor: default;
+}
+
+/* The label takes the slack and ellipsises; the number never wraps under
+   it (that produced the stray "−"/"5" split in narrow panes). */
+.sheet-computed-row .sheet-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-computed-value {
+  flex-shrink: 0;
+  min-width: 2.4em;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A sheet is embedded inside hosts that blanket-style their form controls —
+   `.panel-section input { width: 100% }` (graph drawer) and its twin on the
+   settings page. That stretched every checkbox in a computed row across the
+   whole row, shoving the label and the value out of the card and forcing a
+   horizontal scrollbar. Sheet inputs size themselves, so opt out here and
+   restore the few that genuinely want the full width below. */
+.sheet input,
+.sheet-print-root input {
+  width: auto;
+  margin-bottom: 0;
+}
+
+.sheet input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+}
+
+/* fill mode — plain/tag_chips/image-url editable inputs share one style. */
+.sheet .sheet-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.sheet-inline-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.sheet-inline-checkbox input {
+  accent-color: var(--accent);
+}
+
+.sheet .sheet-stat-score-input {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.sheet-dots .sheet-dot[role="button"] {
+  cursor: pointer;
+}
+
+.sheet-image-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* compact (drawer) tightening */
+.sheet-compact .sheet-headerband {
+  gap: 10px;
+}
+
+.sheet-compact .sheet-hb-portrait .sheet-portrait {
+  width: 52px;
+  height: 52px;
+}
+
+.sheet-compact .sheet-hb-name {
+  font-size: 1rem;
+}
+
+.sheet-compact .sheet-section {
+  padding: 10px 12px;
+}
+
+/* --- Full-sheet modal --- */
+.sheet-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.sheet-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1000px, 100%);
+  max-height: 90vh;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.sheet-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sheet-modal-title h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sheet-modal-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sheet-modal-body {
+  padding: 18px;
+  overflow-y: auto;
+}
+
+/* --- Template picker --- */
+.template-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 4px 0 10px;
+}
+
+.template-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+  cursor: pointer;
+  text-align: left;
+}
+
+.template-picker-item:hover {
+  border-color: var(--border-strong);
+}
+
+.template-picker-item.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.template-picker-name {
+  flex: 1;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.template-picker-builtin {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* --- Print surface --- */
+.sheet-print-root {
+  display: none;
+}
+
+.sheet-print-title {
+  font-size: 1.5rem;
+  margin: 0 0 12px;
+}
+
+@media print {
+  /* Hide the app outright rather than making it invisible: visibility:hidden
+     keeps every element's box, so the sheet was pushed past page one by
+     empty space. The print root is portalled next to #root, in normal
+     static flow, so the browser can paginate it across as many pages as it
+     needs. */
+  body > #root {
+    display: none !important;
+  }
+  .sheet-print-root {
+    display: block !important;
+    width: 100%;
+    padding: 0;
+    color: #000;
+    background: #fff;
+  }
+  /* Neutralize the app's dark theme for paper: light surfaces, dark ink. */
+  .sheet-print-root .sheet-section,
+  .sheet-print-root .sheet-stat,
+  .sheet-print-root .sheet-hb-pill {
+    background: #fff !important;
+    border-color: #999 !important;
+  }
+  .sheet-print-root .sheet-label,
+  .sheet-print-root .sheet-section-title,
+  .sheet-print-root .sheet-hb-type,
+  .sheet-print-root .sheet-stat-label {
+    color: #444 !important;
+  }
+  .sheet-print-root .sheet-value,
+  .sheet-print-root .sheet-stat-score,
+  .sheet-print-root .sheet-stat-mod,
+  .sheet-print-root .sheet-hb-name,
+  .sheet-print-root .sheet-computed-value {
+    color: #000 !important;
+  }
+  .sheet-print-root .sheet-chip {
+    background: #eee !important;
+    color: #000 !important;
+  }
+  .sheet-print-root .sheet-section,
+  .sheet-print-root .sheet-block,
+  .sheet-print-root .sheet-column {
+    break-inside: avoid;
+  }
+  @page {
+    margin: 12mm;
+  }
+}
+
+/* ============================================================
+   Template designer & templates panel (Project Settings)
+   ============================================================ */
+
+.templates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+
+.templates-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+}
+
+.templates-row-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.templates-builtin {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Designer modal — three panes: palette | canvas | inspector-or-preview.
+   Blocks on the canvas are compact chips; every property of the selected
+   block/region/field is edited in the inspector, so the canvas stays
+   readable at a glance instead of being a wall of inline inputs. */
+.designer {
+  display: flex;
+  flex-direction: column;
+  width: min(1480px, 100%);
+  height: 92vh;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.designer-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.designer-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+
+.designer-head-meta {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.designer-head-name,
+.designer-head-type {
+  min-width: 0;
+  flex: 1;
+  max-width: 260px;
+}
+
+.designer-body-3col {
+  display: grid;
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(280px, 340px);
+  flex: 1;
+  min-height: 0;
+}
+
+/* --- shared segmented control (palette tabs, region-kind switch) --- */
+.designer-seg,
+.designer-palette-tabs {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+}
+
+.designer-palette-tabs {
+  display: flex;
+}
+
+.seg-btn {
+  flex: 1;
+  padding: 5px 10px;
+  border: none;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.seg-btn:hover {
+  color: var(--text);
+}
+
+.seg-btn.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* --- drag handles --- */
+.designer-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+  border-radius: 4px;
+}
+
+.designer-grip:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.designer-grip:active {
+  cursor: grabbing;
+}
+
+.designer-drag-overlay {
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+
+/* --- left: palette --- */
+.designer-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.designer-palette-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.designer-palette-head h3 {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.designer-palette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.designer-palette-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.designer-palette-chip:hover {
+  border-color: var(--border-strong);
+}
+
+.designer-palette-chip.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.designer-palette-chip.dragging {
+  opacity: 0.4;
+}
+
+.designer-palette-chip-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 550;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.designer-palette-chip-type {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 1px 5px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+}
+
+/* --- centre: canvas --- */
+.designer-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.designer-region {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.designer-region.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.designer-region.dragging {
+  opacity: 0.55;
+}
+
+.designer-region-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  cursor: pointer;
+}
+
+.designer-region-name {
+  flex: 1;
+  min-width: 80px;
+  font-weight: 650;
+}
+
+.designer-region-body {
+  padding: 10px;
+}
+
+/* containers: side by side in a columns region, stacked in a tabs region */
+.designer-containers {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.designer-containers.columns {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.designer-containers.columns > .designer-container {
+  flex: 1 1 220px;
+  min-width: 200px;
+}
+
+.designer-containers.tabs {
+  flex-direction: column;
+}
+
+.designer-containers.tabs > .designer-container {
+  width: 100%;
+}
+
+.designer-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+}
+
+.designer-container.dragging {
+  opacity: 0.55;
+}
+
+.designer-container-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.designer-container-head input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+
+.designer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.designer-section-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.designer-section-head > input {
+  flex: 1;
+  min-width: 90px;
+  font-size: 0.78rem;
+}
+
+.designer-mini-num {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.designer-mini-num input {
+  width: 44px;
+}
+
+/* block drop zone + chips */
+.designer-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 34px;
+  padding: 4px;
+  border: 1px dashed transparent;
+  border-radius: var(--radius-control);
+}
+
+.designer-blocks.empty {
+  align-items: center;
+  justify-content: center;
+  border-color: var(--border);
+}
+
+.designer-blocks.over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.designer-drop-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.designer-block {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+  cursor: pointer;
+}
+
+.designer-block:hover {
+  border-color: var(--border-strong);
+}
+
+.designer-block.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.designer-block.dragging {
+  opacity: 0.45;
+}
+
+.designer-block.computed .designer-block-widget {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.designer-block-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.79rem;
+  font-weight: 550;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.designer-block-widget {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
+
+/* add buttons */
+.designer-add-section,
+.designer-add-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.designer-add-container {
+  flex-shrink: 0;
+  align-self: stretch;
+  min-width: 110px;
+}
+
+.designer-add-section:hover,
+.designer-add-container:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.designer-add-region {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-card);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.designer-add-region-choices {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* --- right: inspector / preview --- */
+.designer-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.designer-inspector-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.designer-inspector-tag {
+  align-self: flex-start;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.designer-inspector-tag.region,
+.designer-inspector-tag.field {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.designer-inspector-empty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.designer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.designer-field > input,
+.designer-field > select,
+.designer-field > textarea {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+/* computed-widget formula editing */
+.designer-formula-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.designer-formula {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  resize: vertical;
+}
+
+.designer-formula-error {
+  font-size: 0.74rem;
+  color: var(--danger);
+}
+
+.designer-formula-deps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.designer-dep-chip {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+}
+
+.designer-dep-chip.ok {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+  background: var(--accent-soft);
+}
+
+.designer-dep-chip.bad {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.designer-toggleable {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.designer-toggleable-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+/* presets palette */
+.designer-preset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.designer-preset-card-name {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.designer-preset-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.designer-preset-card-actions select {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .designer-body-3col {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .designer-palette {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .designer-inspector {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+.template-select {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.template-select label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 180px;
+}
+
+.template-select-manage {
+  font-size: 0.8rem;
+  color: var(--accent);
+  white-space: nowrap;
+}

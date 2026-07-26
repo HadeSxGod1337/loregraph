@@ -6,6 +6,7 @@ const DEFAULT_VALUES: Record<FieldType, FieldValue> = {
   text: "",
   rich_text: { type: "doc", content: [{ type: "paragraph" }] },
   number: 0,
+  boolean: false,
   tag: [],
   attachment: { attachment_id: "", url: "" },
 };

@@ -6,6 +6,7 @@ const ADDABLE_TYPES: { value: FieldType; labelKey: string }[] = [
   { value: "text", labelKey: "fields.typeText" },
   { value: "rich_text", labelKey: "fields.typeRichText" },
   { value: "number", labelKey: "fields.typeNumber" },
+  { value: "boolean", labelKey: "fields.typeBoolean" },
   { value: "tag", labelKey: "fields.typeTags" },
 ];
 

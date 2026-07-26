@@ -43,6 +43,7 @@ class SqliteEntityStore:
             type=data.type,
             title=data.title,
             fields=[f.model_dump(mode="json") for f in data.fields],
+            template_id=data.template_id,
             created_at=now,
             updated_at=now,
         )
@@ -73,6 +74,7 @@ class SqliteEntityStore:
         row.type = data.type
         row.title = data.title
         row.fields = [f.model_dump(mode="json") for f in data.fields]
+        row.template_id = data.template_id
         row.updated_at = datetime.now(UTC)
         await self._session.commit()
         return _row_to_out(row)
@@ -131,6 +133,7 @@ def _row_to_out(row: EntityRow) -> EntityOut:
         type=row.type,
         title=row.title,
         fields=[EntityFieldOut.model_validate(f) for f in row.fields],
+        template_id=row.template_id,
         icon=icon,
         pos_x=row.pos_x,
         pos_y=row.pos_y,

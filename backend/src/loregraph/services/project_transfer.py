@@ -68,6 +68,7 @@ async def export_project(
                 type=entity.type,
                 title=entity.title,
                 fields=entity.fields,
+                template_id=entity.template_id,
                 icon_attachment_id=entity.icon.attachment_id if entity.icon else None,
                 pos_x=entity.pos_x,
                 pos_y=entity.pos_y,
@@ -121,6 +122,7 @@ async def import_project(
                 fields=[
                     EntityFieldIn(**f.model_dump(mode="json")) for f in entity.fields
                 ],
+                template_id=entity.template_id,
             ),
             project.id,
         )
@@ -183,6 +185,9 @@ async def import_project(
                 type=entity.type,
                 title=entity.title,
                 fields=_rewrite_fields(entity.fields, url_rewrites, entity_id_map),
+                # EntityUpdate replaces the whole row: omitting template_id
+                # here would silently clear the binding set at create time.
+                template_id=entity.template_id,
             ),
         )
         if entity.icon_attachment_id is not None:

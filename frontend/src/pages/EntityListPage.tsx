@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { API_URL } from "../api/client";
 import type { Entity } from "../api/types";
+import { TemplatePickerDialog } from "../components/sheet/TemplatePickerDialog";
 import { Icon } from "../components/ui/Icon";
 import { SkeletonList } from "../components/ui/Skeleton";
 import { useEntities } from "../hooks/useEntities";
@@ -12,9 +13,11 @@ import { typeColor, typeSoftBackground } from "../lib/typeColor";
 
 export function EntityListPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [picking, setPicking] = useState(false);
   const { data: entities, isLoading, error } = useEntities(projectId!);
 
   // Types come from the data itself — the user picks from chips instead of
@@ -42,10 +45,20 @@ export function EntityListPage() {
     <div className="entity-list-page">
       <div className="entity-list-header">
         <h1>{t("entities.title")}</h1>
-        <Link to={`/projects/${projectId}/entities/new`} className="button-primary">
-          <Icon name="plus" />
-          {t("entities.newEntity")}
-        </Link>
+        <div className="entity-list-header-actions">
+          <button
+            type="button"
+            className="button-ghost"
+            onClick={() => setPicking(true)}
+          >
+            <Icon name="layers" />
+            {t("sheet.newFromTemplate")}
+          </button>
+          <Link to={`/projects/${projectId}/entities/new`} className="button-primary">
+            <Icon name="plus" />
+            {t("entities.newEntity")}
+          </Link>
+        </div>
       </div>
 
       {hasEntities && (
@@ -112,6 +125,16 @@ export function EntityListPage() {
         </div>
       )}
       {hasEntities && visible.length === 0 && <p>{t("entities.noMatches")}</p>}
+
+      {picking && (
+        <TemplatePickerDialog
+          projectId={projectId!}
+          onClose={() => setPicking(false)}
+          onCreated={(entityId) =>
+            navigate(`/projects/${projectId}/entities/${entityId}`)
+          }
+        />
+      )}
     </div>
   );
 }

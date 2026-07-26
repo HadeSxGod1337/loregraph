@@ -35,8 +35,10 @@ from loregraph.schemas.connection import ConnectionOut
 from loregraph.services.connector_push import ConnectorPushService
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
+from loregraph.services.entity_template_service import EntityTemplateService
 from loregraph.services.event_bus import EventBus
 from loregraph.services.knowledge_index import KnowledgeIndex
+from loregraph.services.sheet_preset_service import SheetPresetService
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.composition import StoreFactories
 from loregraph.storage.protocols import (
@@ -46,9 +48,11 @@ from loregraph.storage.protocols import (
     ConnectionStore,
     EdgeStore,
     EntityStore,
+    EntityTemplateStore,
     ImportJobStore,
     KnowledgeSourceStore,
     ProjectStore,
+    SheetPresetStore,
     UsageStore,
 )
 
@@ -91,6 +95,18 @@ async def get_edge_store(request: Request, session: SessionDep) -> EdgeStore:
     return _factories(request).edge(session)
 
 
+async def get_entity_template_store(
+    request: Request, session: SessionDep
+) -> EntityTemplateStore:
+    return _factories(request).entity_template(session)
+
+
+async def get_sheet_preset_store(
+    request: Request, session: SessionDep
+) -> SheetPresetStore:
+    return _factories(request).sheet_preset(session)
+
+
 async def get_attachment_store(
     request: Request, session: SessionDep
 ) -> AttachmentStore:
@@ -109,6 +125,10 @@ async def get_usage_store(request: Request, session: SessionDep) -> UsageStore:
 
 ProjectStoreDep = Annotated[ProjectStore, Depends(get_project_store)]
 EntityStoreDep = Annotated[EntityStore, Depends(get_entity_store)]
+EntityTemplateStoreDep = Annotated[
+    EntityTemplateStore, Depends(get_entity_template_store)
+]
+SheetPresetStoreDep = Annotated[SheetPresetStore, Depends(get_sheet_preset_store)]
 EdgeStoreDep = Annotated[EdgeStore, Depends(get_edge_store)]
 AttachmentStoreDep = Annotated[AttachmentStore, Depends(get_attachment_store)]
 KnowledgeSourceStoreDep = Annotated[
@@ -156,8 +176,24 @@ async def get_edge_service(
     return EdgeService(edge_store, entity_store)
 
 
+async def get_entity_template_service(
+    store: EntityTemplateStoreDep,
+) -> EntityTemplateService:
+    return EntityTemplateService(store)
+
+
+async def get_sheet_preset_service(
+    store: SheetPresetStoreDep,
+) -> SheetPresetService:
+    return SheetPresetService(store)
+
+
 EntityServiceDep = Annotated[EntityService, Depends(get_entity_service)]
 EdgeServiceDep = Annotated[EdgeService, Depends(get_edge_service)]
+EntityTemplateServiceDep = Annotated[
+    EntityTemplateService, Depends(get_entity_template_service)
+]
+SheetPresetServiceDep = Annotated[SheetPresetService, Depends(get_sheet_preset_service)]
 
 
 async def get_agent_session_store(

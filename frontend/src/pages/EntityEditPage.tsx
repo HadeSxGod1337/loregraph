@@ -2,18 +2,23 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useBlocker, useNavigate, useParams } from "react-router-dom";
 
-import type { EntityField } from "../api/types";
+import type { EntityField, EntityTemplate, FieldValue } from "../api/types";
 import { DEFAULT_ENTITY_TYPES } from "../api/types";
 import { AttachmentUploader } from "../components/entity/AttachmentUploader";
 import { CharacterSheetEmbed } from "../components/entity/CharacterSheetEmbed";
 import { FieldEditor } from "../components/entity/FieldEditor";
+import { SheetRenderer } from "../components/sheet/SheetRenderer";
+import { TemplateSelect } from "../components/sheet/TemplateSelect";
+import { syncTemplateFields } from "../components/sheet/applyTemplate";
 import { IconPicker } from "../components/entity/IconPicker";
 import { EdgeForm } from "../components/edges/EdgeForm";
 import { EdgeList } from "../components/edges/EdgeList";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { Icon } from "../components/ui/Icon";
 import { useToast } from "../components/ui/Toast";
 import { useCreateEntity } from "../hooks/useEntities";
 import { useDeleteEntity, useEntity, useUpdateEntity } from "../hooks/useEntity";
+import { useTemplateById } from "../hooks/useTemplates";
 
 export function EntityEditPage() {
   const { t } = useTranslation();
@@ -30,6 +35,10 @@ export function EntityEditPage() {
   const [type, setType] = useState("npc");
   const [title, setTitle] = useState("");
   const [fields, setFields] = useState<EntityField[]>([]);
+  const [templateId, setTemplateId] = useState<string | null>(null);
+  // Keys the current template selection provisionally added — dropped if the
+  // template is deselected before saving (see syncTemplateFields).
+  const [templateAddedKeys, setTemplateAddedKeys] = useState<string[]>([]);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
@@ -37,8 +46,23 @@ export function EntityEditPage() {
       setType(entity.type);
       setTitle(entity.title);
       setFields(entity.fields);
+      setTemplateId(entity.template_id);
+      setTemplateAddedKeys([]);
     }
   }, [entity]);
+
+  const resolvedTemplate = useTemplateById(projectId!, templateId);
+
+  function handleSelectTemplate(template: EntityTemplate | null) {
+    const sync = syncTemplateFields(fields, templateAddedKeys, template);
+    setFields(sync.fields);
+    setTemplateAddedKeys(sync.addedKeys);
+    setTemplateId(template?.id ?? null);
+  }
+
+  function handleFieldChange(key: string, value: FieldValue) {
+    setFields((prev) => prev.map((f) => (f.key === key ? { ...f, value } : f)));
+  }
 
   // Dirty tracking: compare against the last-loaded server state (or the
   // blank slate for a new entity) so "Save" only lights up with real changes.
@@ -46,12 +70,19 @@ export function EntityEditPage() {
     () =>
       JSON.stringify(
         entity
-          ? { type: entity.type, title: entity.title, fields: entity.fields }
-          : { type: "npc", title: "", fields: [] },
+          ? {
+              type: entity.type,
+              title: entity.title,
+              fields: entity.fields,
+              template_id: entity.template_id,
+            }
+          : { type: "npc", title: "", fields: [], template_id: null },
       ),
     [entity],
   );
-  const isDirty = JSON.stringify({ type, title, fields }) !== savedSnapshot;
+  const isDirty =
+    JSON.stringify({ type, title, fields, template_id: templateId }) !==
+    savedSnapshot;
 
   // Warn on closing the tab with unsaved edits.
   useEffect(() => {
@@ -74,7 +105,7 @@ export function EntityEditPage() {
   );
 
   function handleSave() {
-    const data = { type, title, fields };
+    const data = { type, title, fields, template_id: templateId };
     if (isNew) {
       createEntity.mutate(data, {
         onSuccess: (created) => {
@@ -137,7 +168,45 @@ export function EntityEditPage() {
       <label>{t("entityEdit.iconLabel")}</label>
       <IconPicker projectId={projectId!} entityId={id} icon={entity?.icon ?? null} />
 
-      <FieldEditor fields={fields} entityId={id} onChange={setFields} />
+      <TemplateSelect
+        projectId={projectId!}
+        value={templateId}
+        onSelect={handleSelectTemplate}
+      />
+
+      {!isNew && entity && resolvedTemplate ? (
+        <div className="entity-sheet-wrap">
+          <div className="sheet-toolbar">
+            <span className="tpl-chip">
+              <Icon name="target" size={13} />
+              {t("entityEdit.templateChip", { name: resolvedTemplate.name })}
+            </span>
+            <span className="field-hint">{t("entityEdit.templateReadOnlyHint")}</span>
+            <span className="spacer" />
+            <button
+              type="button"
+              className="button-sm button-ghost"
+              onClick={() =>
+                navigate(
+                  `/projects/${projectId}/settings?section=templates&template=${resolvedTemplate.id}`,
+                )
+              }
+            >
+              <Icon name="settings" size={13} />
+              {t("entityEdit.editTemplate")}
+            </button>
+          </div>
+          <SheetRenderer
+            entity={{ ...entity, type, title, fields, template_id: templateId }}
+            layout={resolvedTemplate.layout}
+            fieldDefs={resolvedTemplate.field_defs}
+            mode="fill"
+            onFieldChange={handleFieldChange}
+          />
+        </div>
+      ) : (
+        <FieldEditor fields={fields} entityId={id} onChange={setFields} />
+      )}
 
       {!isNew && <CharacterSheetEmbed fields={fields} />}
 

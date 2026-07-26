@@ -19,6 +19,10 @@ class ProjectExportEntity(BaseModel):
     type: str
     title: str
     fields: list[EntityFieldOut]
+    # Optional so export files written before sheet templates existed still
+    # import cleanly; a built-in template id survives the round trip because
+    # built-ins are code, not per-project rows.
+    template_id: str | None = None
     icon_attachment_id: str | None = None
     pos_x: float | None = None
     pos_y: float | None = None

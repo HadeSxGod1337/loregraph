@@ -1,4 +1,10 @@
-export type FieldType = "text" | "rich_text" | "number" | "tag" | "attachment";
+export type FieldType =
+  | "text"
+  | "rich_text"
+  | "number"
+  | "boolean"
+  | "tag"
+  | "attachment";
 
 export const DEFAULT_ENTITY_TYPES = [
   "npc",
@@ -19,7 +25,13 @@ export interface ProseMirrorDoc {
   [key: string]: unknown;
 }
 
-export type FieldValue = string | number | string[] | AttachmentRef | ProseMirrorDoc;
+export type FieldValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | AttachmentRef
+  | ProseMirrorDoc;
 
 export interface EntityField {
   key: string;
@@ -34,6 +46,7 @@ export interface Entity {
   type: string;
   title: string;
   fields: EntityField[];
+  template_id: string | null;
   icon: AttachmentRef | null;
   /** NULL = auto-layout should place this node; set = the user dragged it. */
   pos_x: number | null;
@@ -46,6 +59,7 @@ export interface EntityCreate {
   type: string;
   title: string;
   fields: EntityField[];
+  template_id?: string | null;
 }
 
 export type EntityUpdate = EntityCreate;
@@ -128,6 +142,111 @@ export interface ProjectExport {
     data_base64: string;
   }[];
 }
+
+// --- Entity templates (mirror backend schemas/entity_template.py) ---
+
+export type WidgetType =
+  | "plain"
+  | "rich_text"
+  | "tag_chips"
+  | "image"
+  | "heading"
+  | "divider"
+  | "stat_modifier"
+  | "dots"
+  | "tracker"
+  | "computed";
+
+export interface TemplateFieldDef {
+  key: string;
+  field_type: FieldType;
+  default_value?: FieldValue | null;
+  label?: string | null;
+  show_on_card: boolean;
+}
+
+export interface SheetBlock {
+  /** Stable handle for drag-and-drop in the designer (client-generated). */
+  id?: string | null;
+  widget: WidgetType;
+  field_key?: string | null;
+  /** widget === "computed" only — see components/sheet/widgets/formula.ts. */
+  formula?: string | null;
+  label?: string | null;
+  colspan: number;
+  config: Record<string, unknown>;
+}
+
+export interface SheetSection {
+  id?: string | null;
+  title?: string | null;
+  columns: number;
+  blocks: SheetBlock[];
+}
+
+export type RegionKind = "band" | "columns" | "tabs";
+
+/** A column (kind="columns") or a tab (kind="tabs") — both just hold
+ * stacked sections; which one it renders as is the parent Region's kind. */
+export interface SheetContainer {
+  id?: string | null;
+  title?: string | null;
+  sections: SheetSection[];
+}
+
+export interface SheetRegion {
+  id?: string | null;
+  name: string;
+  kind: RegionKind;
+  /** Populated only when kind === "band". */
+  blocks: SheetBlock[];
+  /** Populated only when kind !== "band". */
+  containers: SheetContainer[];
+}
+
+export interface SheetLayout {
+  regions: SheetRegion[];
+}
+
+export interface ExternalEmbedDef {
+  provider: string;
+  url_field: string;
+}
+
+export interface EntityTemplate {
+  id: string;
+  project_id: string | null;
+  is_builtin: boolean;
+  name: string;
+  entity_type: string;
+  icon: string | null;
+  field_defs: TemplateFieldDef[];
+  layout: SheetLayout;
+  external_embed: ExternalEmbedDef | null;
+}
+
+export type EntityTemplateCreate = Omit<
+  EntityTemplate,
+  "id" | "project_id" | "is_builtin"
+>;
+
+export type EntityTemplateUpdate = EntityTemplateCreate;
+
+// --- Sheet presets (mirror backend schemas/sheet_preset.py) ---
+
+export interface SheetPreset {
+  id: string;
+  project_id: string | null;
+  is_builtin: boolean;
+  name: string;
+  field_defs: TemplateFieldDef[];
+  section: SheetSection;
+}
+
+export type SheetPresetCreate = Omit<
+  SheetPreset,
+  "id" | "project_id" | "is_builtin"
+>;
 
 export interface Attachment {
   id: string;

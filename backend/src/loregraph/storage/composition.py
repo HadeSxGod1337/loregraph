@@ -10,9 +10,11 @@ from loregraph.storage.protocols import (
     ConnectionStore,
     EdgeStore,
     EntityStore,
+    EntityTemplateStore,
     ImportJobStore,
     KnowledgeSourceStore,
     ProjectStore,
+    SheetPresetStore,
     UsageStore,
 )
 
@@ -25,6 +27,8 @@ class StoreFactories:
 
     project: Callable[[AsyncSession], ProjectStore]
     entity: Callable[[AsyncSession], EntityStore]
+    entity_template: Callable[[AsyncSession], EntityTemplateStore]
+    sheet_preset: Callable[[AsyncSession], SheetPresetStore]
     edge: Callable[[AsyncSession], EdgeStore]
     attachment: Callable[[AsyncSession], AttachmentStore]
     agent_session: Callable[[AsyncSession], AgentSessionStore]

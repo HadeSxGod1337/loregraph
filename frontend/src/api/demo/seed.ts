@@ -82,6 +82,7 @@ function ent(
     type,
     title,
     fields,
+    template_id: null,
     icon: null,
     pos_x: pos[0],
     pos_y: pos[1],
