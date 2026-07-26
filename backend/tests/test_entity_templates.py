@@ -1,3 +1,7 @@
+import json
+from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
 
 from loregraph.connectors.longstoryshort import parser
@@ -44,6 +48,22 @@ def test_character_template_covers_lss_importer_keys() -> None:
     )
     keys = {f.key for f in _character().field_defs}  # type: ignore[attr-defined]
     assert expected <= keys
+
+
+@pytest.mark.parametrize(
+    "export_path",
+    sorted((Path(__file__).parent.parent / "lss_format_json_example").glob("*.json")),
+    ids=lambda path: path.stem,
+)
+def test_character_template_covers_a_real_lss_export(export_path: Path) -> None:
+    """The static check above only sees the key tables; proficiency flags,
+    coins, subInfo and the spell list are derived at parse time. Every export
+    in lss_format_json_example/ is a case — drop a character in there and it
+    is checked, which is how the missing spell blocks were caught."""
+    export = json.loads(export_path.read_text(encoding="utf-8"))
+    _, fields = parser.parse_character(export, None)
+    keys = {f.key for f in _character().field_defs}  # type: ignore[attr-defined]
+    assert {f.key for f in fields} <= keys
 
 
 def test_builtins_all_validate() -> None:

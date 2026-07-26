@@ -192,6 +192,37 @@ def test_import_native_export_through_api(client: TestClient, project_id: str) -
     assert refreshed["template_id"] == "builtin_character"
 
 
+def test_parse_spellcaster_export() -> None:
+    """A caster's export: the spell list lives in `text.spells-level-N`
+    blocks (not in `spells`, which only counts slots) — the shape the
+    non-caster fixture above cannot exercise."""
+    export = json.loads(
+        (NATIVE_EXPORT_PATH.parent / "ВиВальди — Long Story Short.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    _, fields = parse_character(export, None)
+    by_key = {f.key: f for f in fields}
+
+    spells = json.dumps(by_key["spells"].value, ensure_ascii=False)
+    assert "Заговоры" in spells and "1 круг" in spells
+    assert "Мистический снаряд" in spells
+    # Empty levels contribute no heading of their own.
+    assert "5 круг" not in spells
+
+    # Slots are a separate field, and empty rows of them are not information.
+    slots = json.dumps(by_key["spell_slots"].value, ensure_ascii=False)
+    assert "Ячейки договора 2 круга — 2/2" in slots
+    assert "0/0" not in slots
+
+    assert by_key["caster_class"].value == "Колдун"
+    # LSS computes these itself and leaves `value` empty — the number is in
+    # customModifier, and the ability arrives as a code, not a name.
+    assert by_key["spell_ability"].value == "Харизма"
+    assert by_key["spell_save_dc"].value == "14"
+    assert by_key["spell_attack"].value == "6"
+
+
 def test_share_url_regex_extracts_24_hex_id() -> None:
     match = SHARE_URL_RE.search(SHARE_URL)
     assert match is not None and match.group("char_id") == CHAR_ID

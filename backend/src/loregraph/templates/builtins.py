@@ -67,8 +67,12 @@ def _tracker(field_key: str, label: str, *, max_field: str | None = None) -> Blo
     )
 
 
-def _rich_block(field_key: str) -> Block:
-    return Block(widget=WidgetType.RICH_TEXT, field_key=field_key)
+def _rich_block(field_key: str, *, label: str | None = None, colspan: int = 1) -> Block:
+    # label="" suppresses the caption entirely — for a section whose title
+    # already names the field ("Снаряжение" over the equipment block).
+    return Block(
+        widget=WidgetType.RICH_TEXT, field_key=field_key, label=label, colspan=colspan
+    )
 
 
 def _tag_block(field_key: str) -> Block:
@@ -288,7 +292,20 @@ def _combat_region() -> Region:
                         title="Атаки",
                         blocks=[_rich_block("weapons"), _rich_block("attacks")],
                     ),
-                    Section(title="Заклинания", blocks=[_rich_block("spells")]),
+                    Section(
+                        title="Заклинания",
+                        columns=2,
+                        blocks=[
+                            _plain("caster_class"),
+                            _plain("spell_ability"),
+                            _plain("spell_save_dc"),
+                            _plain("spell_attack"),
+                            # Span the section: slots and the list itself go
+                            # under the casting stats, as on a printed sheet.
+                            _rich_block("spell_slots", label="", colspan=2),
+                            _rich_block("spells", label="", colspan=2),
+                        ],
+                    ),
                     Section(
                         title="Хиты и кости",
                         columns=2,
@@ -303,13 +320,21 @@ def _combat_region() -> Region:
             ),
             Container(
                 sections=[
-                    Section(title="Снаряжение", blocks=[_rich_block("equipment")]),
+                    Section(
+                        title="Снаряжение", blocks=[_rich_block("equipment", label="")]
+                    ),
                     Section(
                         title="Монеты",
                         columns=5,
                         blocks=[_plain(f"coins_{key}") for key, _ in _COINS],
                     ),
-                    Section(title="Сокровища", blocks=[_rich_block("treasures")]),
+                    Section(
+                        title="Настроенные предметы",
+                        blocks=[_rich_block("attunements", label="")],
+                    ),
+                    Section(
+                        title="Сокровища", blocks=[_rich_block("treasures", label="")]
+                    ),
                 ]
             ),
         ],
@@ -325,20 +350,22 @@ def _features_region() -> Region:
                 sections=[
                     Section(
                         title="Умения и способности",
-                        blocks=[_rich_block("features")],
+                        blocks=[_rich_block("features", label="")],
                     ),
-                    Section(title="Ресурсы", blocks=[_rich_block("resources")]),
+                    Section(
+                        title="Ресурсы", blocks=[_rich_block("resources", label="")]
+                    ),
                 ]
             ),
             Container(
                 sections=[
                     Section(
                         title="Дополнительные способности",
-                        blocks=[_rich_block("extra_features")],
+                        blocks=[_rich_block("extra_features", label="")],
                     ),
                     Section(
                         title="Прочие владения и языки",
-                        blocks=[_rich_block("other_proficiencies")],
+                        blocks=[_rich_block("other_proficiencies", label="")],
                     ),
                 ]
             ),
@@ -377,6 +404,12 @@ def _character() -> EntityTemplateOut:
             _rich("weapons", "Оружие"),
             _rich("attacks", "Атаки и заклинания"),
             _rich("spells", "Заклинания"),
+            _rich("spell_slots", "Ячейки заклинаний"),
+            _rich("attunements", "Настроенные предметы"),
+            _text("caster_class", "Класс заклинателя"),
+            _text("spell_ability", "Базовая характеристика"),
+            _text("spell_save_dc", "Сложность спасброска"),
+            _text("spell_attack", "Бонус атаки"),
             _rich("equipment", "Снаряжение"),
             _rich("treasures", "Сокровища"),
             _rich("features", "Умения и способности"),
@@ -466,7 +499,7 @@ def _character() -> EntityTemplateOut:
                         ),
                         Container(
                             title="Заметки",
-                            sections=[Section(blocks=[_rich_block("notes")])],
+                            sections=[Section(blocks=[_rich_block("notes", label="")])],
                         ),
                     ],
                 ),

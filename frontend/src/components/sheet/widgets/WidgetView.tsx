@@ -91,7 +91,11 @@ export function WidgetView({
         <>
           <span className="sheet-label">{label}</span>
           <div className="sheet-value sheet-value-rich">
-            <RichTextView value={field.value as ProseMirrorDoc} />
+            {/* Keyed by the field it shows: an editor is stateful, and if
+                React ever reuses one instance for a different field (same
+                position in a re-rendered tab), the key is what forces a fresh
+                one instead of leaving the old document on screen. */}
+            <RichTextView key={field.key} value={field.value as ProseMirrorDoc} />
           </div>
         </>
       );
@@ -250,6 +254,7 @@ function EditableWidget({
         <>
           <span className="sheet-label">{label}</span>
           <RichTextField
+            key={field.key}
             value={field.value as ProseMirrorDoc}
             entityId={entityId}
             onChange={(doc) => onFieldChange(field.key, doc)}

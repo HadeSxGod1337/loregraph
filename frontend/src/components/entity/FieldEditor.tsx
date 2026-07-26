@@ -37,7 +37,10 @@ export function FieldEditor({ fields, entityId, onChange }: FieldEditorProps) {
     <div className="field-editor">
       {fields.map((field, i) => (
         <FieldRow
-          key={i}
+          // By field key, not position: removing a row used to shift every
+          // row below it onto a new index, and stateful children (rich-text
+          // editors) then rendered their neighbour's document.
+          key={field.key || `unnamed-${i}`}
           field={field}
           entityId={entityId}
           onChange={(next) => updateField(i, next)}

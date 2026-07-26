@@ -1,5 +1,5 @@
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
-import { useMemo, useRef, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useMatch } from "react-router-dom";
 
@@ -46,6 +46,17 @@ export function RichTextField({ value, onChange, entityId }: RichTextFieldProps)
     content: value as JSONContent,
     onUpdate: ({ editor }) => onChange(editor.getJSON() as ProseMirrorDoc),
   });
+
+  // `content` is the editor's initial document only. While typing this is a
+  // no-op (the parent stores exactly what onUpdate handed it), but when the
+  // same editor is handed a different field's document — a sheet reusing one
+  // instance across tabs, or a server refresh — it must follow, or it keeps
+  // showing (and then saving) the previous field's text.
+  useEffect(() => {
+    if (!editor) return;
+    if (JSON.stringify(editor.getJSON()) === JSON.stringify(value)) return;
+    editor.commands.setContent(value as JSONContent, { emitUpdate: false });
+  }, [editor, value]);
 
   async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

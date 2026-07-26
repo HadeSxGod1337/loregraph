@@ -54,6 +54,17 @@ _TEXT_FIELDS: dict[str, list[tuple[str, ...]]] = {
     ],
     "player_name": [("playerName",), ("info", "playerName", "value")],
     "hit_die": [("hitDie",), ("vitality", "hit-die", "value")],
+    "caster_class": [("casterClass", "value")],
+    # LSS leaves `value` empty when the number is computed on their sheet and
+    # keeps the DM's override in `customModifier` — read both.
+    "spell_save_dc": [
+        ("spellsInfo", "save", "value"),
+        ("spellsInfo", "save", "customModifier"),
+    ],
+    "spell_attack": [
+        ("spellsInfo", "mod", "value"),
+        ("spellsInfo", "mod", "customModifier"),
+    ],
     "ancestry": [
         ("race",),
         ("ancestry",),
@@ -95,6 +106,16 @@ _SUB_INFO_KEYS = ("age", "height", "weight", "eyes", "skin", "hair")
 _COIN_KEYS = ("pp", "gp", "ep", "sp", "cp")
 _ABILITY_CONTAINERS: list[tuple[str, ...]] = [("stats",), ("abilities",), ("scores",)]
 _ABILITY_KEYS = ("str", "dex", "con", "int", "wis", "cha")
+# The spellcasting ability arrives as a code (`spellsInfo.base.code`), not a
+# name, whenever LSS computes the number itself.
+_ABILITY_LABELS: dict[str, str] = {
+    "str": "Сила",
+    "dex": "Ловкость",
+    "con": "Телосложение",
+    "int": "Интеллект",
+    "wis": "Мудрость",
+    "cha": "Харизма",
+}
 _NOTES_PATHS: list[tuple[str, ...]] = [("notes",), ("bio",), ("biography",)]
 _AVATAR_PATHS: list[tuple[str, ...]] = [("avatar", "jpeg"), ("avatar", "webp")]
 
@@ -209,6 +230,18 @@ def parse_character(
     fields.extend(_native_text_fields(data))
     fields.extend(_table_fields(data))
 
+    spell_ability = _first_string(
+        data, [("spellsInfo", "base", "value")]
+    ) or _ABILITY_LABELS.get(
+        _first_string(data, [("spellsInfo", "base", "code")]) or ""
+    )
+    if spell_ability:
+        fields.append(
+            EntityFieldIn(
+                key="spell_ability", field_type=FieldType.TEXT, value=spell_ability
+            )
+        )
+
     inspiration = data.get("inspiration")
     if isinstance(inspiration, bool):
         fields.append(
@@ -234,6 +267,13 @@ def parse_character(
                     key="notes", field_type=FieldType.RICH_TEXT, value=native_notes
                 )
             )
+    spell_list = _spell_list(data)
+    if spell_list is not None:
+        fields.append(
+            EntityFieldIn(
+                key="spells", field_type=FieldType.RICH_TEXT, value=spell_list
+            )
+        )
     avatar_url = _first_string(data, _AVATAR_PATHS)
     if avatar_url:
         fields.append(
@@ -401,21 +441,30 @@ def _table_fields(data: dict[str, Any]) -> list[EntityFieldIn]:
                 )
             )
 
-    spells = data.get("spells")
-    if isinstance(spells, dict):
-        lines = [
-            line
-            for name, entry in spells.items()
-            if isinstance(entry, dict) and (line := _spell_line(name, entry))
-        ]
-        if lines:
-            fields.append(
-                EntityFieldIn(
-                    key="spells",
-                    field_type=FieldType.RICH_TEXT,
-                    value=_paragraphs(lines),
-                )
+    slot_lines = _spell_slot_lines(data)
+    if slot_lines:
+        fields.append(
+            EntityFieldIn(
+                key="spell_slots",
+                field_type=FieldType.RICH_TEXT,
+                value=_paragraphs(slot_lines),
             )
+        )
+
+    attunements = [
+        line
+        for entry in data.get("attunementsList") or []
+        if isinstance(entry, dict)
+        and (line := _first_string(entry, [("value",), ("name", "value"), ("name",)]))
+    ]
+    if attunements:
+        fields.append(
+            EntityFieldIn(
+                key="attunements",
+                field_type=FieldType.RICH_TEXT,
+                value=_paragraphs(attunements),
+            )
+        )
     return fields
 
 
@@ -446,18 +495,27 @@ def _resource_line(entry: dict[str, Any]) -> str | None:
     return f"{name} — {shown_current}/{shown_maximum}"
 
 
-def _spell_line(name: str, entry: dict[str, Any]) -> str | None:
-    """Spell slots come keyed `slots-<level>`; anything else in the map is
-    treated as a named spell. Written defensively — an unfamiliar shape
-    imports nothing rather than raising."""
-    if name.startswith("slots-"):
-        total = _coerce_number(entry.get("value"))
-        if total is None:
-            return None
-        used = _coerce_number(entry.get("filled")) or 0
-        return f"Ячейки {name.removeprefix('slots-')} круга — {used}/{total}"
-    title = _first_string(entry, [("name", "value"), ("name",), ("value",)])
-    return title
+def _spell_slot_lines(data: dict[str, Any]) -> list[str]:
+    """Spell and pact-magic slot counters. The spells themselves are *not*
+    here — LSS keeps the list in the `text` blocks (see _spell_list)."""
+    lines: list[str] = []
+    for container_key, label in (("spells", ""), ("spellsPact", " договора")):
+        container = data.get(container_key)
+        if not isinstance(container, dict):
+            continue
+        for key, entry in sorted(container.items()):
+            if not key.startswith("slots-"):
+                continue
+            total = (
+                _coerce_number(entry.get("value")) if isinstance(entry, dict) else None
+            )
+            # An empty row of slots is sheet scaffolding, not information.
+            if not total:
+                continue
+            used = _coerce_number(entry.get("filled")) or 0
+            level = key.removeprefix("slots-")
+            lines.append(f"Ячейки{label} {level} круга — {used}/{total}")
+    return lines
 
 
 def _paragraphs(lines: list[str]) -> dict[str, Any]:
@@ -468,6 +526,41 @@ def _paragraphs(lines: list[str]) -> dict[str, Any]:
             for line in lines
         ],
     }
+
+
+def _spell_list(data: dict[str, Any]) -> dict[str, Any] | None:
+    """The spell list — one `text` block per spell level (`spells-level-0` …
+    `spells-level-9`), same TipTap shape as the narrative blocks.
+
+    They are merged into a single document with a heading per level, because
+    a sheet field holds one document and nine near-empty fields would be worse
+    than one list. Empty levels are dropped.
+    """
+    text_blocks = data.get("text")
+    if not isinstance(text_blocks, dict):
+        return None
+    content: list[dict[str, Any]] = []
+    for level in range(10):
+        doc = _dig(text_blocks, (f"spells-level-{level}", "value", "data"))
+        if not isinstance(doc, dict) or doc.get("type") != "doc":
+            continue
+        sanitized = _sanitize_prosemirror(doc)
+        if sanitized is None:
+            continue
+        content.append(
+            {
+                "type": "heading",
+                "attrs": {"level": 3},
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Заговоры" if level == 0 else f"{level} круг",
+                    }
+                ],
+            }
+        )
+        content.extend(sanitized.get("content", []))
+    return {"type": "doc", "content": content} if content else None
 
 
 def _native_notes(data: dict[str, Any]) -> dict[str, Any] | None:
