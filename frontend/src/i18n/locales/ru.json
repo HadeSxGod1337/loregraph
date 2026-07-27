@@ -268,9 +268,68 @@
   "richText": {
     "insertImage": "Вставить изображение",
     "saveFirstForImage": "Сначала сохрани сущность, чтобы вставлять изображения",
-    "imageButton": "Изображение",
-    "bulletList": "• Список",
-    "orderedList": "1. Список"
+    "undo": "Отменить",
+    "redo": "Повторить",
+    "bold": "Жирный",
+    "italic": "Курсив",
+    "underline": "Подчёркнутый",
+    "strike": "Зачёркнутый",
+    "inlineCode": "Моноширинный код",
+    "bulletList": "Маркированный список",
+    "orderedList": "Нумерованный список",
+    "taskList": "Список задач",
+    "indent": "Увеличить отступ",
+    "outdent": "Уменьшить отступ",
+    "horizontalRule": "Разделитель",
+    "clearFormatting": "Очистить форматирование",
+    "textColor": "Цвет текста",
+    "colorReset": "Цвет по умолчанию",
+    "highlight": "Выделение маркером",
+    "highlightReset": "Без выделения",
+    "format": {
+      "menu": "Форматирование",
+      "paragraph": "Абзац",
+      "heading1": "Заголовок 1",
+      "heading2": "Заголовок 2",
+      "heading3": "Заголовок 3",
+      "heading4": "Заголовок 4",
+      "blockquote": "Цитата",
+      "codeBlock": "Блок кода"
+    },
+    "font": {
+      "menu": "Шрифт",
+      "default": "По умолчанию",
+      "serif": "С засечками",
+      "sans": "Без засечек",
+      "mono": "Моноширинный",
+      "fantasy": "Декоративный",
+      "custom": "Свой",
+      "size": "Размер",
+      "sizeReset": "Размер по умолчанию"
+    },
+    "align": {
+      "menu": "Выравнивание",
+      "left": "По левому краю",
+      "center": "По центру",
+      "right": "По правому краю",
+      "justify": "По ширине"
+    },
+    "link": {
+      "menu": "Ссылка",
+      "apply": "Применить",
+      "remove": "Убрать"
+    },
+    "table": {
+      "menu": "Таблица",
+      "insert": "Вставить таблицу 3×3",
+      "addRowAfter": "Добавить строку ниже",
+      "addColumnAfter": "Добавить столбец справа",
+      "deleteRow": "Удалить строку",
+      "deleteColumn": "Удалить столбец",
+      "toggleHeaderRow": "Строка заголовка",
+      "mergeOrSplit": "Объединить / разделить",
+      "delete": "Удалить таблицу"
+    }
   },
   "entityLink": {
     "unknown": "неизвестно",

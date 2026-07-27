@@ -140,6 +140,58 @@ def test_nested_bullet_list_roundtrip() -> None:
     assert prosemirror_to_markdown(doc) == markdown
 
 
+def test_task_list_roundtrip_keeps_checked_state() -> None:
+    markdown = "- [ ] scout the pass\n- [x] bribe the guard"
+    doc = markdown_to_prosemirror(markdown)
+    task_list = doc["content"][0]
+    assert task_list["type"] == "taskList"
+    assert [item["attrs"]["checked"] for item in task_list["content"]] == [False, True]
+    assert prosemirror_to_markdown(doc) == markdown
+
+
+def test_table_renders_as_gfm_and_roundtrips() -> None:
+    doc = _doc(
+        {
+            "type": "table",
+            "content": [
+                {
+                    "type": "tableRow",
+                    "content": [
+                        {"type": "tableHeader", "content": [_para(_text("Monster"))]},
+                        {"type": "tableHeader", "content": [_para(_text("CR"))]},
+                    ],
+                },
+                {
+                    "type": "tableRow",
+                    "content": [
+                        {"type": "tableCell", "content": [_para(_text("Goblin"))]},
+                        {"type": "tableCell", "content": [_para(_text("1/4"))]},
+                    ],
+                },
+            ],
+        }
+    )
+    markdown = prosemirror_to_markdown(doc)
+    assert markdown == ("| Monster | CR |\n| --- | --- |\n| Goblin | 1/4 |")
+    assert prosemirror_to_markdown(markdown_to_prosemirror(markdown)) == markdown
+
+
+def test_pipe_row_without_delimiter_stays_a_paragraph() -> None:
+    doc = markdown_to_prosemirror("| not | a table |")
+    assert doc["content"][0]["type"] == "paragraph"
+
+
+def test_highlight_mark_roundtrip() -> None:
+    doc = markdown_to_prosemirror("beware the ==ambush== here")
+    marks = [
+        mark["type"]
+        for node in doc["content"][0]["content"]
+        for mark in node.get("marks", [])
+    ]
+    assert marks == ["highlight"]
+    assert prosemirror_to_markdown(doc) == "beware the ==ambush== here"
+
+
 def test_hard_break_within_paragraph() -> None:
     doc = markdown_to_prosemirror("line one\nline two")
     inline = doc["content"][0]["content"]

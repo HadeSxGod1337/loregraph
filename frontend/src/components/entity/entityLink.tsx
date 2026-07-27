@@ -1,7 +1,11 @@
 import type { AnyExtension } from "@tiptap/core";
+import Highlight from "@tiptap/extension-highlight";
 import Image from "@tiptap/extension-image";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
 import Mention, { type MentionOptions } from "@tiptap/extension-mention";
-import Underline from "@tiptap/extension-underline";
+import { TableKit } from "@tiptap/extension-table";
+import TextAlign from "@tiptap/extension-text-align";
+import { TextStyleKit } from "@tiptap/extension-text-style";
 import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
@@ -237,14 +241,27 @@ function suggestionConfig(projectId: string | undefined) {
 
 /** The single extension list shared by the editor (RichTextField) and the
  * read-only view (RichTextView) — the two must never diverge, or documents
- * would render differently between editing and viewing. */
+ * would render differently between editing and viewing.
+ *
+ * StarterKit v3 already ships bold/italic/underline/strike/code, headings,
+ * lists, blockquote, code block, horizontal rule and link — do not re-add
+ * those separately, duplicate extension names break the schema. */
 export function buildRichTextExtensions(
   projectId: string | undefined,
 ): AnyExtension[] {
   return [
-    StarterKit,
+    StarterKit.configure({
+      // Links inside a document are content, not navigation: opening them on
+      // click would yank the DM out of the editor mid-edit.
+      link: { openOnClick: false, defaultProtocol: "https" },
+    }),
+    TextStyleKit,
+    TextAlign.configure({ types: ["heading", "paragraph"] }),
+    Highlight.configure({ multicolor: true }),
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    TableKit.configure({ table: { resizable: true } }),
     Image,
-    Underline,
     EntityLink.configure({ suggestion: suggestionConfig(projectId) }),
   ];
 }

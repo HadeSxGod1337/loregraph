@@ -262,9 +262,68 @@
   "richText": {
     "insertImage": "Insert image",
     "saveFirstForImage": "Save the entity first to insert images",
-    "imageButton": "Image",
-    "bulletList": "• List",
-    "orderedList": "1. List"
+    "undo": "Undo",
+    "redo": "Redo",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "strike": "Strikethrough",
+    "inlineCode": "Inline code",
+    "bulletList": "Bulleted list",
+    "orderedList": "Numbered list",
+    "taskList": "Checklist",
+    "indent": "Indent",
+    "outdent": "Outdent",
+    "horizontalRule": "Divider",
+    "clearFormatting": "Clear formatting",
+    "textColor": "Text colour",
+    "colorReset": "Default colour",
+    "highlight": "Highlight",
+    "highlightReset": "No highlight",
+    "format": {
+      "menu": "Block format",
+      "paragraph": "Paragraph",
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "heading4": "Heading 4",
+      "blockquote": "Quote",
+      "codeBlock": "Code block"
+    },
+    "font": {
+      "menu": "Font",
+      "default": "Default",
+      "serif": "Serif",
+      "sans": "Sans-serif",
+      "mono": "Monospace",
+      "fantasy": "Display",
+      "custom": "Custom",
+      "size": "Size",
+      "sizeReset": "Default size"
+    },
+    "align": {
+      "menu": "Alignment",
+      "left": "Left",
+      "center": "Centre",
+      "right": "Right",
+      "justify": "Justify"
+    },
+    "link": {
+      "menu": "Link",
+      "apply": "Apply",
+      "remove": "Remove"
+    },
+    "table": {
+      "menu": "Table",
+      "insert": "Insert table 3×3",
+      "addRowAfter": "Add row below",
+      "addColumnAfter": "Add column right",
+      "deleteRow": "Delete row",
+      "deleteColumn": "Delete column",
+      "toggleHeaderRow": "Toggle header row",
+      "mergeOrSplit": "Merge / split cells",
+      "delete": "Delete table"
+    }
   },
   "entityLink": {
     "unknown": "unknown",
