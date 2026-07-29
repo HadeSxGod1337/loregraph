@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   closestCenter,
@@ -43,7 +43,11 @@ import { ConfirmDialog } from "../../ui/ConfirmDialog";
 import { Icon } from "../../ui/Icon";
 import { emptyValue } from "../applyTemplate";
 import { SheetRenderer } from "../SheetRenderer";
-import { FormulaSyntaxError, parseDependencies } from "../widgets/formula";
+import {
+  DEFAULT_STAT_MOD_FORMULA,
+  FormulaSyntaxError,
+  parseDependencies,
+} from "../widgets/formula";
 import {
   addBlock,
   addContainer,
@@ -118,8 +122,44 @@ interface TemplateDesignerProps {
   projectId: string;
   initial: EntityTemplateCreate;
   saving: boolean;
+  /** Rendered inside the designer. The panel behind it also knows the error,
+   * but it is covered by this modal — a rejected save (an incompatible
+   * widget, a broken formula) used to look like the button did nothing. */
+  error?: string | null;
   onSave: (draft: EntityTemplateCreate) => void;
   onClose: () => void;
+}
+
+/** What stops a draft from being saved, as an i18n key — a blank or duplicate
+ * field key is rejected by the backend with a 422 that names neither, so the
+ * designer has to catch it while the DM can still see which chip is wrong. */
+function draftProblem(draft: EntityTemplateCreate): string | null {
+  if (!draft.name.trim()) return "templates.problemNoName";
+  if (!draft.entity_type.trim()) return "templates.problemNoType";
+  if (draft.field_defs.some((f) => !f.key.trim())) return "templates.problemBlankKey";
+  const keys = draft.field_defs.map((f) => f.key);
+  if (new Set(keys).size !== keys.length) return "templates.problemDuplicateKey";
+  return null;
+}
+
+/** Field-def indexes that carry a blank or duplicated key — highlighted in
+ * the palette so "какой-то ключ не тот" points at a specific chip. */
+function badFieldIndexes(fieldDefs: TemplateFieldDef[]): Set<number> {
+  const bad = new Set<number>();
+  const seen = new Map<string, number>();
+  fieldDefs.forEach((def, i) => {
+    if (!def.key.trim()) {
+      bad.add(i);
+      return;
+    }
+    const first = seen.get(def.key);
+    if (first === undefined) seen.set(def.key, i);
+    else {
+      bad.add(first);
+      bad.add(i);
+    }
+  });
+  return bad;
 }
 
 function previewEntity(draft: EntityTemplateCreate): Entity {
@@ -194,6 +234,7 @@ export function TemplateDesigner({
   projectId,
   initial,
   saving,
+  error,
   onSave,
   onClose,
 }: TemplateDesignerProps) {
@@ -202,6 +243,7 @@ export function TemplateDesigner({
     ...initial,
     layout: ensureIds(initial.layout),
   }));
+  const [confirmingClose, setConfirmingClose] = useState(false);
   const [paletteTab, setPaletteTab] = useState<"fields" | "presets">("fields");
   const [rightTab, setRightTab] = useState<"inspector" | "preview">("inspector");
   const [selection, setSelection] = useState<Selection>(null);
@@ -220,6 +262,34 @@ export function TemplateDesigner({
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+
+  // A whole layout is many minutes of work and the backdrop covers the
+  // screen — closing it on a stray click, with no warning and no way back,
+  // was the single most expensive misclick in this feature.
+  //
+  // The baseline snapshots the draft *after* ensureIds, not `initial`:
+  // opening a built-in (whose blocks carry no ids) mints an id for every one
+  // of them on mount, so comparing against `initial` — or re-running
+  // ensureIds, which mints different ids again — would call an untouched
+  // template dirty. Lazy initializer, so it captures the first draft only.
+  const [baseline] = useState(() => JSON.stringify(draft));
+  const dirty = JSON.stringify(draft) !== baseline;
+
+  const requestClose = useCallback(() => {
+    if (dirty) setConfirmingClose(true);
+    else onClose();
+  }, [dirty, onClose]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") requestClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [requestClose]);
+
+  const problem = draftProblem(draft);
+  const badFields = useMemo(() => badFieldIndexes(draft.field_defs), [draft.field_defs]);
 
   const fieldType = useMemo(() => {
     const map = new Map<string, FieldType>();
@@ -379,7 +449,7 @@ export function TemplateDesigner({
       : null;
 
   return (
-    <div className="sheet-modal-backdrop" onClick={onClose}>
+    <div className="sheet-modal-backdrop" onClick={requestClose}>
       <div
         className="designer"
         role="dialog"
@@ -407,17 +477,28 @@ export function TemplateDesigner({
             <button
               type="button"
               className="button-primary button-sm"
-              disabled={saving || !draft.name.trim() || !draft.entity_type.trim()}
+              disabled={saving || problem !== null}
+              title={problem ? t(problem) : undefined}
               onClick={() => onSave(draft)}
             >
               {saving && <span className="spinner" aria-hidden="true" />}
               {t("common.save")}
             </button>
-            <button type="button" className="button-sm button-ghost" onClick={onClose}>
+            <button
+              type="button"
+              className="button-sm button-ghost"
+              onClick={requestClose}
+            >
               {t("common.close")}
             </button>
           </div>
         </div>
+
+        {(problem || error) && (
+          <p className="designer-banner error-text" role="alert">
+            {error ?? t(problem!)}
+          </p>
+        )}
 
         <DndContext
           sensors={sensors}
@@ -450,9 +531,11 @@ export function TemplateDesigner({
               {paletteTab === "fields" ? (
                 <FieldsPalette
                   fieldDefs={draft.field_defs}
+                  badFields={badFields}
                   selection={selection}
                   onSelect={(index) => setSelection({ kind: "field", index })}
                   onAdd={() => {
+                    const index = draft.field_defs.length;
                     setDraft((d) => ({
                       ...d,
                       field_defs: [
@@ -460,7 +543,7 @@ export function TemplateDesigner({
                         { key: "", field_type: "text", show_on_card: false },
                       ],
                     }));
-                    setSelection({ kind: "field", index: draft.field_defs.length });
+                    setSelection({ kind: "field", index });
                   }}
                 />
               ) : (
@@ -596,6 +679,16 @@ export function TemplateDesigner({
           </DragOverlay>
         </DndContext>
       </div>
+
+      {confirmingClose && (
+        <ConfirmDialog
+          title={t("common.leaveTitle")}
+          body={t("common.leaveBody")}
+          confirmLabel={t("common.leaveButton")}
+          onConfirm={onClose}
+          onCancel={() => setConfirmingClose(false)}
+        />
+      )}
 
       {pendingRemoval && (
         <ConfirmDialog
@@ -966,11 +1059,13 @@ function BlockChip({
 
 function FieldsPalette({
   fieldDefs,
+  badFields,
   selection,
   onSelect,
   onAdd,
 }: {
   fieldDefs: TemplateFieldDef[];
+  badFields: Set<number>;
   selection: Selection;
   onSelect: (index: number) => void;
   onAdd: () => void;
@@ -990,6 +1085,7 @@ function FieldsPalette({
           <PaletteFieldChip
             key={`${def.key}-${i}`}
             def={def}
+            invalid={badFields.has(i)}
             selected={selection?.kind === "field" && selection.index === i}
             onSelect={() => onSelect(i)}
           />
@@ -1001,10 +1097,12 @@ function FieldsPalette({
 
 function PaletteFieldChip({
   def,
+  invalid,
   selected,
   onSelect,
 }: {
   def: TemplateFieldDef;
+  invalid: boolean;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -1020,7 +1118,8 @@ function PaletteFieldChip({
       ref={setNodeRef}
       className={`designer-palette-chip${isDragging ? " dragging" : ""}${
         selected ? " selected" : ""
-      }`}
+      }${invalid ? " invalid" : ""}`}
+      title={invalid ? t("templates.keyInvalid") : undefined}
       onClick={onSelect}
     >
       <button
@@ -1188,8 +1287,16 @@ function BlockInspector({
             value={block.field_key ?? ""}
             onChange={(e) => onUpdate({ field_key: e.target.value || null })}
           >
+            {/* Explicit empty option: a block with no binding yet used to
+                show the first field as if it were selected, and picking that
+                very field changed nothing — the sheet still rendered an
+                unbound block. */}
+            <option value="">{t("templates.pickField")}</option>
             {fieldDefs
-              .filter((f) => f.key)
+              // Only fields this widget can actually draw. Offering the rest
+              // just moved the failure to the save button, where the backend
+              // answers 422 without naming the block.
+              .filter((f) => f.key && meta.accepts.includes(f.field_type))
               .map((f) => (
                 <option key={f.key} value={f.key}>
                   {f.label || f.key}
@@ -1197,6 +1304,10 @@ function BlockInspector({
               ))}
           </select>
         </label>
+      )}
+
+      {block.widget === "stat_modifier" && (
+        <StatModifierConfig block={block} onUpdate={onUpdate} />
       )}
 
       <label className="designer-field">
@@ -1218,6 +1329,64 @@ function BlockInspector({
         <Icon name="trash" size={13} />
         {t("common.remove")}
       </button>
+    </div>
+  );
+}
+
+/** The derived number next to a score is system-specific — D&D halves it,
+ * other systems do something else or have no modifier at all. Exposed here so
+ * a template never inherits D&D arithmetic just by using the widget. */
+function StatModifierConfig({
+  block,
+  onUpdate,
+}: {
+  block: SheetBlock;
+  onUpdate: (patch: Partial<SheetBlock>) => void;
+}) {
+  const { t } = useTranslation();
+  const raw = block.config.mod_formula;
+  const hidden = raw === null;
+  const value = typeof raw === "string" ? raw : "";
+  let error: string | null = null;
+  if (value.trim()) {
+    try {
+      parseDependencies(value);
+    } catch (e) {
+      error = e instanceof FormulaSyntaxError ? e.message : String(e);
+    }
+  }
+
+  function setConfig(next: unknown) {
+    onUpdate({ config: { ...block.config, mod_formula: next } });
+  }
+
+  return (
+    <div className="designer-formula-box">
+      <label className="designer-toggleable-item">
+        <input
+          type="checkbox"
+          checked={!hidden}
+          onChange={(e) => setConfig(e.target.checked ? "" : null)}
+        />
+        {t("templates.showModifier")}
+      </label>
+      {!hidden && (
+        <>
+          <label className="designer-field">
+            {t("templates.modFormula")}
+            <input
+              value={value}
+              placeholder={DEFAULT_STAT_MOD_FORMULA}
+              onChange={(e) => setConfig(e.target.value)}
+            />
+          </label>
+          {error ? (
+            <span className="designer-formula-error">{error}</span>
+          ) : (
+            <span className="field-hint">{t("templates.modFormulaHint")}</span>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -1279,6 +1448,18 @@ function FormulaEditor({
           </div>
         )
       )}
+      {/* "+3" means "add this to a roll"; a passive score or a total does not
+          get a sign. Per-block, because both live on the same sheet. */}
+      <label className="designer-toggleable-item">
+        <input
+          type="checkbox"
+          checked={block.config.signed === true}
+          onChange={(e) =>
+            onUpdate({ config: { ...block.config, signed: e.target.checked } })
+          }
+        />
+        {t("templates.signedValue")}
+      </label>
       {availableToggles.length > 0 && (
         <div className="designer-toggleable">
           <span className="designer-toggleable-label">{t("templates.toggleable")}</span>

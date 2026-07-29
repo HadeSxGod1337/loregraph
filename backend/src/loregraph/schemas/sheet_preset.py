@@ -16,6 +16,7 @@ from loregraph.schemas.entity_template import (
     Section,
     TemplateFieldDef,
     validate_blocks_reference_fields,
+    validate_field_keys_unique,
 )
 
 
@@ -26,6 +27,7 @@ class SheetPresetBase(BaseModel):
 
     @model_validator(mode="after")
     def check_section_references_fields(self) -> Self:
+        validate_field_keys_unique(self.field_defs)
         validate_blocks_reference_fields(self.section.blocks, self.field_defs)
         return self
 

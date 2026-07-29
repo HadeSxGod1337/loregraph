@@ -337,7 +337,17 @@ export interface ExportResult {
   errors: ItemError[];
 }
 
-export type ImportResult = ExportResult;
+export interface ImportedItem {
+  entity_id: string;
+  title: string;
+  action: "created" | "updated";
+}
+
+/** Counts alone don't say who came in when a whole party is imported at
+ * once, so an import also names what it touched. */
+export interface ImportResult extends ExportResult {
+  items: ImportedItem[];
+}
 
 export type ExportRequest = { entity_ids?: string[] };
 

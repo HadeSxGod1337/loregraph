@@ -122,8 +122,7 @@ async def retrieve_context(
     lore_lines = [_entity_line(entity) for entity in entities]
     # Types already used in this project steer the model toward a consistent
     # taxonomy instead of inventing a new type name per run.
-    all_entities = await entity_store.list_entities(state.project_id)
-    known_types = sorted({entity.type for entity in all_entities})
+    known_types = await entity_store.list_entity_types(state.project_id)
     # Compact title→id map from retrieved entities only — bounded by
     # RETRIEVAL_K, enough for the LLM to create valid [[wikilinks]].
     # Full entity list is NOT dumped into the prompt (token-efficient).

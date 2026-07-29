@@ -1,14 +1,22 @@
 import json
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from fastapi.testclient import TestClient
 
-from loregraph.connectors.longstoryshort.connector import SHARE_URL_RE
+from loregraph.connectors.context import ConnectorContext
+from loregraph.connectors.longstoryshort.connector import (
+    LINK_KIND_LSS_CHARACTER,
+    SHARE_URL_RE,
+    LssConfig,
+    LssConnector,
+)
 from loregraph.connectors.longstoryshort.parser import parse_character
 from loregraph.exceptions import ExternalDataParseError
-from loregraph.schemas.entity import FieldType
+from loregraph.schemas.connection import ConnectionEntityLinkOut
+from loregraph.schemas.entity import EntityOut, FieldType
 
 CHAR_ID = "69209705346bb5b024d5c110"
 SHARE_URL = f"https://longstoryshort.app/characters/digital/{CHAR_ID}/"
@@ -340,6 +348,184 @@ def test_import_nested_wrapper_json(client: TestClient, project_id: str) -> None
     )
     assert resp.status_code == 200
     assert resp.json()["created"] == 1
+
+
+def test_import_binds_the_character_template(
+    client: TestClient, project_id: str
+) -> None:
+    """An imported sheet is a character sheet — it must arrive already bound
+    to the party-member template, not as a field list the DM binds by hand."""
+    connection_id = _make_connection(client, project_id)
+    client.post(
+        f"/api/projects/{project_id}/connections/{connection_id}/import",
+        json={"payload": {"raw_json": json.dumps(FLAT_SHEET)}},
+    )
+    entities = client.get(f"/api/projects/{project_id}/entities").json()
+    member = next(e for e in entities if e["type"] == "party_member")
+    assert member["template_id"] == "builtin_character"
+
+
+def test_import_prefers_the_projects_own_party_member_template(
+    client: TestClient, project_id: str
+) -> None:
+    own = client.post(
+        f"/api/projects/{project_id}/templates",
+        json={
+            "name": "Наш лист",
+            "entity_type": "party_member",
+            "field_defs": [
+                {"key": "class", "field_type": "text", "label": "Класс"},
+            ],
+            "layout": {"sections": []},
+        },
+    )
+    assert own.status_code == 201, own.text
+    connection_id = _make_connection(client, project_id)
+    client.post(
+        f"/api/projects/{project_id}/connections/{connection_id}/import",
+        json={"payload": {"raw_json": json.dumps(FLAT_SHEET)}},
+    )
+    entities = client.get(f"/api/projects/{project_id}/entities").json()
+    member = next(e for e in entities if e["type"] == "party_member")
+    assert member["template_id"] == own.json()["id"]
+
+
+def test_import_of_several_documents_reports_each_by_name(
+    client: TestClient, project_id: str
+) -> None:
+    """A party arrives as one file per character. One broken file must cost
+    exactly that character, not the whole party."""
+    connection_id = _make_connection(client, project_id)
+    result = client.post(
+        f"/api/projects/{project_id}/connections/{connection_id}/import",
+        json={
+            "payload": {
+                "documents": [
+                    {"name": "Талия.json", "content": json.dumps(FLAT_SHEET)},
+                    {"name": "Борин.json", "content": json.dumps(NESTED_SHEET)},
+                    {"name": "битый.json", "content": "{not json"},
+                ]
+            }
+        },
+    ).json()
+
+    assert result["created"] == 2
+    assert [item["title"] for item in result["items"]] == [
+        "Талия Ветрокрылая",
+        "Borin",
+    ]
+    assert all(item["action"] == "created" for item in result["items"])
+    assert [error["ref"] for error in result["errors"]] == ["битый.json"]
+    assert result["skipped"] == 1
+
+
+def test_import_of_every_real_export_at_once(
+    client: TestClient, project_id: str
+) -> None:
+    """The whole lss_format_json_example/ folder in one run — the shape a DM
+    actually produces: one native export file per player."""
+    exports = sorted(NATIVE_EXPORT_PATH.parent.glob("*.json"))
+    connection_id = _make_connection(client, project_id)
+    result = client.post(
+        f"/api/projects/{project_id}/connections/{connection_id}/import",
+        json={
+            "payload": {
+                "documents": [
+                    {"name": path.name, "content": path.read_text(encoding="utf-8")}
+                    for path in exports
+                ]
+            }
+        },
+    ).json()
+
+    assert result["created"] == len(exports), result
+    assert result["errors"] == []
+    entities = client.get(f"/api/projects/{project_id}/entities").json()
+    assert all(e["template_id"] == "builtin_character" for e in entities)
+
+
+def test_import_array_document_takes_every_character(
+    client: TestClient, project_id: str
+) -> None:
+    connection_id = _make_connection(client, project_id)
+    result = client.post(
+        f"/api/projects/{project_id}/connections/{connection_id}/import",
+        json={"payload": {"raw_json": json.dumps([FLAT_SHEET, NESTED_SHEET])}},
+    ).json()
+    assert result["created"] == 2
+    # A share URL identifies one sheet, so a batch gets none stamped on it.
+    entities = client.get(f"/api/projects/{project_id}/entities").json()
+    assert all(
+        "character_sheet_url" not in {f["key"] for f in e["fields"]} for e in entities
+    )
+
+
+class _OneLinkStore:
+    """Just enough ConnectionEntityLinkStore for the live-source path."""
+
+    def __init__(self, entity_id: str) -> None:
+        self._entity_id = entity_id
+
+    async def list_for_connection(
+        self, connection_id: str
+    ) -> list[ConnectionEntityLinkOut]:
+        return [
+            ConnectionEntityLinkOut(
+                id="link1",
+                connection_id=connection_id,
+                entity_id=self._entity_id,
+                external_id=CHAR_ID,
+                external_kind=LINK_KIND_LSS_CHARACTER,
+                last_synced_at=datetime.now(UTC),
+            )
+        ]
+
+
+class _OneEntityStore:
+    def __init__(self, entity: EntityOut) -> None:
+        self._entity = entity
+
+    async def get(self, entity_id: str) -> EntityOut:
+        assert entity_id == self._entity.id
+        return self._entity
+
+
+@pytest.mark.asyncio
+async def test_grounding_falls_back_to_the_last_imported_sheet(
+    client: TestClient, project_id: str
+) -> None:
+    """LSS publishes no JSON endpoint we may call, so the live fetch fails
+    for everyone. Grounding must still answer with the imported state
+    instead of silently contributing nothing at all."""
+    connection_id = _make_connection(client, project_id)
+    client.post(
+        f"/api/projects/{project_id}/connections/{connection_id}/import",
+        json={"payload": {"raw_json": json.dumps(FLAT_SHEET), "share_url": SHARE_URL}},
+    )
+    entities = client.get(f"/api/projects/{project_id}/entities").json()
+    member = EntityOut.model_validate(
+        next(e for e in entities if e["type"] == "party_member")
+    )
+
+    context = ConnectorContext(
+        project_id=project_id,
+        connection_id=connection_id,
+        connection_name="LSS",
+        entity_service=cast(Any, None),
+        edge_service=cast(Any, None),
+        entity_store=cast(Any, _OneEntityStore(member)),
+        edge_store=cast(Any, None),
+        attachment_store=cast(Any, None),
+        attachments_dir=cast(Any, None),
+        link_store=cast(Any, _OneLinkStore(member.id)),
+    )
+    chunks = await LssConnector(LssConfig(), context).query("")
+
+    assert len(chunks) == 1
+    assert chunks[0].title == "Талия Ветрокрылая"
+    assert "level: 5" in chunks[0].text
+    # Labelled, so neither the DM nor the model reads stale HP as current.
+    assert chunks[0].kind == "character (as last imported)"
 
 
 def test_parse_character_error_includes_top_level_keys() -> None:

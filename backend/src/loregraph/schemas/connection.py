@@ -97,10 +97,19 @@ class ExportResult(BaseModel):
 
 class ImportRequest(BaseModel):
     """Connector-specific payload, validated by the connector's own
-    import-payload model (e.g. LSS: {share_url} or {raw_json}; Obsidian:
-    empty — it reads the configured vault)."""
+    import-payload model (e.g. LSS: {share_url}, {raw_json} or {documents};
+    Obsidian: empty — it reads the configured vault)."""
 
     payload: dict[str, Any] = {}
+
+
+class ImportedItem(BaseModel):
+    """One entity an import touched. Counts alone don't tell a DM who came in
+    when a whole party is imported at once — this names them."""
+
+    entity_id: str
+    title: str
+    action: Literal["created", "updated"]
 
 
 class ImportResult(BaseModel):
@@ -108,6 +117,7 @@ class ImportResult(BaseModel):
     updated: int = 0
     skipped: int = 0
     errors: list[ItemError] = []
+    items: list[ImportedItem] = []
 
 
 class ProbeResult(BaseModel):

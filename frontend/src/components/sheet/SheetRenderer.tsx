@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type {
   Entity,
   EntityField,
+  FieldType,
   FieldValue,
   SheetBlock,
   SheetContainer,
@@ -15,7 +16,7 @@ import type {
 import { allBlocks } from "./designer/layoutOps";
 import { parseDependencies } from "./widgets/formula";
 import { defaultWidgetForFieldType } from "./widgets/registry";
-import { WidgetView } from "./widgets/WidgetView";
+import { WidgetView, type WidgetContext } from "./widgets/WidgetView";
 
 type SheetMode = "compact" | "full" | "print" | "fill";
 
@@ -31,8 +32,12 @@ interface SheetRendererProps {
    * values instead of read-only text. The layout itself is NEVER mutated
    * from here regardless of mode: there is no drag-and-drop or layoutOps
    * call anywhere in this component tree, by construction, not by a UI
-   * lock — "заполнять можно, раскладку менять нельзя" from the design. */
-  onFieldChange?: (key: string, value: FieldValue) => void;
+   * lock — "заполнять можно, раскладку менять нельзя" from the design.
+   *
+   * `fieldType` comes from the template's def, so a handler can *append* a
+   * field the entity does not carry yet (see applyFieldValue) instead of
+   * dropping the edit on the floor. */
+  onFieldChange?: (key: string, value: FieldValue, fieldType: FieldType) => void;
 }
 
 /** Renders an entity through a template's sheet layout, built from a flat
@@ -59,9 +64,9 @@ export function SheetRenderer({
     for (const field of entity.fields) values[field.key] = field.value;
     return values;
   }, [entity.fields]);
-  const fieldLabels = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const def of fieldDefs) if (def.label) map.set(def.key, def.label);
+  const defsByKey = useMemo(() => {
+    const map = new Map<string, TemplateFieldDef>();
+    for (const def of fieldDefs) map.set(def.key, def);
     return map;
   }, [fieldDefs]);
 
@@ -92,7 +97,13 @@ export function SheetRenderer({
   const regions = layout.regions;
   const headerRegion = regions[0]?.kind === "band" ? regions[0] : null;
   const bodyRegions = headerRegion ? regions.slice(1) : regions;
-  const sectionProps = { byKey, fieldValues, fieldLabels, entityId: entity.id, onFieldChange };
+  const sectionProps: WidgetContext = {
+    byKey,
+    fieldValues,
+    defsByKey,
+    entityId: entity.id,
+    onFieldChange,
+  };
 
   return (
     <div className={`sheet sheet-${mode}`}>
@@ -116,7 +127,7 @@ export function SheetRenderer({
                 widget: defaultWidgetForFieldType(f.field_type),
                 field_key: f.key,
                 formula: null,
-                label: fieldLabels.get(f.key) ?? f.key,
+                label: defsByKey.get(f.key)?.label ?? f.key,
                 colspan: 1,
                 config: {},
               })),
@@ -130,19 +141,11 @@ export function SheetRenderer({
   );
 }
 
-interface WidgetPassthrough {
-  byKey: Map<string, EntityField>;
-  fieldValues: Record<string, FieldValue>;
-  fieldLabels: Map<string, string>;
-  entityId: string;
-  onFieldChange?: (key: string, value: FieldValue) => void;
-}
-
 function HeaderBand({
   entity,
   blocks,
   ...pass
-}: WidgetPassthrough & { entity: Entity; blocks: SheetBlock[] }) {
+}: WidgetContext & { entity: Entity; blocks: SheetBlock[] }) {
   const portrait = blocks.find((b) => b.widget === "image");
   const stats = blocks.filter((b) => b.widget !== "image");
   return (
@@ -173,12 +176,17 @@ function RegionView({
   region,
   mode,
   ...sectionProps
-}: WidgetPassthrough & { region: SheetRegion; mode: SheetMode }) {
+}: WidgetContext & { region: SheetRegion; mode: SheetMode }) {
   const compact = mode === "compact";
   // Declared unconditionally (Rules of Hooks) even though only the "tabs"
   // branch below reads it — the designer's live preview can flip a region's
   // `kind` while this component stays mounted under the same key.
   const [activeIndex, setActiveIndex] = useState(0);
+  const tabsId = useId();
+  // A region can lose containers (designer preview, a tab deleted) while the
+  // active index still points past the end — that rendered an empty tab body
+  // with the tab bar showing nothing selected.
+  const active = Math.min(activeIndex, Math.max(0, region.containers.length - 1));
 
   if (region.kind === "band") {
     return (
@@ -208,8 +216,38 @@ function RegionView({
   const shownContainers: { container: SheetContainer; index: number }[] = showTabBar
     ? region.containers
         .map((container, index) => ({ container, index }))
-        .filter(({ index }) => index === activeIndex)
+        .filter(({ index }) => index === active)
     : region.containers.map((container, index) => ({ container, index }));
+
+  /** Arrow keys move between tabs, Home/End jump to the ends — the WAI-ARIA
+   * tabs pattern. Without it the bar was mouse-only: roving focus never
+   * existed, every tab was a separate tab stop and none of them responded to
+   * a keypress. */
+  function onTabKeyDown(e: React.KeyboardEvent, index: number) {
+    const last = region.containers.length - 1;
+    const target =
+      e.key === "ArrowRight" || e.key === "ArrowDown"
+        ? index === last
+          ? 0
+          : index + 1
+        : e.key === "ArrowLeft" || e.key === "ArrowUp"
+          ? index === 0
+            ? last
+            : index - 1
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? last
+              : null;
+    if (target === null) return;
+    e.preventDefault();
+    setActiveIndex(target);
+    // Focus follows selection, as the pattern prescribes for auto-activated
+    // tabs — the DM should land inside the tab they just arrowed to.
+    e.currentTarget.parentElement
+      ?.querySelectorAll<HTMLButtonElement>("[role='tab']")
+      [target]?.focus();
+  }
 
   return (
     <div className={region.kind === "columns" ? "sheet-region-columns" : "sheet-region-tabs"}>
@@ -217,14 +255,18 @@ function RegionView({
         <h4 className="sheet-region-title">{region.name}</h4>
       )}
       {showTabBar && (
-        <div className="sheet-tabbar" role="tablist">
+        <div className="sheet-tabbar" role="tablist" aria-label={region.name}>
           {region.containers.map((container, i) => (
             <button
               key={container.id ?? i}
               type="button"
               role="tab"
-              aria-selected={i === activeIndex}
-              className={i === activeIndex ? "sheet-tab active" : "sheet-tab"}
+              id={`${tabsId}-tab-${i}`}
+              aria-selected={i === active}
+              aria-controls={`${tabsId}-panel-${i}`}
+              tabIndex={i === active ? 0 : -1}
+              className={i === active ? "sheet-tab active" : "sheet-tab"}
+              onKeyDown={(e) => onTabKeyDown(e, i)}
               onClick={() => setActiveIndex(i)}
             >
               {container.title ?? region.name}
@@ -238,7 +280,17 @@ function RegionView({
           much room there actually is. */}
       <div className="sheet-columns">
         {shownContainers.map(({ container, index }) => (
-          <div className="sheet-column" key={container.id ?? index}>
+          <div
+            className="sheet-column"
+            key={container.id ?? index}
+            {...(showTabBar
+              ? {
+                  role: "tabpanel",
+                  id: `${tabsId}-panel-${index}`,
+                  "aria-labelledby": `${tabsId}-tab-${index}`,
+                }
+              : {})}
+          >
             {!showTabBar && container.title && region.containers.length > 1 && (
               <h5 className="sheet-container-title">{container.title}</h5>
             )}
@@ -261,7 +313,7 @@ function SectionView({
   section,
   compact,
   ...pass
-}: WidgetPassthrough & { section: SheetSection; compact: boolean }) {
+}: WidgetContext & { section: SheetSection; compact: boolean }) {
   // stat_modifier/dots are small square boxes that pack into a dense
   // auto-fill grid; computed rows are full-width label+checkbox+value rows
   // (see .sheet-computed-row) and must NOT be squeezed into that grid — a

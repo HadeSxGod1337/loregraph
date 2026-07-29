@@ -59,6 +59,17 @@ WIDGET_FIELD_TYPES: dict[WidgetType, frozenset[FieldType]] = {
     WidgetType.TRACKER: frozenset({FieldType.NUMBER}),
 }
 
+# Identifier bound to the stat_modifier block's own field value inside its
+# `mod_formula` config — the one name a mod formula gets for free, on top of
+# the template's field keys.
+STAT_VALUE_IDENT = "value"
+
+# D&D 5e ability-score modifier (PHB "Ability Scores and Modifiers"). Used
+# when a stat_modifier block carries no explicit mod_formula, because that is
+# the system the built-in Character template targets — every other system
+# overrides it per block rather than the renderer assuming it.
+DEFAULT_STAT_MOD_FORMULA = f"floor(({STAT_VALUE_IDENT} - 10) / 2)"
+
 # Empty per-type default used at instantiation when a field def gives no
 # explicit default_value. ATTACHMENT has no meaningful empty value, so an
 # attachment field with no default is simply not created (the user adds it).
@@ -80,12 +91,36 @@ class TemplateFieldDef(BaseModel):
     show_on_card: bool = False
 
     @model_validator(mode="after")
+    def check_key_is_usable(self) -> Self:
+        # A field key is an identity, not a caption: it is what blocks bind to,
+        # what formulas reference and what an instantiated entity stores its
+        # value under. A blank one produces a field nothing can address.
+        if not self.key.strip():
+            raise ValueError("field key must not be blank")
+        return self
+
+    @model_validator(mode="after")
     def check_default_matches_type(self) -> Self:
         if self.default_value is not None:
             self.default_value = _coerce_field_value(
                 self.field_type, self.default_value
             )
         return self
+
+
+def validate_field_keys_unique(field_defs: list[TemplateFieldDef]) -> None:
+    """Two defs sharing a key silently collapse into one field on every
+    instantiated entity (the store is keyed by field key) while the designer
+    keeps showing both — the second one's type and default just disappear.
+    Shared by EntityTemplateBase and SheetPresetBase."""
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for field_def in field_defs:
+        if field_def.key in seen:
+            duplicates.add(field_def.key)
+        seen.add(field_def.key)
+    if duplicates:
+        raise ValueError(f"duplicate field key(s) {sorted(duplicates)!r}")
 
 
 # id is a stable client-generated handle for drag-and-drop reordering/moves in
@@ -157,6 +192,29 @@ class SheetLayout(BaseModel):
         return blocks
 
 
+def _validate_stat_mod_formula(block: Block, known_keys: set[str]) -> None:
+    """`stat_modifier` draws a score plus a derived modifier. How that modifier
+    is derived is system-specific (D&D halves the score, WoD has no such
+    notion at all), so it lives in the block's config as a formula over
+    STAT_VALUE_IDENT and the template's other fields — not as a rule baked
+    into the renderer. Absent config means the D&D 5e default; see
+    DEFAULT_STAT_MOD_FORMULA."""
+    raw = block.config.get("mod_formula")
+    if raw is None:
+        return
+    if not isinstance(raw, str) or not raw.strip():
+        raise ValueError("mod_formula must be a non-empty formula string")
+    try:
+        dependencies = parse_dependencies(raw)
+    except FormulaSyntaxError as exc:
+        raise ValueError(f"invalid mod_formula {raw!r}: {exc}") from exc
+    unknown = dependencies - known_keys - {STAT_VALUE_IDENT}
+    if unknown:
+        raise ValueError(
+            f"mod_formula {raw!r} references unknown field(s) {sorted(unknown)!r}"
+        )
+
+
 def validate_blocks_reference_fields(
     blocks: list[Block], field_defs: list[TemplateFieldDef]
 ) -> None:
@@ -166,6 +224,8 @@ def validate_blocks_reference_fields(
     ValueError (Pydantic wraps it into a 422) on the first violation."""
     by_key = {f.key: f.field_type for f in field_defs}
     for block in blocks:
+        if block.widget is WidgetType.STAT_MODIFIER:
+            _validate_stat_mod_formula(block, set(by_key))
         if block.widget in DECORATIVE_WIDGETS:
             continue
         if block.widget in FORMULA_WIDGETS:
@@ -207,6 +267,7 @@ class EntityTemplateBase(BaseModel):
 
     @model_validator(mode="after")
     def check_layout_references_fields(self) -> Self:
+        validate_field_keys_unique(self.field_defs)
         validate_blocks_reference_fields(self.layout.all_blocks(), self.field_defs)
         return self
 

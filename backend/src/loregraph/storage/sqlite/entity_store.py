@@ -35,6 +35,19 @@ class SqliteEntityStore:
         rows = (await self._session.execute(stmt)).scalars().all()
         return [_row_to_out(row) for row in rows]
 
+    async def list_entity_types(self, project_id: str) -> list[str]:
+        """The project's type vocabulary, without loading a single entity —
+        every generation run needs it (to keep the model on one taxonomy) and
+        the rows it would otherwise pull carry every rich-text field in the
+        campaign."""
+        stmt = (
+            select(EntityRow.type)
+            .where(EntityRow.project_id == project_id)
+            .distinct()
+            .order_by(EntityRow.type)
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
     async def create(self, data: EntityCreate, project_id: str) -> EntityOut:
         now = datetime.now(UTC)
         row = EntityRow(

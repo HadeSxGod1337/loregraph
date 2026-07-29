@@ -9,6 +9,8 @@ Each preset is dropped whole into a template's layout by the designer
 its `section` is appended to whichever container the DM dropped it on.
 """
 
+from functools import cache
+
 from loregraph.schemas.entity import FieldType
 from loregraph.schemas.entity_template import (
     Block,
@@ -149,6 +151,8 @@ def _checklist_preset() -> SheetPresetOut:
     )
 
 
-def builtin_presets() -> list[SheetPresetOut]:
-    """The shipped, read-only presets, in display order."""
-    return [_ability_skill_preset(), _resource_preset(), _checklist_preset()]
+@cache
+def builtin_presets() -> tuple[SheetPresetOut, ...]:
+    """The shipped, read-only presets, in display order. Built once per
+    process — see builtin_templates() for why."""
+    return (_ability_skill_preset(), _resource_preset(), _checklist_preset())

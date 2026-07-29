@@ -358,3 +358,80 @@ def test_create_rejects_region_shape_mismatching_kind(
     }
     resp = client.post(f"/api/projects/{project_id}/templates", json=bad)
     assert resp.status_code == 422
+
+
+def test_create_rejects_blank_field_key(client: TestClient, project_id: str) -> None:
+    bad = {
+        "name": "Bad",
+        "entity_type": "npc",
+        "field_defs": [{"key": "   ", "field_type": "text"}],
+        "layout": {"regions": []},
+    }
+    resp = client.post(f"/api/projects/{project_id}/templates", json=bad)
+    assert resp.status_code == 422
+
+
+def test_create_rejects_duplicate_field_keys(
+    client: TestClient, project_id: str
+) -> None:
+    bad = {
+        "name": "Bad",
+        "entity_type": "npc",
+        "field_defs": [
+            {"key": "role", "field_type": "text"},
+            {"key": "role", "field_type": "number"},
+        ],
+        "layout": {"regions": []},
+    }
+    resp = client.post(f"/api/projects/{project_id}/templates", json=bad)
+    assert resp.status_code == 422
+
+
+def _stat_template(config: dict[str, object]) -> dict[str, object]:
+    return {
+        "name": "Stats",
+        "entity_type": "npc",
+        "field_defs": [
+            {"key": "str", "field_type": "number"},
+            {"key": "bonus", "field_type": "number"},
+        ],
+        "layout": {
+            "regions": [
+                {
+                    "name": "Характеристики",
+                    "kind": "band",
+                    "blocks": [
+                        {
+                            "widget": "stat_modifier",
+                            "field_key": "str",
+                            "config": config,
+                        }
+                    ],
+                }
+            ]
+        },
+    }
+
+
+def test_create_accepts_custom_stat_mod_formula(
+    client: TestClient, project_id: str
+) -> None:
+    ok = _stat_template({"mod_formula": "floor(value / 2) + bonus"})
+    resp = client.post(f"/api/projects/{project_id}/templates", json=ok)
+    assert resp.status_code == 201
+
+
+def test_create_rejects_stat_mod_formula_with_unknown_field(
+    client: TestClient, project_id: str
+) -> None:
+    bad = _stat_template({"mod_formula": "value + missing_field"})
+    resp = client.post(f"/api/projects/{project_id}/templates", json=bad)
+    assert resp.status_code == 422
+
+
+def test_create_rejects_malformed_stat_mod_formula(
+    client: TestClient, project_id: str
+) -> None:
+    bad = _stat_template({"mod_formula": "floor(value / "})
+    resp = client.post(f"/api/projects/{project_id}/templates", json=bad)
+    assert resp.status_code == 422

@@ -10,6 +10,7 @@ const NAV_ITEMS: { to: string; icon: IconName; labelKey: string; end?: boolean }
   { to: "entities", icon: "layers", labelKey: "nav.entities", end: true },
   { to: "graph", icon: "network", labelKey: "nav.graph" },
   { to: "assistant", icon: "sparkles", labelKey: "nav.assistant" },
+  { to: "integrations", icon: "plug", labelKey: "nav.integrations" },
   { to: "settings", icon: "settings", labelKey: "nav.settings" },
   { to: "help", icon: "help", labelKey: "nav.help" },
 ];

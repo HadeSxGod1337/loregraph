@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
+from loregraph.services.entity_template_service import EntityTemplateService
 from loregraph.storage.protocols import (
     AttachmentStore,
     ConnectionEntityLinkStore,
@@ -23,6 +24,9 @@ class ConnectorContext:
     the raw stores are for reads. `runtime` hosts long-lived clients for
     connectors that need them (Foundry MCP sessions) — None in contexts that
     never touch such a connector (e.g. unit tests of file-based ones).
+    `template_service` lets an importer bind what it creates to the type's
+    sheet template — optional for the same reason: a context built for a
+    connector that only exports never needs it.
     """
 
     project_id: str
@@ -36,3 +40,4 @@ class ConnectorContext:
     attachments_dir: Path
     link_store: ConnectionEntityLinkStore
     runtime: "ConnectorRuntime | None" = None
+    template_service: EntityTemplateService | None = None

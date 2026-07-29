@@ -130,7 +130,7 @@ export function TemplatesPanel({ projectId }: { projectId: string }) {
         {t("templates.newTemplate")}
       </button>
 
-      {save.isError && (
+      {save.isError && !editing && (
         <p className="error-text">{translateApiError(save.error, t)}</p>
       )}
 
@@ -139,6 +139,9 @@ export function TemplatesPanel({ projectId }: { projectId: string }) {
           projectId={projectId}
           initial={editing.draft}
           saving={save.isPending}
+          // While the designer is open it covers this panel — the error has
+          // to travel into the modal or the DM never sees it.
+          error={save.isError ? translateApiError(save.error, t) : null}
           onSave={(draft) => save.mutate({ id: editing.id, draft })}
           onClose={() => setEditing(null)}
         />

@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useBlocker, useNavigate, useParams } from "react-router-dom";
 
-import type { EntityField, EntityTemplate, FieldValue } from "../api/types";
+import type { EntityField, EntityTemplate, FieldType, FieldValue } from "../api/types";
 import { DEFAULT_ENTITY_TYPES } from "../api/types";
 import { AttachmentUploader } from "../components/entity/AttachmentUploader";
 import { CharacterSheetEmbed } from "../components/entity/CharacterSheetEmbed";
 import { FieldEditor } from "../components/entity/FieldEditor";
 import { SheetRenderer } from "../components/sheet/SheetRenderer";
 import { TemplateSelect } from "../components/sheet/TemplateSelect";
-import { syncTemplateFields } from "../components/sheet/applyTemplate";
+import { applyFieldValue, syncTemplateFields } from "../components/sheet/applyTemplate";
 import { IconPicker } from "../components/entity/IconPicker";
 import { EdgeForm } from "../components/edges/EdgeForm";
 import { EdgeList } from "../components/edges/EdgeList";
@@ -60,8 +60,8 @@ export function EntityEditPage() {
     setTemplateId(template?.id ?? null);
   }
 
-  function handleFieldChange(key: string, value: FieldValue) {
-    setFields((prev) => prev.map((f) => (f.key === key ? { ...f, value } : f)));
+  function handleFieldChange(key: string, value: FieldValue, fieldType: FieldType) {
+    setFields((prev) => applyFieldValue(prev, key, value, fieldType));
   }
 
   // Dirty tracking: compare against the last-loaded server state (or the

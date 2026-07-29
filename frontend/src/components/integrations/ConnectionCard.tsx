@@ -15,14 +15,9 @@ import { KebabMenu } from "../ui/KebabMenu";
 import { useToast } from "../ui/Toast";
 import { ImportJobDialog } from "../knowledge/ImportJobDialog";
 import { ConnectionFormDialog } from "./ConnectionFormDialog";
+import { connectionCapabilities, connectorLabel } from "./connectorMeta";
 import { ExportDialog } from "./ExportDialog";
 import { ImportDialog } from "./ImportDialog";
-
-const CONNECTOR_LABELS: Record<string, string> = {
-  obsidian: "Obsidian",
-  foundry: "Foundry VTT",
-  longstoryshort: "LongStoryShort",
-};
 
 export function ConnectionCard({
   connection,
@@ -36,7 +31,7 @@ export function ConnectionCard({
   const { t } = useTranslation();
   const toast = useToast();
   const testConn = useTestConnection(projectId);
-  const toggleGrounding = useUpdateConnection(projectId);
+  const updateConn = useUpdateConnection(projectId);
 
   const deleteConn = useDeleteConnection(projectId);
 
@@ -46,13 +41,11 @@ export function ConnectionCard({
   const [migrateOpen, setMigrateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const typeLabel =
-    CONNECTOR_LABELS[connection.connector_type] ?? connection.connector_type;
-  // AI migration is only offered for connectors that can dump their own
-  // content as text (backend CAPABILITY_INGEST / IngestSource).
-  const canMigrate = connectorTypes
-    .find((ct) => ct.connector_type === connection.connector_type)
-    ?.capabilities.includes("ingest");
+  const typeLabel = connectorLabel(connection.connector_type);
+  // Every action and switch below is gated on what the backend says this
+  // connector type can do — an Export button on a connection with no
+  // exporter only ever produced a 422.
+  const can = connectionCapabilities(connection, connectorTypes);
 
   function handleTest() {
     testConn.mutate(connection.id, {
@@ -69,7 +62,7 @@ export function ConnectionCard({
   }
 
   function handleToggle(field: "use_for_grounding" | "auto_push_after_commit") {
-    toggleGrounding.mutate({
+    updateConn.mutate({
       id: connection.id,
       data: {
         name: connection.name,
@@ -104,18 +97,26 @@ export function ConnectionCard({
         />
       </div>
 
-      <div className="connection-card-toggles">
-        <Checkbox
-          label={t("integrations.grounding")}
-          checked={connection.use_for_grounding}
-          onChange={() => handleToggle("use_for_grounding")}
-        />
-        <Checkbox
-          label={t("integrations.autoPush")}
-          checked={connection.auto_push_after_commit}
-          onChange={() => handleToggle("auto_push_after_commit")}
-        />
-      </div>
+      {(can.canFeedAgent || can.canExport) && (
+        <div className="connection-card-toggles">
+          {can.canFeedAgent && (
+            <Checkbox
+              label={t("integrations.grounding")}
+              hint={t("integrations.groundingHint")}
+              checked={connection.use_for_grounding}
+              onChange={() => handleToggle("use_for_grounding")}
+            />
+          )}
+          {can.canExport && (
+            <Checkbox
+              label={t("integrations.autoPush")}
+              hint={t("integrations.autoPushHint")}
+              checked={connection.auto_push_after_commit}
+              onChange={() => handleToggle("auto_push_after_commit")}
+            />
+          )}
+        </div>
+      )}
 
       <div className="connection-card-actions">
         <button
@@ -127,23 +128,27 @@ export function ConnectionCard({
         >
           <Icon name="target" size={14} />
         </button>
-        <button
-          type="button"
-          className="icon-button icon-button-accent"
-          onClick={() => setExportOpen(true)}
-          title={t("integrations.export")}
-        >
-          <Icon name="upload" size={14} />
-        </button>
-        <button
-          type="button"
-          className="icon-button icon-button-accent"
-          onClick={() => setImportOpen(true)}
-          title={t("integrations.import")}
-        >
-          <Icon name="download" size={14} />
-        </button>
-        {canMigrate && (
+        {can.canExport && (
+          <button
+            type="button"
+            className="icon-button icon-button-accent"
+            onClick={() => setExportOpen(true)}
+            title={t("integrations.export")}
+          >
+            <Icon name="upload" size={14} />
+          </button>
+        )}
+        {can.canImport && (
+          <button
+            type="button"
+            className="icon-button icon-button-accent"
+            onClick={() => setImportOpen(true)}
+            title={t("integrations.import")}
+          >
+            <Icon name="download" size={14} />
+          </button>
+        )}
+        {can.canMigrate && (
           <button
             type="button"
             className="icon-button icon-button-accent"

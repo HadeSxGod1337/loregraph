@@ -13,8 +13,11 @@ example for COMPUTED widgets: every skill/save is a formula
 bonus, never a value stored on the entity itself.
 """
 
+from functools import cache
+
 from loregraph.schemas.entity import FieldType
 from loregraph.schemas.entity_template import (
+    DEFAULT_STAT_MOD_FORMULA,
     Block,
     Container,
     EntityTemplateOut,
@@ -181,7 +184,9 @@ def _save_block(ability_key: str, ability_label: str) -> Block:
         widget=WidgetType.COMPUTED,
         label=ability_label,
         formula=f"floor(({ability_key} - 10) / 2) + ({prof_key} ? proficiency : 0)",
-        config={"toggleable": [prof_key]},
+        # signed: a save bonus is a modifier — it is rolled *onto* a d20 and
+        # reads "+3"/"-1". A computed total (see _passive_section) is not.
+        config={"toggleable": [prof_key], "signed": True},
     )
 
 
@@ -191,7 +196,7 @@ def _skill_block(ability_key: str, skill_key: str, label: str) -> Block:
         widget=WidgetType.COMPUTED,
         label=label,
         formula=f"floor(({ability_key} - 10) / 2) + ({prof_key} ? proficiency : 0)",
-        config={"toggleable": [prof_key]},
+        config={"toggleable": [prof_key], "signed": True},
     )
 
 
@@ -202,7 +207,15 @@ def _scores_section() -> Section:
     return Section(
         title="Характеристики",
         blocks=[
-            Block(widget=WidgetType.STAT_MODIFIER, field_key=key, label=label)
+            Block(
+                widget=WidgetType.STAT_MODIFIER,
+                field_key=key,
+                label=label,
+                # Spelled out rather than left to the renderer's fallback:
+                # this template is D&D 5e, and a duplicated copy retargeted at
+                # another system should show the DM what to change.
+                config={"mod_formula": DEFAULT_STAT_MOD_FORMULA},
+            )
             for key, label in _ABILITIES
         ],
     )
@@ -659,6 +672,14 @@ def _faction() -> EntityTemplateOut:
     )
 
 
-def builtin_templates() -> list[EntityTemplateOut]:
-    """The shipped, read-only templates, in display order."""
-    return [_character(), _npc(), _location(), _faction()]
+@cache
+def builtin_templates() -> tuple[EntityTemplateOut, ...]:
+    """The shipped, read-only templates, in display order.
+
+    Built once per process, not once per request: EntityTemplateService is
+    constructed per HTTP request, and the Character template alone is a few
+    hundred validated Pydantic models (every skill row is a Block). A tuple
+    of read-only templates is safe to share — nothing mutates them, and
+    instantiation deep-copies the values it takes (template_to_fields).
+    """
+    return (_character(), _npc(), _location(), _faction())

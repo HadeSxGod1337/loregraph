@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { API_URL } from "../api/client";
 import type { Entity } from "../api/types";
+import { CharacterSheetImportButton } from "../components/integrations/CharacterSheetImportButton";
 import { TemplatePickerDialog } from "../components/sheet/TemplatePickerDialog";
 import { Icon } from "../components/ui/Icon";
 import { SkeletonList } from "../components/ui/Skeleton";
@@ -46,6 +47,7 @@ export function EntityListPage() {
       <div className="entity-list-header">
         <h1>{t("entities.title")}</h1>
         <div className="entity-list-header-actions">
+          <CharacterSheetImportButton projectId={projectId!} />
           <button
             type="button"
             className="button-ghost"

@@ -22,6 +22,17 @@
  * is a call to one of ALLOWED_FUNCTIONS.
  */
 
+/** Identifier bound to a stat_modifier block's own field value inside its
+ * `config.mod_formula` — mirrors STAT_VALUE_IDENT in
+ * backend/src/loregraph/schemas/entity_template.py, which validates the
+ * formula at template-save time. */
+export const STAT_VALUE_IDENT = "value";
+
+/** D&D 5e ability-score modifier (PHB "Ability Scores and Modifiers") — the
+ * fallback when a stat_modifier block declares no mod_formula of its own.
+ * Mirrors DEFAULT_STAT_MOD_FORMULA on the backend. */
+export const DEFAULT_STAT_MOD_FORMULA = `floor((${STAT_VALUE_IDENT} - 10) / 2)`;
+
 export const ALLOWED_FUNCTIONS = new Set([
   "floor",
   "ceil",

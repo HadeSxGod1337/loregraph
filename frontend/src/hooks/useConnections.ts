@@ -68,8 +68,15 @@ export function useRunExport(projectId: string) {
 }
 
 export function useRunImport(projectId: string) {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ connectionId, request }: { connectionId: string; request?: ImportRequest }) =>
       connectionsApi.import(projectId, connectionId, request),
+    // An import writes entities — every list and graph view showing them is
+    // stale the moment it returns.
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["entities", projectId] });
+      void qc.invalidateQueries({ queryKey: ["subgraph", projectId] });
+    },
   });
 }

@@ -53,6 +53,25 @@ class EntityTemplateService:
         user_templates = await self._store.list_for_project(project_id)
         return [*self._builtins.values(), *user_templates]
 
+    async def default_for_entity_type(
+        self, project_id: str, entity_type: str
+    ) -> EntityTemplateOut | None:
+        """The template a new entity of this type should be bound to when
+        nobody picked one — an importer creating a party member, say.
+
+        A project's own template wins over the built-in one: a DM who built a
+        sheet for their system means it to be *the* sheet for that type. None
+        when the type has no template at all, which is a valid answer (the
+        entity is then a plain field list, as before).
+        """
+        for template in await self._store.list_for_project(project_id):
+            if template.entity_type == entity_type:
+                return template
+        for builtin in self._builtins.values():
+            if builtin.entity_type == entity_type:
+                return builtin
+        return None
+
     async def get_for_project(
         self, project_id: str, template_id: str
     ) -> EntityTemplateOut:

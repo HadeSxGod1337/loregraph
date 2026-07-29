@@ -14,6 +14,7 @@ from loregraph.api.deps import (
     EdgeStoreDep,
     EntityServiceDep,
     EntityStoreDep,
+    EntityTemplateServiceDep,
     ProjectStoreDep,
     SettingsDep,
 )
@@ -100,6 +101,7 @@ class _ConnectorBuilder:
             attachments_dir=self.context_template.attachments_dir,
             link_store=self.context_template.link_store,
             runtime=self.context_template.runtime,
+            template_service=self.context_template.template_service,
         )
         connector = self.registry.create(
             connection.connector_type, connection.config, context
@@ -120,6 +122,7 @@ async def get_connector_builder(
     link_store: ConnectionEntityLinkStoreDep,
     settings: SettingsDep,
     runtime: ConnectorRuntimeDep,
+    template_service: EntityTemplateServiceDep,
 ) -> _ConnectorBuilder:
     template = ConnectorContext(
         project_id="",
@@ -133,6 +136,7 @@ async def get_connector_builder(
         attachments_dir=settings.attachments_dir,
         link_store=link_store,
         runtime=runtime,
+        template_service=template_service,
     )
     return _ConnectorBuilder(store=store, registry=registry, context_template=template)
 

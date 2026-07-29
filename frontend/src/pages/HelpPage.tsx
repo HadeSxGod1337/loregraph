@@ -71,6 +71,7 @@ const SECTIONS: HelpSection[] = [
       { id: "obsidian", icon: "folder", titleKey: "help.integrations.obsidian.title", bodyKey: "help.integrations.obsidian.body" },
       { id: "foundry", icon: "plug", titleKey: "help.integrations.foundry.title", bodyKey: "help.integrations.foundry.body" },
       { id: "lss", icon: "external-link", titleKey: "help.integrations.lss.title", bodyKey: "help.integrations.lss.body" },
+      { id: "switches", icon: "settings", titleKey: "help.integrations.switches.title", bodyKey: "help.integrations.switches.body" },
     ],
   },
   {

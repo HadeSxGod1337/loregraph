@@ -9,6 +9,7 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   entities: "nav.entities",
   graph: "nav.graph",
   assistant: "nav.assistant",
+  integrations: "nav.integrations",
   settings: "nav.settings",
 };
 

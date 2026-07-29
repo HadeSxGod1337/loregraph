@@ -14,13 +14,8 @@ export function IntegrationsPanel({ projectId }: { projectId: string }) {
 
   return (
     <section className="settings-card integrations-panel">
-      <div className="settings-card-head">
-        <h2>
-          <Icon name="plug" size={16} />
-          {t("integrations.heading")}
-        </h2>
-        <p className="field-hint">{t("integrations.hint")}</p>
-      </div>
+      {/* The page above owns the title — the panel is the list itself. */}
+      <p className="field-hint">{t("integrations.hint")}</p>
 
       {isLoading && <p className="field-hint">{t("common.loading")}</p>}
 

@@ -9,6 +9,7 @@ import {
 import { translateApiError } from "../../i18n/eventText";
 import { Checkbox } from "../ui/Checkbox";
 import { useToast } from "../ui/Toast";
+import { capabilitiesOf, connectorLabel } from "./connectorMeta";
 
 /** Hardcoded config field definitions per connector type. No JSON-schema
  * forms — every supported type has a small, stable config shape. "lines"
@@ -48,13 +49,6 @@ const CONFIG_FIELDS: Record<
       type: "lines",
     },
   ],
-};
-
-const CONNECTOR_LABELS: Record<string, string> = {
-  obsidian: "Obsidian",
-  foundry: "Foundry VTT",
-  longstoryshort: "LongStoryShort",
-  mcp: "MCP server",
 };
 
 function linesToArray(raw: string): string[] {
@@ -123,6 +117,9 @@ export function ConnectionFormDialog({
 
   const fields = CONFIG_FIELDS[connectorType] ?? [];
   const busy = create.isPending || update.isPending;
+  // Only offer the switches this connector type can honour: "auto-push after
+  // commit" on a connection that cannot export is a promise nothing keeps.
+  const can = capabilitiesOf(connectorType, connectorTypes);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -141,6 +138,11 @@ export function ConnectionFormDialog({
       }
     }
 
+    // A switch the type cannot honour is stored off, so what is saved is
+    // always what the form showed.
+    const grounding = can.canFeedAgent && useForGrounding;
+    const push = can.canExport && autoPush;
+
     if (isEdit) {
       update.mutate(
         {
@@ -148,8 +150,8 @@ export function ConnectionFormDialog({
           data: {
             name,
             config: typedConfig,
-            use_for_grounding: useForGrounding,
-            auto_push_after_commit: autoPush,
+            use_for_grounding: grounding,
+            auto_push_after_commit: push,
           },
         },
         {
@@ -166,8 +168,8 @@ export function ConnectionFormDialog({
           connector_type: connectorType,
           name,
           config: typedConfig,
-          use_for_grounding: useForGrounding,
-          auto_push_after_commit: autoPush,
+          use_for_grounding: grounding,
+          auto_push_after_commit: push,
         },
         {
           onSuccess: () => {
@@ -201,12 +203,16 @@ export function ConnectionFormDialog({
               >
                 {connectorTypes.map((ct) => (
                   <option key={ct.connector_type} value={ct.connector_type}>
-                    {CONNECTOR_LABELS[ct.connector_type] ?? ct.connector_type}
+                    {connectorLabel(ct.connector_type)}
                   </option>
                 ))}
               </select>
             </label>
           )}
+
+          <p className="field-hint">
+            {t(`integrations.typeHint.${connectorType}`, { defaultValue: "" })}
+          </p>
 
           <label>
             {t("integrations.nameLabel")}
@@ -252,16 +258,22 @@ export function ConnectionFormDialog({
             ),
           )}
 
-          <Checkbox
-            label={t("integrations.grounding")}
-            checked={useForGrounding}
-            onChange={(e) => setUseForGrounding(e.target.checked)}
-          />
-          <Checkbox
-            label={t("integrations.autoPush")}
-            checked={autoPush}
-            onChange={(e) => setAutoPush(e.target.checked)}
-          />
+          {can.canFeedAgent && (
+            <Checkbox
+              label={t("integrations.grounding")}
+              hint={t("integrations.groundingHint")}
+              checked={useForGrounding}
+              onChange={(e) => setUseForGrounding(e.target.checked)}
+            />
+          )}
+          {can.canExport && (
+            <Checkbox
+              label={t("integrations.autoPush")}
+              hint={t("integrations.autoPushHint")}
+              checked={autoPush}
+              onChange={(e) => setAutoPush(e.target.checked)}
+            />
+          )}
 
           {(create.isError || update.isError) && (
             <p className="error-text">

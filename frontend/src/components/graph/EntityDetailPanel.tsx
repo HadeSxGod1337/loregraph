@@ -8,7 +8,7 @@ import { useEntities } from "../../hooks/useEntities";
 import { useEntity, useDeleteEntity, useUpdateEntity } from "../../hooks/useEntity";
 import { useCreateEdge, useDeleteEdge, useEdgesForEntity } from "../../hooks/useEdgesForEntity";
 import { useTemplateById } from "../../hooks/useTemplates";
-import { syncTemplateFields } from "../sheet/applyTemplate";
+import { applyFieldValue, syncTemplateFields } from "../sheet/applyTemplate";
 import { ExternalSheetEmbed } from "../sheet/ExternalSheetEmbed";
 import { LSS_EMBED } from "../sheet/externalSheet";
 import { SheetModal } from "../sheet/SheetModal";
@@ -397,10 +397,8 @@ export function EntityDetailPanel({
                     layout={template.layout}
                     fieldDefs={template.field_defs}
                     mode="fill"
-                    onFieldChange={(key, value) =>
-                      setFields((prev) =>
-                        prev.map((f) => (f.key === key ? { ...f, value } : f)),
-                      )
+                    onFieldChange={(key, value, fieldType) =>
+                      setFields((prev) => applyFieldValue(prev, key, value, fieldType))
                     }
                   />
                 </div>

@@ -964,10 +964,17 @@
 
 /* ---------- Integrations / Connections ---------- */
 
-.integrations-panel h2 {
+.integrations-page h1 {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
+}
+
+/* No reading-measure cap here: the page is already capped at 1040px, and a
+   narrower column inside a much wider card reads as a block that failed to
+   line up rather than as a deliberate measure. */
+.integrations-panel > .field-hint {
+  margin: 0 0 14px;
 }
 
 .integrations-list {
@@ -1024,6 +1031,12 @@
 .connection-card-actions {
   display: flex;
   gap: 6px;
+  /* An .icon-button centres a 14px glyph in a 28px box, so its *ink* starts
+     7px in — leaving the row visibly indented against the checkbox and the
+     type badge above it, which both start at the card's text edge. Pull the
+     row back by that inset so the glyphs line up; the hover background still
+     lands inside the card's 14px padding. */
+  margin-left: -7px;
 }
 
 .export-preview-table {
@@ -1081,6 +1094,91 @@
   font-size: 12px;
   color: var(--text-muted);
   margin: 6px 0;
+}
+
+/* Character-sheet import: the exported file is the path that always works,
+   so it gets the whole surface and the fallbacks fold away below it. */
+.import-dialog {
+  max-width: 520px;
+}
+
+.import-dropzone {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 22px 16px;
+  margin: 10px 0;
+  font: inherit;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.import-dropzone:hover,
+.import-dropzone:focus-visible,
+.import-dropzone.dragging {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.import-dropzone-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.import-file-list,
+.import-result-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.import-file-list li,
+.import-result-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  font-size: 13px;
+}
+
+.import-file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-result-action {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.import-advanced {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.import-advanced summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.import-advanced summary:hover {
+  color: var(--text);
 }
 
 /* Live LSS character sheet embed (entity panel / editor) */
@@ -5068,6 +5166,31 @@ label.checkbox-wrapper.checkbox-disabled {
   line-height: 1.3;
 }
 
+/* A setting whose name can't say what it does carries one explaining line
+   under it — which makes the row two lines tall, so the box stops centring
+   against it and aligns with the label instead. */
+label.checkbox-wrapper.checkbox-with-hint {
+  display: flex;
+  align-items: flex-start;
+}
+
+.checkbox-with-hint .checkbox-box {
+  margin-top: 1px;
+}
+
+.checkbox-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checkbox-hint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 /* ---------- Help page ---------- */
 
 .help-page {
@@ -5868,8 +5991,22 @@ label.checkbox-wrapper.checkbox-disabled {
   line-height: 1;
 }
 
-.sheet-dots .sheet-dot[role="button"] {
+/* Editable dots are real <button>s (keyboard-reachable, see Dots in
+   WidgetView) — strip the UA button chrome so they still read as pips. */
+button.sheet-dot {
+  padding: 0;
+  background: none;
   cursor: pointer;
+  appearance: none;
+}
+
+button.sheet-dot.filled {
+  background: var(--text);
+}
+
+button.sheet-dot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .sheet-image-edit {
@@ -6232,6 +6369,16 @@ label.checkbox-wrapper.checkbox-disabled {
   max-width: 260px;
 }
 
+/* Why a save is blocked, or why the server refused one — the designer covers
+   the settings page behind it, so this is the only place the DM can read it. */
+.designer-banner {
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
 .designer-body-3col {
   display: grid;
   grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(280px, 340px);
@@ -6366,6 +6513,13 @@ label.checkbox-wrapper.checkbox-disabled {
 
 .designer-palette-chip.dragging {
   opacity: 0.4;
+}
+
+/* Blank or duplicated key — the one thing that makes a template unsavable
+   without the canvas showing anything wrong. */
+.designer-palette-chip.invalid {
+  border-color: var(--danger);
+  box-shadow: inset 0 0 0 1px var(--danger);
 }
 
 .designer-palette-chip-name {

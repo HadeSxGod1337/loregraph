@@ -26,6 +26,28 @@ export function emptyValue(fieldType: FieldType): FieldValue {
   }
 }
 
+/** Write a value into an entity's field list, appending the field when it is
+ * not there yet.
+ *
+ * The append is the point: a sheet renders every block its template declares,
+ * including ones whose field the entity has never carried (the template gained
+ * a field after this entity was made, or instantiation skipped an attachment
+ * with no default). Without this those slots stayed permanently read-only —
+ * the DM could see "Пассивная внимательность" on the sheet and had no way to
+ * fill it in, because the plain field editor is hidden while a template is
+ * bound. */
+export function applyFieldValue(
+  fields: EntityField[],
+  key: string,
+  value: FieldValue,
+  fieldType: FieldType,
+): EntityField[] {
+  if (fields.some((f) => f.key === key)) {
+    return fields.map((f) => (f.key === key ? { ...f, value } : f));
+  }
+  return [...fields, { key, field_type: fieldType, value, show_on_card: false }];
+}
+
 export interface TemplateSync {
   fields: EntityField[];
   addedKeys: string[];

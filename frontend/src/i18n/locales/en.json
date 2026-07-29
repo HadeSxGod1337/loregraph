@@ -47,11 +47,9 @@
     "entityTypeLabel": "Entity type",
     "fields": "Fields",
     "addField": "Field",
-    "tabs": "Tabs",
     "addTab": "Tab",
     "addColumn": "Column",
     "addSection": "Section",
-    "addBlock": "Block",
     "pickField": "— field —",
     "preview": "Preview",
     "labelPlaceholder": "label",
@@ -68,8 +66,6 @@
     },
     "newRegion": "New region",
     "addRegion": "Add region",
-    "moveUp": "Move up",
-    "moveDown": "Move down",
     "tabTitlePlaceholder": "tab title",
     "columnTitlePlaceholder": "column title",
     "formulaPlaceholder": "formula, e.g. floor((str - 10) / 2) + (prof_athletics ? proficiency : 0)",
@@ -90,7 +86,16 @@
     "presetsNeedContainer": "Add a columns or tabs region to insert presets into.",
     "insertPreset": "Insert",
     "savePresetPrompt": "Preset name",
-    "saveAsPreset": "Save section as preset"
+    "saveAsPreset": "Save section as preset",
+    "problemNoName": "Give the template a name",
+    "problemNoType": "Give the template an entity type",
+    "problemBlankKey": "One of the fields has a blank key — fill it in under Properties",
+    "problemDuplicateKey": "Two fields share a key — their values would overwrite each other",
+    "keyInvalid": "Blank or duplicated field key",
+    "showModifier": "Show modifier",
+    "modFormula": "Modifier formula",
+    "modFormulaHint": "value is the field's own score; other template fields can be referenced too",
+    "signedValue": "Show with a sign (+3)"
   },
   "widgets": {
     "plain": "Value",
@@ -108,6 +113,7 @@
     "entities": "Entities",
     "graph": "Graph",
     "assistant": "AI Assistant",
+    "integrations": "Integrations",
     "settings": "Settings",
     "help": "Help"
   },
@@ -159,6 +165,7 @@
     "allTypes": "All",
     "noEntities": "No entities yet. Create one — or ask the assistant to propose starting lore.",
     "noMatches": "Nothing found — change the query or reset the filter.",
+    "importSheets": "Import character sheets",
     "fieldCount_one": "{{count}} field",
     "fieldCount_other": "{{count}} fields"
   },
@@ -355,7 +362,6 @@
     "navGeneral": "General",
     "navTemplates": "Templates",
     "navKnowledge": "Knowledge base",
-    "navIntegrations": "Integrations",
     "navUsage": "Usage",
     "navDanger": "Danger zone",
     "dangerHeading": "Danger zone",
@@ -535,7 +541,7 @@
   },
   "integrations": {
     "heading": "Integrations",
-    "hint": "Connect external tools (Obsidian vault, Foundry VTT, LongStoryShort) to push and pull content between Loregraph and your other apps.",
+    "hint": "Connect external tools — an Obsidian vault, a Foundry VTT world, LongStoryShort character sheets, or any MCP server — to move content between Loregraph and the rest of your table. Each connection only offers what its tool can actually do.",
     "noConnections": "No connections yet. Add one to get started.",
     "addButton": "Add connection",
     "addTitle": "New connection",
@@ -543,8 +549,16 @@
     "typeLabel": "Type",
     "nameLabel": "Name",
     "namePlaceholder": "e.g. \"My Vault\", \"Game World\"",
-    "grounding": "Use for grounding",
-    "autoPush": "Auto-push after commit",
+    "grounding": "Let the assistant read this source",
+    "groundingHint": "While generating lore, the assistant may look up current facts here (party sheets, world data) and use them as context. Nothing is written back.",
+    "autoPush": "Export automatically after approval",
+    "autoPushHint": "Every time you approve a proposal, the entities it touched are exported here as well. You can always export by hand instead.",
+    "typeHint": {
+      "obsidian": "Reads and writes Markdown notes in a vault folder on this machine.",
+      "foundry": "Talks to a running Foundry VTT world through the local bridge — journals, actors and scenes.",
+      "longstoryshort": "Imports character sheets exported from longstoryshort.app. No settings needed.",
+      "mcp": "Any MCP server you trust. The assistant gets its tools verbatim, exactly as when you connect one to an AI coding agent."
+    },
     "test": "Test connection",
     "testOk": "Connected",
     "export": "Export",
@@ -570,6 +584,8 @@
       "oneLine": "One per line"
     },
     "probe": {
+      "lss_reachable": "longstoryshort.app is reachable",
+      "lss_unreachable": "longstoryshort.app is unreachable — importing an exported file still works",
       "vault_ok": "Vault accessible",
       "vault_path_missing": "Vault path not found",
       "vault_not_directory": "Path is not a directory",
@@ -594,13 +610,24 @@
     },
     "importTitle": "Import",
     "importHint": "Import will read from the configured source and create or update entities.",
+    "importSheetsTitle": "Import character sheets",
+    "importSheetsHint": "On longstoryshort.app open a sheet → Export, and drop the saved files here. Several at once is fine — the whole party in one go.",
+    "importDropTitle": "Drop the exported .json files here",
+    "importDropHint": "or click to choose them",
+    "importOtherWays": "Other ways to import",
     "importShareUrl": "Share URL",
+    "importShareUrlHint": "Works only while the sheet is publicly shared and the site answers — the exported file always works.",
     "importFile": "Upload file",
-    "importRawJson": "Or paste JSON directly",
+    "importRawJson": "Or paste the sheet JSON directly",
     "importOr": "— or —",
     "importConfirm": "Import now",
     "importRunning": "Importing…",
     "importDone": "Import complete: {{created}} created, {{updated}} updated, {{skipped}} skipped.",
+    "importSheetsDoneHint": "Each character came in with the character-sheet template already applied — open one to see, edit and print the sheet.",
+    "itemAction": {
+      "created": "created",
+      "updated": "refreshed"
+    },
     "importInvalidJson": "Invalid JSON — check the syntax and try again."
   },
   "characterSheet": {
@@ -706,7 +733,7 @@
     },
     "integrations": {
       "title": "Integrations",
-      "lead": "Exchanging content with external DM tools.",
+      "lead": "Exchanging content with external DM tools. \"Integrations\" in the left rail.",
       "obsidian": {
         "title": "Obsidian",
         "body": "Export entities to a markdown vault with relationships as [[wikilinks]], or import notes back into the project."
@@ -717,7 +744,11 @@
       },
       "lss": {
         "title": "Long Story Short",
-        "body": "Import a character sheet by share link or export file — the entity gets a live embedded view of the sheet."
+        "body": "\"Import character sheets\" on the Entities page takes the .json files a party exported from longstoryshort.app — drop in all of them at once. Each character arrives with the character-sheet template applied, and importing the same file again refreshes that character instead of duplicating it, keeping any fields you added yourself."
+      },
+      "switches": {
+        "title": "The two switches on a connection",
+        "body": "\"Let the assistant read this source\" lets lore generation look up current facts there (a Foundry world, imported party sheets) and use them as context — it never writes anything back. \"Export automatically after approval\" sends every proposal you approve on to that tool as well. Each switch only appears on connections that can actually do it."
       }
     },
     "settings": {

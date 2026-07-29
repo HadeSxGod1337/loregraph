@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useBlocker, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import { IntegrationsPanel } from "../components/integrations/IntegrationsPanel";
 import { KnowledgeBasePanel } from "../components/knowledge/KnowledgeBasePanel";
 import { TemplatesPanel } from "../components/sheet/designer/TemplatesPanel";
 import { TokenUsagePanel } from "../components/usage/TokenUsagePanel";
@@ -17,11 +16,12 @@ import {
 } from "../hooks/useProjects";
 import { translateApiError } from "../i18n/eventText";
 
+// Integrations are no longer here: they moved to their own left-rail section
+// (pages/IntegrationsPage.tsx), being something you use rather than set up.
 type SettingsSection =
   | "general"
   | "templates"
   | "knowledge"
-  | "integrations"
   | "usage"
   | "danger";
 
@@ -29,7 +29,6 @@ const NAV_SECTIONS: { id: SettingsSection; icon: IconName; labelKey: string }[] 
   { id: "general", icon: "settings", labelKey: "projectSettings.navGeneral" },
   { id: "templates", icon: "layers", labelKey: "projectSettings.navTemplates" },
   { id: "knowledge", icon: "folder", labelKey: "projectSettings.navKnowledge" },
-  { id: "integrations", icon: "plug", labelKey: "projectSettings.navIntegrations" },
   { id: "usage", icon: "bar-chart", labelKey: "projectSettings.navUsage" },
 ];
 
@@ -258,8 +257,6 @@ export function ProjectSettingsPage() {
               </div>
             </section>
           )}
-
-          {section === "integrations" && <IntegrationsPanel projectId={projectId!} />}
 
           {section === "usage" && <TokenUsagePanel projectId={projectId!} />}
 

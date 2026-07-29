@@ -7,6 +7,12 @@ export function useTemplates(projectId: string) {
   return useQuery({
     queryKey: ["templates", projectId],
     queryFn: () => templatesApi.list(projectId),
+    // Templates change only when a DM edits one in the designer, which
+    // invalidates this key explicitly. Everything that renders a sheet reads
+    // this list (every drawer, every editor, the picker), so without a stale
+    // time each of those mounts refetched four built-in templates plus the
+    // project's own — a payload dominated by the Character sheet's layout.
+    staleTime: 5 * 60 * 1000,
   });
 }
 

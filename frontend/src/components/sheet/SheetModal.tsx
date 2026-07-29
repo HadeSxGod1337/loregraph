@@ -1,12 +1,20 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import type { Entity, EntityField, EntityTemplate, FieldValue } from "../../api/types";
+import type {
+  Entity,
+  EntityField,
+  EntityTemplate,
+  FieldType,
+  FieldValue,
+} from "../../api/types";
 import { useUpdateEntity } from "../../hooks/useEntity";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Icon } from "../ui/Icon";
 import { useToast } from "../ui/Toast";
+import { applyFieldValue } from "./applyTemplate";
 import { ExternalSheetEmbed } from "./ExternalSheetEmbed";
 import { SheetRenderer } from "./SheetRenderer";
 
@@ -28,6 +36,7 @@ export function SheetModal({ entity, template, onClose }: SheetModalProps) {
 
   const [editing, setEditing] = useState(false);
   const [fields, setFields] = useState<EntityField[]>(entity.fields);
+  const [confirmingClose, setConfirmingClose] = useState(false);
 
   // Re-sync whenever the server copy changes underneath (another tab, the
   // agent committing a batch) — but never while the DM is mid-edit.
@@ -35,16 +44,26 @@ export function SheetModal({ entity, template, onClose }: SheetModalProps) {
     if (!editing) setFields(entity.fields);
   }, [entity.fields, editing]);
 
+  const dirty = editing && fields !== entity.fields;
+
+  /** Escape and the backdrop used to discard a half-filled sheet outright:
+   * the modal closed, `fields` died with it and nothing had been sent to the
+   * server. Ask first whenever there is something to lose. */
+  const requestClose = useCallback(() => {
+    if (dirty) setConfirmingClose(true);
+    else onClose();
+  }, [dirty, onClose]);
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") requestClose();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, [requestClose]);
 
-  function handleFieldChange(key: string, value: FieldValue) {
-    setFields((prev) => prev.map((f) => (f.key === key ? { ...f, value } : f)));
+  function handleFieldChange(key: string, value: FieldValue, fieldType: FieldType) {
+    setFields((prev) => applyFieldValue(prev, key, value, fieldType));
   }
 
   function handleSave() {
@@ -67,7 +86,7 @@ export function SheetModal({ entity, template, onClose }: SheetModalProps) {
   const shown: Entity = editing ? { ...entity, fields } : entity;
 
   return (
-    <div className="sheet-modal-backdrop" onClick={onClose}>
+    <div className="sheet-modal-backdrop" onClick={requestClose}>
       <div
         className="sheet-modal"
         role="dialog"
@@ -129,7 +148,11 @@ export function SheetModal({ entity, template, onClose }: SheetModalProps) {
               <Icon name="printer" size={14} />
               {t("sheet.print")}
             </button>
-            <button type="button" className="button-sm button-ghost" onClick={onClose}>
+            <button
+              type="button"
+              className="button-sm button-ghost"
+              onClick={requestClose}
+            >
               <Icon name="x" size={14} />
               {t("common.close")}
             </button>
@@ -168,6 +191,16 @@ export function SheetModal({ entity, template, onClose }: SheetModalProps) {
           />
         </div>,
         document.body,
+      )}
+
+      {confirmingClose && (
+        <ConfirmDialog
+          title={t("common.leaveTitle")}
+          body={t("common.leaveBody")}
+          confirmLabel={t("common.leaveButton")}
+          onConfirm={onClose}
+          onCancel={() => setConfirmingClose(false)}
+        />
       )}
     </div>
   );

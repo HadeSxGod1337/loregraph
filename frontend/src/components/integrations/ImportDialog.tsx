@@ -6,9 +6,24 @@ import { useRunImport } from "../../hooks/useConnections";
 import { translateApiError } from "../../i18n/eventText";
 import { Icon } from "../ui/Icon";
 import { useToast } from "../ui/Toast";
+import { LSS_CONNECTOR_TYPE } from "./connectorMeta";
 
 type Phase = "input" | "running" | "done";
 
+interface PickedFile {
+  name: string;
+  content: string;
+}
+
+/** Import from a connection. For LongStoryShort — the one connector whose
+ * import needs input from the DM — this is the character-sheet importer:
+ * drop in the files a party exported from the site, all of them at once.
+ *
+ * Sheets used to come in strictly one at a time, through a form that asked
+ * for a share URL first even though LSS publishes no endpoint we may read
+ * (see the connector's module docstring) — so the path that actually works,
+ * the exported file, was the third choice on the dialog. It is now the
+ * first, and the share link is the fallback it really is. */
 export function ImportDialog({
   projectId,
   connection,
@@ -24,63 +39,68 @@ export function ImportDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [phase, setPhase] = useState<Phase>("input");
+  const [files, setFiles] = useState<PickedFile[]>([]);
   const [shareUrl, setShareUrl] = useState("");
   const [rawJson, setRawJson] = useState("");
-  const [fileName, setFileName] = useState("");
+  const [dragging, setDragging] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
 
-  const isLss = connection.connector_type === "longstoryshort";
+  const isLss = connection.connector_type === LSS_CONNECTOR_TYPE;
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result;
-      if (typeof text === "string") {
-        setRawJson(text);
-        setShareUrl("");
-      }
-    };
-    reader.readAsText(file);
+  async function addFiles(picked: FileList | null) {
+    if (!picked || picked.length === 0) return;
+    const read = await Promise.all(
+      [...picked].map(
+        async (file): Promise<PickedFile> => ({
+          name: file.name,
+          content: await file.text(),
+        }),
+      ),
+    );
+    // Re-dropping a file replaces its earlier content rather than importing
+    // the same character twice in one run.
+    setFiles((prev) => [
+      ...prev.filter((file) => !read.some((next) => next.name === file.name)),
+      ...read,
+    ]);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    void addFiles(e.dataTransfer.files);
   }
 
   function handleImport() {
-    setPhase("running");
-
     const payload: Record<string, unknown> = {};
     if (isLss) {
-      if (shareUrl.trim()) {
+      if (files.length > 0) {
+        payload.documents = files.map((file) => ({
+          name: file.name,
+          content: file.content,
+        }));
+      } else if (shareUrl.trim()) {
         payload.share_url = shareUrl.trim();
       } else if (rawJson.trim()) {
-        // Validate JSON syntax client-side, but send the raw string —
-        // the backend's LssImportPayload.raw_json expects str, not object.
+        // Validate JSON syntax client-side, but send the raw string — the
+        // backend's LssImportPayload.raw_json expects str, not object.
         try {
           JSON.parse(rawJson);
         } catch {
           toast(t("integrations.importInvalidJson"));
-          setPhase("input");
           return;
         }
         payload.raw_json = rawJson.trim();
       }
     }
 
+    setPhase("running");
     runImport.mutate(
       { connectionId: connection.id, request: { payload } },
       {
         onSuccess: (data) => {
           setResult(data);
           setPhase("done");
-          toast(
-            t("integrations.importDone", {
-              created: data.created,
-              updated: data.updated,
-              skipped: data.skipped,
-            }),
-          );
         },
         onError: (err) => {
           toast(translateApiError(err, t));
@@ -91,81 +111,104 @@ export function ImportDialog({
   }
 
   const hasInput = isLss
-    ? !!(shareUrl.trim() || rawJson.trim())
+    ? files.length > 0 || !!(shareUrl.trim() || rawJson.trim())
     : true;
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
       <div
-        className="dialog"
+        className="dialog import-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label={t("integrations.importTitle")}
+        aria-label={isLss ? t("integrations.importSheetsTitle") : t("integrations.importTitle")}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2>{t("integrations.importTitle")}</h2>
+        <h2>{isLss ? t("integrations.importSheetsTitle") : t("integrations.importTitle")}</h2>
 
-        {phase === "input" && (
-          <>
-            {isLss ? (
-              <>
+        {phase === "input" &&
+          (isLss ? (
+            <>
+              <p className="field-hint">{t("integrations.importSheetsHint")}</p>
+
+              {/* Outside the drop zone on purpose: a hidden input *inside* a
+                  clickable parent turns the programmatic .click() into an
+                  event that bubbles straight back to the parent's handler. */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                multiple
+                onChange={(e) => {
+                  void addFiles(e.target.files);
+                  e.target.value = "";
+                }}
+                style={{ display: "none" }}
+              />
+              <button
+                type="button"
+                className={"import-dropzone" + (dragging ? " dragging" : "")}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Icon name="upload" size={18} />
+                <span className="import-dropzone-title">
+                  {t("integrations.importDropTitle")}
+                </span>
+                <span className="field-hint">{t("integrations.importDropHint")}</span>
+              </button>
+
+              {files.length > 0 && (
+                <ul className="import-file-list">
+                  {files.map((file) => (
+                    <li key={file.name}>
+                      <Icon name="paperclip" size={13} />
+                      <span className="import-file-name">{file.name}</span>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label={t("common.delete")}
+                        onClick={() =>
+                          setFiles((prev) => prev.filter((f) => f.name !== file.name))
+                        }
+                      >
+                        <Icon name="x" size={13} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <details className="import-advanced">
+                <summary>{t("integrations.importOtherWays")}</summary>
                 <label>
                   {t("integrations.importShareUrl")}
                   <input
                     type="url"
                     value={shareUrl}
-                    onChange={(e) => {
-                      setShareUrl(e.target.value);
-                      setRawJson("");
-                      setFileName("");
-                    }}
+                    onChange={(e) => setShareUrl(e.target.value)}
                     placeholder="https://longstoryshort.app/characters/digital/..."
                   />
                 </label>
-                <div className="import-or-divider">
-                  {t("integrations.importOr")}
-                </div>
-                <label className="import-file-dropzone">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".json,application/json"
-                    onChange={handleFileChange}
-                    style={{ display: "none" }}
-                  />
-                  <button
-                    type="button"
-                    className="button-ghost"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Icon name="upload" size={14} />
-                    {t("integrations.importFile")}
-                  </button>
-                  {fileName && (
-                    <span className="import-file-name">{fileName}</span>
-                  )}
-                </label>
-                <div className="import-or-divider">
-                  {t("integrations.importOr")}
-                </div>
+                <p className="field-hint">{t("integrations.importShareUrlHint")}</p>
                 <label>
                   {t("integrations.importRawJson")}
                   <textarea
-                    rows={5}
+                    rows={4}
                     value={rawJson}
-                    onChange={(e) => {
-                      setRawJson(e.target.value);
-                      setFileName("");
-                    }}
+                    onChange={(e) => setRawJson(e.target.value)}
                     placeholder='{"name": "...", "level": 3, ...}'
                   />
                 </label>
-              </>
-            ) : (
-              <p className="field-hint">{t("integrations.importHint")}</p>
-            )}
-          </>
-        )}
+              </details>
+            </>
+          ) : (
+            <p className="field-hint">{t("integrations.importHint")}</p>
+          ))}
 
         {phase === "running" && (
           <p className="field-hint">{t("integrations.importRunning")}</p>
@@ -180,6 +223,21 @@ export function ImportDialog({
                 skipped: result.skipped,
               })}
             </p>
+            {result.items.length > 0 && (
+              <ul className="import-result-list">
+                {result.items.map((item) => (
+                  <li key={item.entity_id}>
+                    <span className="import-file-name">{item.title}</span>
+                    <span className="import-result-action">
+                      {t(`integrations.itemAction.${item.action}`)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {isLss && result.items.length > 0 && (
+              <p className="field-hint">{t("integrations.importSheetsDoneHint")}</p>
+            )}
             {result.errors.length > 0 && (
               <ul className="export-error-list">
                 {result.errors.map((err, i) => (
