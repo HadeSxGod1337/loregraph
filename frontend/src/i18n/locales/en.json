@@ -471,7 +471,7 @@
     "anchorWholeWorld": "whole world",
     "contextLabel": "Context",
     "anchorTitle": "Which entity to build around",
-    "attachTitle": "Attach a file to this message (image, PDF, text)",
+    "attachTitle": "Attach a file to this message (image, PDF, text) — drag and drop or paste from the clipboard (Ctrl+V)",
     "sendButton": "Send",
     "sending": "Sending…",
     "hintIsolatedText": "«{{title}}» is isolated — weave it in?",

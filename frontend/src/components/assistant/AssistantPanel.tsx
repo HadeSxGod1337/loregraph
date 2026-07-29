@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { AgentReviewPayload, DraftEntity, LoreDraft } from "../../api/agent";
@@ -13,9 +13,11 @@ import {
 } from "../../hooks/useAgent";
 import { useEntities } from "../../hooks/useEntities";
 import { useFileDrop } from "../../hooks/useFileDrop";
+import { useFilePaste } from "../../hooks/useFilePaste";
 import { translateEvent, translateWarning } from "../../i18n/eventText";
 import { typeColor, typeSoftBackground } from "../../lib/typeColor";
 import { Icon } from "../ui/Icon";
+import { Markdown } from "../ui/Markdown";
 import { DraftPreviewDrawer } from "./DraftPreviewDrawer";
 
 interface AssistantPanelProps {
@@ -134,9 +136,19 @@ function Transcript({
               ))}
             </div>
           )}
-          {message.event_code
-            ? translateEvent(message.event_code, message.event_params ?? {}, message.text, t)
-            : message.text}
+          {message.event_code ? (
+            // Deterministic backend events are one translated sentence, not
+            // authored prose — nothing to format.
+            translateEvent(message.event_code, message.event_params ?? {}, message.text, t)
+          ) : message.role === "assistant" ? (
+            <Markdown className="markdown-view assistant-markdown">
+              {message.text}
+            </Markdown>
+          ) : (
+            // The DM's own text stays verbatim: what they typed is what they
+            // meant, asterisks and all.
+            message.text
+          )}
         </div>
       ))}
       {chat.statusNode && (
@@ -211,15 +223,21 @@ function ChatInput({
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
+  const addFiles = useCallback((added: File[]) => {
+    setFiles((prev) => [...prev, ...added]);
+  }, []);
+
   const { isDragging, dropHandlers } = useFileDrop((dropped) => {
     if (blocked) return;
-    setFiles((prev) => [...prev, ...dropped]);
+    addFiles(dropped);
   });
+  const { pasteHandlers } = useFilePaste(addFiles, !blocked);
 
   return (
     <div
       className={`assistant-chat-input${isDragging ? " assistant-chat-input-dragging" : ""}`}
       {...dropHandlers}
+      {...pasteHandlers}
     >
       {isDragging && (
         <div className="assistant-drop-overlay" aria-hidden="true">

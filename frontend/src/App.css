@@ -4866,6 +4866,90 @@
   border-radius: 0 var(--radius-control) var(--radius-control) 0;
 }
 
+.markdown-view table {
+  /* A wide table scrolls inside the bubble/page instead of stretching it. */
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 0.95em;
+}
+
+.markdown-view th,
+.markdown-view td {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.markdown-view th {
+  background: var(--bg-subtle);
+  font-weight: 600;
+}
+
+.markdown-view hr {
+  margin: 16px 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+/* Chat-bubble variant: same markup, tighter vertical rhythm and inherited
+   type scale. Compound selector so it beats the plain .markdown-view rules
+   above regardless of source order. */
+
+.markdown-view.assistant-markdown {
+  font-size: inherit;
+  line-height: 1.5;
+  /* The bubble sets pre-wrap for plain text; parsed markdown carries its own
+     block structure, and keeping it would turn every source newline into a
+     visible break. */
+  white-space: normal;
+}
+
+.markdown-view.assistant-markdown h1,
+.markdown-view.assistant-markdown h2,
+.markdown-view.assistant-markdown h3,
+.markdown-view.assistant-markdown h4 {
+  margin: 14px 0 6px;
+  padding: 0;
+  border: none;
+  color: var(--text);
+  font-size: 1.05em;
+}
+
+.markdown-view.assistant-markdown h1 {
+  font-size: 1.15em;
+}
+
+.markdown-view.assistant-markdown p,
+.markdown-view.assistant-markdown ul,
+.markdown-view.assistant-markdown ol,
+.markdown-view.assistant-markdown pre,
+.markdown-view.assistant-markdown blockquote,
+.markdown-view.assistant-markdown table {
+  margin: 0 0 8px;
+}
+
+.markdown-view.assistant-markdown li {
+  margin-bottom: 2px;
+}
+
+.markdown-view.assistant-markdown li > p {
+  margin: 0;
+}
+
+.markdown-view.assistant-markdown pre {
+  padding: 8px 10px;
+}
+
+.markdown-view.assistant-markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown-view.assistant-markdown > :last-child {
+  margin-bottom: 0;
+}
+
 /* ---------- Help page ---------- */
 
 .help-page {

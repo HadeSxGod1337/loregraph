@@ -33,7 +33,9 @@
     "react-dom": "^19.2.7",
     "react-easy-crop": "^6.2.2",
     "react-i18next": "^17.0.9",
-    "react-router-dom": "^7.18.1"
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.18.1",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@types/d3-force": "^3.0.10",
