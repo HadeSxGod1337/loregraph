@@ -107,6 +107,12 @@ drives the drawer, the full sheet and printing at once, including computed value
 (skill bonuses, AC, carrying capacity) written as small formulas over other fields.
 See [docs/templates.en.md](docs/templates.en.md).
 
+### Documentation
+
+- **User guide** — [docs/](docs/README.md): install, world building, the AI
+  assistant, knowledge base, integrations, FAQ. Currently in Russian, except
+  [docs/templates.en.md](docs/templates.en.md).
+
 ## Stack
 
 - **Backend**: FastAPI + Pydantic v2, SQLAlchemy 2.0 (async) + SQLite, `uv` for
@@ -251,6 +257,14 @@ MCP-сервер (`loregraph-mcp`) для внешних MCP-клиентов. �
 которая разом задаёт вид в шторке, полный лист и печать, включая вычисляемые
 значения (бонусы навыков, КД, лимит переносимого веса) — они пишутся маленькими
 формулами по другим полям. Подробности — [docs/templates.md](docs/templates.md).
+
+### Документация
+
+- **Руководство пользователя** — [docs/](docs/README.md): установка, ведение
+  мира, AI-ассистент, база знаний, интеграции, ответы на частые вопросы.
+- **Внутренняя документация** — [.claude/docs/](.claude/docs/README.md):
+  требования к продукту (SRS), модель данных и контракты API, сценарии
+  использования, архитектура агента.
 
 ## Стек
 
