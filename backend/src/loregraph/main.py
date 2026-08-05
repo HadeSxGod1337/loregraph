@@ -26,6 +26,7 @@ from loregraph.api.routers import (
     sheet_presets,
     usage,
 )
+from loregraph.composition import AppComposition
 from loregraph.config import Settings
 from loregraph.connectors.runtime import ConnectorRuntime
 from loregraph.connectors.setup import build_default_registry
@@ -71,26 +72,7 @@ from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.project_transfer import import_project
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.composition import StoreFactories
-from loregraph.storage.sqlite.agent_session_store import SqliteAgentSessionStore
-from loregraph.storage.sqlite.attachment_store import SqliteAttachmentStore
-from loregraph.storage.sqlite.connection_store import (
-    SqliteConnectionEntityLinkStore,
-    SqliteConnectionStore,
-)
-from loregraph.storage.sqlite.db import (
-    create_engine_for,
-    init_db,
-    make_session_factory,
-)
-from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
-from loregraph.storage.sqlite.entity_store import SqliteEntityStore
-from loregraph.storage.sqlite.entity_template_store import SqliteEntityTemplateStore
-from loregraph.storage.sqlite.import_job_store import SqliteImportJobStore
-from loregraph.storage.sqlite.knowledge_source_store import SqliteKnowledgeSourceStore
-from loregraph.storage.sqlite.project_store import SqliteProjectStore
-from loregraph.storage.sqlite.sheet_preset_store import SqliteSheetPresetStore
-from loregraph.storage.sqlite.usage_store import SqliteUsageStore
-from loregraph.storage.vectorstore.chroma_store import ChromaVectorStore
+from loregraph.storage.sqlite.db import init_db, make_session_factory
 
 SEED_DEMO_PROJECT_PATH = Path(__file__).parent / "seed" / "demo_project.json"
 
@@ -139,14 +121,17 @@ async def _seed_demo_project_if_empty(
         )
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, composition: AppComposition | None = None
+) -> FastAPI:
     settings = settings or Settings()
+    composition = composition or AppComposition()
     settings.attachments_dir.mkdir(parents=True, exist_ok=True)
     settings.knowledge_dir.mkdir(parents=True, exist_ok=True)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        engine = create_engine_for(settings.db_path)
+        engine = composition.build_engine(settings)
         await init_db(engine)
         app.state.settings = settings
         app.state.engine = engine
@@ -155,26 +140,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # channel per project, created lazily (see services/event_bus.py).
         app.state.event_bus = EventBus()
         # Composition root: the only place that maps storage Protocols to
-        # concrete SQLite classes. api/deps.py depends only on this bundle
-        # and on the Protocol types, never on loregraph.storage.sqlite.*.
-        app.state.store_factories = StoreFactories(
-            project=SqliteProjectStore,
-            entity=SqliteEntityStore,
-            entity_template=SqliteEntityTemplateStore,
-            sheet_preset=SqliteSheetPresetStore,
-            edge=SqliteEdgeStore,
-            attachment=lambda session: SqliteAttachmentStore(
-                session, settings.attachments_dir
-            ),
-            agent_session=SqliteAgentSessionStore,
-            import_job=SqliteImportJobStore,
-            knowledge_source=lambda session: SqliteKnowledgeSourceStore(
-                session, settings.knowledge_dir
-            ),
-            usage=SqliteUsageStore,
-            connection=SqliteConnectionStore,
-            connection_entity_link=SqliteConnectionEntityLinkStore,
-        )
+        # concrete classes. api/deps.py depends only on this bundle and on
+        # the Protocol types, never on a concrete store implementation. The
+        # public default is sqlite (see loregraph.composition); a deployment
+        # that needs a different backend passes its own AppComposition here
+        # instead of forking this function.
+        app.state.store_factories = composition.build_store_factories(settings)
         # External-tool connectors: the registry maps connector types to
         # implementations; the runtime hosts long-lived clients (Foundry MCP
         # sessions) for the app's lifetime and is closed with the lifespan.
@@ -182,15 +153,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.connector_runtime = ConnectorRuntime()
         # Vector layer is optional derived data: None when embeddings are
         # disabled, and the manual editor must keep working either way.
-        # knowledge_index reuses the SAME ChromaVectorStore instance as
+        # knowledge_index reuses the SAME vector store instance as
         # vector_index (different collection namespace, see
-        # services/knowledge_index.py) — not a second Chroma client.
+        # services/knowledge_index.py) — not a second client.
         embedder = get_embedding_provider(settings)
-        chroma_store = (
-            ChromaVectorStore(settings.chroma_dir, embedder)
-            if embedder is not None
-            else None
-        )
+        chroma_store = composition.build_vector_store(settings, embedder)
         app.state.vector_index = (
             VectorIndex(chroma_store) if chroma_store is not None else None
         )

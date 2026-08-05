@@ -15,6 +15,7 @@ from loregraph.connectors.protocols import (
     CAPABILITY_MCP_TOOLS,
 )
 from loregraph.connectors.registry import ConnectorDescriptor, ConnectorRegistry
+from loregraph.plugins.discovery import load_plugin_hooks
 
 
 def _obsidian_factory(config: BaseModel, context: ConnectorContext) -> object:
@@ -78,4 +79,8 @@ def build_default_registry() -> ConnectorRegistry:
             capabilities=frozenset({CAPABILITY_MCP_TOOLS}),
         )
     )
+    # Optional installed plugin package (e.g. a private extension) registers
+    # additional connector types here — absence of a plugin is not an error.
+    for register_plugin in load_plugin_hooks("loregraph.plugins.connectors"):
+        register_plugin(registry)
     return registry
