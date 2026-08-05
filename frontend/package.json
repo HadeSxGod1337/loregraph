@@ -9,7 +9,8 @@
     "build:demo": "tsc -b && vite build",
     "lint": "oxlint",
     "typecheck": "tsc -b --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sync:private-ui": "powershell -ExecutionPolicy Bypass -File scripts/sync-private-ui.ps1"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
