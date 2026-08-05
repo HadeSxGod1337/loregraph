@@ -1,0 +1,54 @@
+# Private deployment build — pulls in the loregraph-private extension on top
+# of the public app. Public distribution (start.bat/start.sh) is untouched;
+# this file only matters if you're building the private image.
+#
+# Requires an SSH key with read access to HadeSxGod1337/loregraph-private,
+# passed at build time (never baked into the image):
+#   docker build --ssh default -f Dockerfile.private -t loregraph-private .
+#
+# ssh, not https: uv's git dependency resolution will happily use https with
+# a cached credential-manager token, but npm's github.com git-spec resolution
+# rewrites https specs to ssh internally regardless of what's given (verified
+# — not a guess) — so ssh is the protocol that actually works for both tools
+# in a clean build environment with no cached host credentials.
+
+# --- backend builder ---
+FROM python:3.12-slim AS backend-builder
+RUN apt-get update && apt-get install -y --no-install-recommends git openssh-client && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p -m 0700 /root/.ssh && ssh-keyscan github.com >> /root/.ssh/known_hosts
+WORKDIR /app/backend
+COPY backend/ .
+RUN pip install uv && uv sync --locked
+RUN --mount=type=ssh \
+    uv pip install "loregraph-private @ git+ssh://git@github.com/HadeSxGod1337/loregraph-private.git#subdirectory=backend"
+# uv sync — public deps from the committed uv.lock, no network to the private
+# repo needed. uv pip install — separate step on top of the same venv;
+# loregraph-private is intentionally NOT in pyproject.toml/uv.lock (adding it
+# there makes `uv sync`/`uv run` fail for everyone without access, even
+# without --extra — uv still resolves optional-dependencies to rebuild the
+# lock. Verified by breaking it once; see backend/composition.py's history).
+
+# --- frontend builder ---
+FROM node:22-slim AS frontend-builder
+RUN apt-get update && apt-get install -y --no-install-recommends git openssh-client && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p -m 0700 /root/.ssh && ssh-keyscan github.com >> /root/.ssh/known_hosts
+WORKDIR /app/frontend
+COPY frontend/ .
+RUN npm ci
+RUN --mount=type=ssh \
+    npm install --no-save "git+ssh://git@github.com/HadeSxGod1337/loregraph-private.git#path:frontend" && \
+    npm run build
+# vite.config.ts's alias-swap sees @loregraph/private-ui installed and builds
+# it in; tsconfig.app.json's paths entry still points at the stub for type
+# checking (a known, accepted limitation — see frontend/tsconfig.app.json).
+
+# --- runtime ---
+FROM python:3.12-slim
+COPY --from=backend-builder /app/backend/.venv /app/backend/.venv
+COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
+# Only the built venv and dist/ — no node_modules, no .git, no source of
+# either private repo in the final layer (they lived only in the builder
+# stages above, which are discarded).
+CMD ["/app/backend/.venv/bin/uvicorn", "loregraph_private.app:app", "--host", "0.0.0.0"]
