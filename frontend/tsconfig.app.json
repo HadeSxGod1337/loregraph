@@ -17,6 +17,16 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Optional @loregraph/private-ui package — mirrors vite.config.ts's
+       runtime alias-swap so `tsc` can resolve the specifier even when the
+       private package isn't installed. tsc has no filesystem-conditional
+       resolution, so this always points at the stub; a real installed
+       package is still used at build/dev time via Vite's own alias, tsc
+       just checks call sites against the stub's shape. */
+    "paths": {
+      "@loregraph/private-ui": ["./src/plugins/privateUiStub.ts"]
+    },
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, useMatch } from "react-router-dom";
 
+import { privateNavItems } from "@loregraph/private-ui";
 import { Icon, type IconName } from "../ui/Icon";
 import { PreferencesPopover } from "./PreferencesPopover";
 import { ProjectSwitcher } from "./ProjectSwitcher";
@@ -37,6 +38,14 @@ export function Sidebar() {
     });
   }
 
+  // Public items carry an i18n key; private items (from the optional
+  // @loregraph/private-ui package, empty by default) carry a plain label —
+  // normalized to `label` here so the render below doesn't care which.
+  const items = [
+    ...NAV_ITEMS.map((item) => ({ ...item, label: t(item.labelKey) })),
+    ...privateNavItems,
+  ];
+
   return (
     <aside className={"sidebar" + (collapsed ? " collapsed" : "")}>
       <NavLink to="/" end className="sidebar-brand">
@@ -48,16 +57,16 @@ export function Sidebar() {
 
       {projectId && (
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => (
+          {items.map((item) => (
             <NavLink
               key={item.to}
               to={`/projects/${projectId}/${item.to}`}
               end={item.end}
               className={({ isActive }) => "sidebar-nav-item" + (isActive ? " active" : "")}
-              title={collapsed ? t(item.labelKey) : undefined}
+              title={collapsed ? item.label : undefined}
             >
               <Icon name={item.icon} size={17} className="sidebar-nav-icon" />
-              {!collapsed && <span className="sidebar-nav-label">{t(item.labelKey)}</span>}
+              {!collapsed && <span className="sidebar-nav-label">{item.label}</span>}
             </NavLink>
           ))}
         </nav>

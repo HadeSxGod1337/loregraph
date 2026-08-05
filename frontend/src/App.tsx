@@ -5,6 +5,7 @@ import {
   createHashRouter,
 } from "react-router-dom";
 
+import { privateRoutes } from "@loregraph/private-ui";
 import "./App.css";
 import { DemoBanner } from "./components/DemoBanner";
 import { Layout } from "./components/layout/Layout";
@@ -43,6 +44,7 @@ const router = createRouter([
       { path: "/projects/:projectId/integrations", element: <IntegrationsPage /> },
       { path: "/projects/:projectId/settings", element: <ProjectSettingsPage /> },
       { path: "/projects/:projectId/help", element: <HelpPage /> },
+      ...privateRoutes,
     ],
   },
 ]);
