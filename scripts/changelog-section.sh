@@ -2,14 +2,22 @@
 # Prints the CHANGELOG section for one version, to be used as release notes.
 # Fails when the section is missing, so a release can never ship empty notes.
 #
-# Usage: scripts/changelog-section.sh v0.2.0
+# Usage: scripts/changelog-section.sh v0.2.0 [changelog-file|-]
+#
+# The optional second argument names the changelog to read; "-" means stdin.
+# start.sh uses that to describe an update that is not merged yet, where the
+# new section only exists in the REMOTE file:
+#     git --no-pager show "$upstream:CHANGELOG.md" | ... "v$latest" -
 set -euo pipefail
 
-tag="${1:?usage: changelog-section.sh <tag, e.g. v0.2.0>}"
+tag="${1:?usage: changelog-section.sh <tag, e.g. v0.2.0> [changelog-file|-]}"
 version="${tag#v}"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-changelog="$repo_root/CHANGELOG.md"
+changelog="${2:-$repo_root/CHANGELOG.md}"
+if [ "$changelog" = "-" ]; then
+    changelog=/dev/stdin
+fi
 
 section="$(
     awk -v ver="$version" '

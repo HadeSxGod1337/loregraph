@@ -18,39 +18,224 @@ BACKEND="$ROOT/backend"
 FRONTEND="$ROOT/frontend"
 BACKEND_URL="http://127.0.0.1:8000"
 FRONTEND_URL="http://127.0.0.1:5173"
+# uvicorn runs with backend/ as its working directory, so Settings.data_dir
+# ("./data") resolves HERE — not at the repo root. The backend reads the same
+# update files (see backend/src/loregraph/services/update_status.py).
+DATA_DIR="$BACKEND/data"
 # How often the background loop checks the git remote for updates (seconds).
 UPDATE_CHECK_INTERVAL=600
+# How long the update prompt waits before assuming "later" — an unattended
+# launch must never hang on a question nobody is there to answer.
+UPDATE_PROMPT_TIMEOUT=30
 
 step()   { printf '\n\033[36m==> %s\033[0m\n' "$1"; }
 ok()     { printf '\033[32m    %s\033[0m\n' "$1"; }
 warn()   { printf '\033[33m    %s\033[0m\n' "$1"; }
 die()    { printf '\033[31m    %s\033[0m\n' "$1"; exit 1; }
 
+# --- Update preferences and status (shared with the backend) -----------------
+# Flat key=value files, not JSON: this runs BEFORE uv and Node are installed,
+# so neither Python nor jq is guaranteed to exist, and scripts/start.ps1 has to
+# parse the very same files. The changelog lives in its own file so neither
+# shell ever has to escape multi-line markdown. Mirror of start.ps1.
+
+write_file_atomic() {
+    # $1 = path, stdin = content. Rename, so a reader never sees a partial file.
+    mkdir -p "$(dirname "$1")"
+    cat > "$1.tmp" && mv -f "$1.tmp" "$1"
+}
+
+conf_value() {
+    # $1 = file, $2 = key. Empty when absent; only the first '=' splits.
+    [ -f "$1" ] || return 0
+    sed -n "s/^[[:space:]]*$2[[:space:]]*=//p" "$1" | head -n 1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
+update_mode() {
+    local mode
+    mode="$(conf_value "$DATA_DIR/update.conf" mode)"
+    case "$mode" in
+        ask|auto|never) printf '%s' "$mode" ;;
+        *)              printf 'ask' ;;
+    esac
+}
+
+is_version_skipped() {
+    # $1 = version. Comma-separated list, compared whole-item.
+    local skipped item
+    skipped="$(conf_value "$DATA_DIR/update.conf" skipped_versions)"
+    [ -n "$skipped" ] || return 1
+    local IFS=,
+    for item in $skipped; do
+        [ "$(printf '%s' "$item" | tr -d '[:space:]')" = "$1" ] && return 0
+    done
+    return 1
+}
+
+write_update_prefs() {
+    # $1 = mode, $2 = comma-separated skipped versions.
+    write_file_atomic "$DATA_DIR/update.conf" <<EOF
+# Loregraph update preferences.
+# Edit here or in the app (sidebar -> preferences -> updates).
+# mode: ask | auto | never
+mode=$1
+skipped_versions=$2
+EOF
+}
+
+write_update_status() {
+    # $1 = git_available, $2 = worktree_dirty, $3 = current, $4 = latest,
+    # $5 = changelog section (empty removes the file).
+    write_file_atomic "$DATA_DIR/update-status.conf" <<EOF
+git_available=$1
+worktree_dirty=$2
+current_version=$3
+latest_version=$4
+checked_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+EOF
+    if [ -n "$5" ]; then
+        printf '%s\n' "$5" | write_file_atomic "$DATA_DIR/update-changelog.md"
+    else
+        rm -f "$DATA_DIR/update-changelog.md"
+    fi
+}
+
+local_version() {
+    [ -f "$BACKEND/pyproject.toml" ] || return 0
+    sed -n 's/^version = "\(.*\)"/\1/p' "$BACKEND/pyproject.toml" | head -n 1
+}
+
+remote_version() {
+    # $1 = upstream ref. --no-pager: without it git may hand output to `less`.
+    (cd "$ROOT" && git --no-pager show "$1:backend/pyproject.toml" 2>/dev/null) |
+        sed -n 's/^version = "\(.*\)"/\1/p' | head -n 1
+}
+
+show_changelog_preview() {
+    printf '%s\n' "$1" | head -n 25 | while IFS= read -r line; do
+        printf '\033[90m      %s\033[0m\n' "$line"
+    done
+    if [ "$(printf '%s\n' "$1" | wc -l)" -gt 25 ]; then
+        printf '\033[90m      ... остальное — в CHANGELOG.md\033[0m\n'
+    fi
+}
+
+# Digits, not letters: a Russian keyboard layout cannot type [Y]/[N] without
+# switching, and the whole point is that this stays one keypress.
+read_choice_with_timeout() {
+    # $1 = enter choice, $2 = timeout choice. Echoes the chosen digit.
+    local answer
+    if [ ! -t 0 ]; then
+        printf '%s' "$2"
+        return 0
+    fi
+    printf '\033[36m    Ваш выбор (Enter = %s, через %s с продолжу без обновления): \033[0m' "$1" "$UPDATE_PROMPT_TIMEOUT"
+    if read -r -t "$UPDATE_PROMPT_TIMEOUT" -n 1 answer; then
+        printf '\n'
+        [ -n "$answer" ] || answer="$1"
+    else
+        printf '\n'
+        answer="$2"
+    fi
+    printf '%s' "$answer"
+}
+
 # --- 1. Git update (skipped for zip downloads without .git) -----------------
 
-if [ "$SKIP_UPDATE" -eq 0 ] && [ -d "$ROOT/.git" ] && command -v git >/dev/null 2>&1; then
+HAS_GIT=0
+if [ -d "$ROOT/.git" ] && command -v git >/dev/null 2>&1; then
+    HAS_GIT=1
+fi
+LOCAL_VERSION="$(local_version)"
+
+# Zip install or no git binary: say so, instead of letting the app claim
+# everything is up to date.
+[ "$HAS_GIT" -eq 0 ] && write_update_status 0 0 "$LOCAL_VERSION" "" ""
+
+if [ "$SKIP_UPDATE" -eq 0 ] && [ "$HAS_GIT" -eq 1 ] && [ "$(update_mode)" != "never" ]; then
     step "Проверяю обновления проекта..."
-    (
-        cd "$ROOT" || exit 0
-        git fetch --quiet 2>/dev/null || { warn "Не удалось проверить обновления (нет сети?), продолжаю."; exit 0; }
-        LOCAL_REV="$(git rev-parse HEAD)"
+    if ! (cd "$ROOT" && git fetch --quiet 2>/dev/null); then
+        warn "Не удалось проверить обновления (нет сети?), продолжаю."
+    else
+        LOCAL_REV="$(cd "$ROOT" && git rev-parse HEAD)"
         # --verify --quiet: empty output instead of stderr noise when no upstream
-        REMOTE_REV="$(git rev-parse --verify --quiet '@{u}' || true)"
-        if [ -n "$REMOTE_REV" ] && [ "$LOCAL_REV" != "$REMOTE_REV" ]; then
-            if [ -z "$(git status --porcelain)" ]; then
-                warn "Найдено обновление, скачиваю..."
-                if git pull --ff-only --quiet; then
-                    ok "Проект обновлён."
+        REMOTE_REV="$(cd "$ROOT" && git rev-parse --verify --quiet '@{u}' || true)"
+        if [ -z "$REMOTE_REV" ] || [ "$LOCAL_REV" = "$REMOTE_REV" ]; then
+            write_update_status 1 0 "$LOCAL_VERSION" "$LOCAL_VERSION" ""
+            ok "Проект актуален."
+        else
+            UPSTREAM="$(cd "$ROOT" && git rev-parse --abbrev-ref --symbolic-full-name '@{u}')"
+            LATEST_VERSION="$(remote_version "$UPSTREAM")"
+            # The new section only exists in the REMOTE changelog.
+            CHANGELOG_SECTION="$(
+                (cd "$ROOT" && git --no-pager show "$UPSTREAM:CHANGELOG.md" 2>/dev/null) |
+                    bash "$ROOT/scripts/changelog-section.sh" "v$LATEST_VERSION" - 2>/dev/null || true
+            )"
+            DIRTY=0
+            [ -n "$(cd "$ROOT" && git status --porcelain)" ] && DIRTY=1
+            write_update_status 1 "$DIRTY" "$LOCAL_VERSION" "$LATEST_VERSION" "$CHANGELOG_SECTION"
+
+            if is_version_skipped "$LATEST_VERSION"; then
+                ok "Доступна версия $LATEST_VERSION, но вы её пропустили."
+            elif [ "$(update_mode)" = "auto" ]; then
+                if [ "$DIRTY" -eq 1 ]; then
+                    warn "Есть обновление, но у вас локальные изменения - пропускаю git pull."
                 else
-                    warn "Не удалось обновиться, продолжаю на текущей версии."
+                    warn "Найдено обновление $LATEST_VERSION, скачиваю..."
+                    if (cd "$ROOT" && git pull --ff-only --quiet); then
+                        write_update_status 1 0 "$LATEST_VERSION" "$LATEST_VERSION" ""
+                        ok "Проект обновлён."
+                    else
+                        warn "Не удалось обновиться, продолжаю на текущей версии."
+                    fi
                 fi
             else
-                warn "Есть обновление, но у вас локальные изменения - пропускаю git pull."
+                printf '\n'
+                if [ -z "$LATEST_VERSION" ]; then
+                    warn "Доступно обновление Loregraph."
+                else
+                    warn "Доступна версия $LATEST_VERSION (у вас $LOCAL_VERSION). Что нового:"
+                    [ -n "$CHANGELOG_SECTION" ] && show_changelog_preview "$CHANGELOG_SECTION"
+                fi
+                printf '\n'
+                if [ "$DIRTY" -eq 1 ]; then
+                    warn "Обновиться сейчас нельзя: в папке проекта есть ваши изменения."
+                    printf '\033[90m      Сохраните или отмените их (git status), потом запустите снова.\033[0m\n'
+                    printf '      [2] Позже   [3] Больше не предлагать эту версию\n'
+                    ANSWER="$(read_choice_with_timeout 2 2)"
+                else
+                    printf '      [1] Обновить сейчас   [2] Позже   [3] Больше не предлагать эту версию\n'
+                    ANSWER="$(read_choice_with_timeout 1 2)"
+                fi
+                case "$ANSWER" in
+                    1)
+                        warn "Обновляю..."
+                        if (cd "$ROOT" && git pull --ff-only --quiet); then
+                            write_update_status 1 0 "$LATEST_VERSION" "$LATEST_VERSION" ""
+                            ok "Проект обновлён до $LATEST_VERSION."
+                        else
+                            warn "Не удалось обновиться, продолжаю на текущей версии."
+                        fi
+                        ;;
+                    3)
+                        if [ -n "$LATEST_VERSION" ]; then
+                            EXISTING_SKIPPED="$(conf_value "$DATA_DIR/update.conf" skipped_versions)"
+                            if [ -n "$EXISTING_SKIPPED" ]; then
+                                EXISTING_SKIPPED="$EXISTING_SKIPPED,$LATEST_VERSION"
+                            else
+                                EXISTING_SKIPPED="$LATEST_VERSION"
+                            fi
+                            write_update_prefs "$(update_mode)" "$EXISTING_SKIPPED"
+                            ok "Версия $LATEST_VERSION больше не будет предлагаться."
+                        fi
+                        ;;
+                    *)
+                        ok "Хорошо, обновимся позже."
+                        ;;
+                esac
             fi
-        else
-            ok "Проект актуален."
         fi
-    )
+    fi
 fi
 
 # --- 2. Tools: uv and Node.js ------------------------------------------------
@@ -480,6 +665,8 @@ printf '\033[32m  Чтобы остановить - нажмите Ctrl+C\033[0m
 printf '\033[32m=========================================================\033[0m\n'
 
 # Keep the script alive; periodically check the remote for new commits.
+# The console is told once, but the status file is refreshed on every check
+# so the in-app updates section doesn't go stale.
 UPDATE_ANNOUNCED=0
 SINCE_CHECK=0
 while :; do
@@ -489,14 +676,27 @@ while :; do
         warn "Один из процессов завершился, останавливаю всё."
         break
     fi
-    if [ "$UPDATE_ANNOUNCED" -eq 0 ] && [ "$SINCE_CHECK" -ge "$UPDATE_CHECK_INTERVAL" ] && [ -d "$ROOT/.git" ] && command -v git >/dev/null 2>&1; then
+    if [ "$SINCE_CHECK" -ge "$UPDATE_CHECK_INTERVAL" ] && [ "$HAS_GIT" -eq 1 ] && [ "$(update_mode)" != "never" ]; then
         SINCE_CHECK=0
         LOCAL_REV="$(cd "$ROOT" && git rev-parse HEAD)"
         REMOTE_REV="$(cd "$ROOT" && git fetch --quiet 2>/dev/null; git rev-parse --verify --quiet '@{u}' || true)"
         if [ -n "$REMOTE_REV" ] && [ "$LOCAL_REV" != "$REMOTE_REV" ]; then
-            printf '\n'
-            warn "Вышло обновление Loregraph! Остановите (Ctrl+C) и запустите start.sh заново, чтобы обновиться."
-            UPDATE_ANNOUNCED=1
+            UPSTREAM="$(cd "$ROOT" && git rev-parse --abbrev-ref --symbolic-full-name '@{u}')"
+            LATEST_VERSION="$(remote_version "$UPSTREAM")"
+            CHANGELOG_SECTION="$(
+                (cd "$ROOT" && git --no-pager show "$UPSTREAM:CHANGELOG.md" 2>/dev/null) |
+                    bash "$ROOT/scripts/changelog-section.sh" "v$LATEST_VERSION" - 2>/dev/null || true
+            )"
+            DIRTY=0
+            [ -n "$(cd "$ROOT" && git status --porcelain)" ] && DIRTY=1
+            write_update_status 1 "$DIRTY" "$LOCAL_VERSION" "$LATEST_VERSION" "$CHANGELOG_SECTION"
+            if [ "$UPDATE_ANNOUNCED" -eq 0 ]; then
+                printf '\n'
+                warn "Вышло обновление Loregraph! Остановите (Ctrl+C) и запустите start.sh заново, чтобы обновиться."
+                UPDATE_ANNOUNCED=1
+            fi
+        else
+            write_update_status 1 0 "$LOCAL_VERSION" "$LOCAL_VERSION" ""
         fi
     fi
 done
