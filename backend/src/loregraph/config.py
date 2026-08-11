@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     # this off when running behind a reverse proxy, where the peer address is
     # the proxy and loopback trust would let anyone in.
     trust_loopback: bool = True
+    # LAN play mode: set by the launcher's --lan flag, not from the UI (the
+    # bind address is a process-launch property). When on, /docs is disabled so
+    # the API surface isn't mapped for anyone on the network. play_host is the
+    # address to put in a player's invite link; play_frontend_port is where the
+    # frontend is served.
+    play_mode_enabled: bool = False
+    play_host: str | None = None
+    play_frontend_port: int = 5173
 
     # --- LLM (BYOK) ---
     llm_provider: LLMProvider = "anthropic"

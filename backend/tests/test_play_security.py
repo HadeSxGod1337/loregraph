@@ -60,6 +60,22 @@ def test_websocket_rejects_non_loopback(app: FastAPI) -> None:
     assert excinfo.value.code == 1008
 
 
+def test_docs_disabled_in_play_mode() -> None:
+    from loregraph.config import Settings
+    from loregraph.main import create_app
+
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        embedding_provider="disabled",
+        play_mode_enabled=True,
+    )
+    with TestClient(create_app(settings), client=("127.0.0.1", 5)) as dm:
+        assert dm.get("/docs").status_code == 404
+        assert dm.get("/openapi.json").status_code == 404
+        # The app still works — only the API map is hidden.
+        assert dm.get("/api/health").status_code == 200
+
+
 @pytest.mark.asyncio
 async def test_trust_loopback_off_rejects_loopback() -> None:
     # Behind a reverse proxy the peer address is the proxy, so loopback trust

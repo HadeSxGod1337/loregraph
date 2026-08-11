@@ -22,6 +22,7 @@ from loregraph.api.routers import (
     import_jobs,
     knowledge,
     play,
+    players,
     projects,
     realtime,
     sheet_presets,
@@ -222,7 +223,16 @@ def create_app(
                     await warmup_task
         await engine.dispose()
 
-    app = FastAPI(title="Loregraph", lifespan=lifespan)
+    # In LAN play mode the interactive docs are turned off so the API surface
+    # isn't handed to everyone on the network. On loopback-only they stay on.
+    _docs_disabled = settings.play_mode_enabled
+    app = FastAPI(
+        title="Loregraph",
+        lifespan=lifespan,
+        docs_url=None if _docs_disabled else "/docs",
+        redoc_url=None if _docs_disabled else "/redoc",
+        openapi_url=None if _docs_disabled else "/openapi.json",
+    )
 
     app.add_middleware(
         CORSMiddleware,
@@ -260,6 +270,7 @@ def create_app(
     )
     app.include_router(connections.router, prefix=_API_PREFIX, dependencies=_master)
     app.include_router(updates.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(players.router, prefix=_API_PREFIX, dependencies=_master)
     # No master dependency: the websocket authenticates itself per-route.
     app.include_router(realtime.router, prefix=_API_PREFIX)
     # Player-facing API: its own player-token guard, never the master one, and
