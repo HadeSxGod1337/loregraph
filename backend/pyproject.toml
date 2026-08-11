@@ -41,6 +41,7 @@ dependencies = [
 
 [project.scripts]
 loregraph-mcp = "loregraph.mcp_server.server:main"
+loregraph-serve = "loregraph.server:main"
 
 [build-system]
 requires = ["uv_build>=0.11.24,<0.12.0"]

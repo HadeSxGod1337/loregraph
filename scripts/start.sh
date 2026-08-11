@@ -29,6 +29,8 @@ FRONTEND="$ROOT/frontend"
 # One process serves both the interface and the API, so there is a single port
 # to allow through a firewall or forward on a router.
 APP_PORT=8000
+# Scheme follows the TLS settings; filled in once .env has been read below.
+APP_SCHEME="http"
 LOCAL_URL="http://127.0.0.1:$APP_PORT"
 # Where players connect; only differs from LOCAL_URL in LAN mode.
 FRONTEND_URL="$LOCAL_URL"
@@ -649,6 +651,15 @@ detect_lan_ip() {
     ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}'
 }
 
+# The server reads TLS settings itself (see loregraph/server.py); this only
+# needs to know the scheme to print the right links.
+if [ -n "$(conf_value "$BACKEND/.env" CAMPAIGN_SSL_CERTFILE)" ] &&
+   [ -n "$(conf_value "$BACKEND/.env" CAMPAIGN_SSL_KEYFILE)" ]; then
+    APP_SCHEME="https"
+fi
+LOCAL_URL="${APP_SCHEME}://127.0.0.1:${APP_PORT}"
+FRONTEND_URL="$LOCAL_URL"
+
 BIND_HOST="127.0.0.1"
 if [ "$LAN" -eq 1 ]; then
     if [ -z "$LAN_HOST" ]; then
@@ -656,7 +667,7 @@ if [ "$LAN" -eq 1 ]; then
         [ -n "$LAN_HOST" ] || die "Не удалось определить IP в сети. Укажите: bash start.sh --lan --lan-host 192.168.1.5"
     fi
     BIND_HOST="0.0.0.0"
-    FRONTEND_URL="http://${LAN_HOST}:${APP_PORT}"
+    FRONTEND_URL="${APP_SCHEME}://${LAN_HOST}:${APP_PORT}"
     export CAMPAIGN_PLAY_MODE_ENABLED=1
     export CAMPAIGN_PLAY_HOST="$LAN_HOST"
 fi
@@ -673,7 +684,9 @@ fi
 echo "    Первый запуск может занять пару минут (скачивается локальная embedding-модель)."
 
 # One process, one port: the backend serves the built interface too.
-(cd "$BACKEND" && exec uv run uvicorn loregraph.main:app --host "$BIND_HOST" --port "$APP_PORT") &
+# loregraph-serve (not uvicorn directly) so TLS is read from settings in one
+# place instead of being parsed out of .env by each launcher script.
+(cd "$BACKEND" && exec uv run loregraph-serve --host "$BIND_HOST" --port "$APP_PORT") &
 BACK_PID=$!
 
 cleanup() {
@@ -691,7 +704,9 @@ HEALTHY=0
 i=0
 while [ "$i" -lt 120 ]; do
     kill -0 "$BACK_PID" 2>/dev/null || die "Loregraph завершился с ошибкой - смотрите сообщения выше."
-    if curl -fsS -m 2 "$LOCAL_URL/api/health" >/dev/null 2>&1; then
+    # -k: a self-signed certificate is the common case for a home game, and
+    # this poll only talks to our own just-started server.
+    if curl -fsSk -m 2 "$LOCAL_URL/api/health" >/dev/null 2>&1; then
         HEALTHY=1
         break
     fi
@@ -714,8 +729,13 @@ if [ "$LAN" -eq 1 ]; then
     printf '\033[32m  Ссылки-приглашения создавайте в: Настройки проекта -> Игроки.\033[0m\n'
     printf '\033[32m  Игроки подключаются на: %s\033[0m\n' "$FRONTEND_URL"
     printf '\033[33m  Если не открывается - разрешите порт %s в брандмауэре.\033[0m\n' "$APP_PORT"
-    printf '\033[33m  ВНИМАНИЕ: ваш мир доступен всем в этой сети по ссылкам,\033[0m\n'
-    printf '\033[33m  трафик не шифруется. Отзывайте ссылки, когда они не нужны.\033[0m\n'
+    if [ "$APP_SCHEME" = "https" ]; then
+        printf '\033[33m  ВНИМАНИЕ: ваш мир доступен всем в этой сети по ссылкам.\033[0m\n'
+        printf '\033[33m  Отзывайте ссылки, когда они не нужны.\033[0m\n'
+    else
+        printf '\033[33m  ВНИМАНИЕ: ваш мир доступен всем в этой сети по ссылкам,\033[0m\n'
+        printf '\033[33m  трафик не шифруется. Отзывайте ссылки, когда они не нужны.\033[0m\n'
+    fi
 fi
 printf '\033[32m  Чтобы остановить - нажмите Ctrl+C\033[0m\n'
 printf '\033[32m=========================================================\033[0m\n'

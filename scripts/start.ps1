@@ -27,6 +27,8 @@ $Frontend = Join-Path $Root "frontend"
 # One process serves both the interface and the API, so there is a single port
 # to allow through a firewall or forward on a router.
 $AppPort = 8000
+# Scheme follows the TLS settings; filled in once .env has been read below.
+$AppScheme = "http"
 $LocalUrl = "http://127.0.0.1:$AppPort"
 # Where players connect; only differs from $LocalUrl in LAN mode.
 $FrontendUrl = $LocalUrl
@@ -688,6 +690,16 @@ Write-Ok "Интерфейс собран."
 
 # --- 5. LAN play mode (opt-in) --------------------------------------------------
 
+# The server reads TLS settings itself (see loregraph/server.py); this only
+# needs to know the scheme to print the right links.
+$envSettings = Read-KeyValueFile $EnvFile
+if (-not [string]::IsNullOrWhiteSpace($envSettings["CAMPAIGN_SSL_CERTFILE"]) -and
+    -not [string]::IsNullOrWhiteSpace($envSettings["CAMPAIGN_SSL_KEYFILE"])) {
+    $AppScheme = "https"
+}
+$LocalUrl = "${AppScheme}://127.0.0.1:$AppPort"
+$FrontendUrl = $LocalUrl
+
 # Loopback-only by default; --Lan opens the app to the local network.
 $BindHost = "127.0.0.1"
 if ($Lan) {
@@ -702,7 +714,7 @@ if ($Lan) {
         $LanHost = $ips[0]
     }
     $BindHost = "0.0.0.0"
-    $FrontendUrl = "http://${LanHost}:$AppPort"
+    $FrontendUrl = "${AppScheme}://${LanHost}:$AppPort"
     # Passed to the child process via inherited environment (see config.py).
     $env:CAMPAIGN_PLAY_MODE_ENABLED = "1"
     $env:CAMPAIGN_PLAY_HOST = $LanHost
@@ -720,11 +732,20 @@ if ($null -ne $portsBusy) {
 
 Write-Host "    Первый запуск может занять пару минут (скачивается локальная embedding-модель)." -ForegroundColor Gray
 
+if ($AppScheme -eq "https") {
+    # The health poll below must not fail on a self-signed certificate — the
+    # common case for a home game. PS 5.1 has no -SkipCertificateCheck, so
+    # trust is relaxed for THIS process only, and only for our own poll.
+    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+}
+
 # One process, one port: the backend serves the built interface too.
+# loregraph-serve (not uvicorn directly) so TLS is read from settings in one
+# place instead of being parsed out of .env by each launcher script.
 # -NoNewWindow keeps it attached to this console, so closing this window
 # (or Ctrl+C) takes it down with it.
 $backendProc = Start-Process -FilePath "uv" `
-    -ArgumentList "run", "uvicorn", "loregraph.main:app", "--host", $BindHost, "--port", "$AppPort" `
+    -ArgumentList "run", "loregraph-serve", "--host", $BindHost, "--port", "$AppPort" `
     -WorkingDirectory $Backend -NoNewWindow -PassThru
 
 try {
@@ -751,8 +772,13 @@ try {
         Write-Host "  Настройки проекта -> Игроки." -ForegroundColor Green
         Write-Host "  Игроки подключаются на: $FrontendUrl" -ForegroundColor Green
         Write-Host "  Если не открывается - разрешите порт $AppPort в брандмауэре." -ForegroundColor Yellow
-        Write-Host "  ВНИМАНИЕ: ваш мир доступен всем в этой сети по ссылкам," -ForegroundColor Yellow
-        Write-Host "  трафик не шифруется. Отзывайте ссылки, когда они не нужны." -ForegroundColor Yellow
+        if ($AppScheme -eq "https") {
+            Write-Host "  ВНИМАНИЕ: ваш мир доступен всем в этой сети по ссылкам." -ForegroundColor Yellow
+            Write-Host "  Отзывайте ссылки, когда они не нужны." -ForegroundColor Yellow
+        } else {
+            Write-Host "  ВНИМАНИЕ: ваш мир доступен всем в этой сети по ссылкам," -ForegroundColor Yellow
+            Write-Host "  трафик не шифруется. Отзывайте ссылки, когда они не нужны." -ForegroundColor Yellow
+        }
     }
     Write-Host "  Чтобы остановить - закройте это окно или нажмите Ctrl+C" -ForegroundColor Green
     Write-Host "=========================================================" -ForegroundColor Green

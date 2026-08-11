@@ -64,6 +64,14 @@ class Settings(BaseSettings):
     # on a router. Missing (a dev checkout that only ever ran `vite`) simply
     # means no SPA is served and the API still works.
     frontend_dist: Path = Path("../frontend/dist")
+    # Optional TLS. Point both at a certificate and its private key and the app
+    # serves HTTPS, and invite links become https:// — the same opt-in Foundry
+    # offers. Without them everything stays plain HTTP, which is fine on your
+    # own machine and on a home network, and is NOT fine over the internet:
+    # a play token travels in the URL. A public certificate needs a domain;
+    # a self-signed one works but every player gets a browser warning first.
+    ssl_certfile: Path | None = None
+    ssl_keyfile: Path | None = None
 
     # --- LLM (BYOK) ---
     llm_provider: LLMProvider = "anthropic"
@@ -157,6 +165,16 @@ class Settings(BaseSettings):
     @property
     def agent_checkpoint_db_path(self) -> Path:
         return self.data_dir / "agent_checkpoints.sqlite3"
+
+    @property
+    def tls_enabled(self) -> bool:
+        """TLS needs both halves; one alone is a misconfiguration, not a mode."""
+        return self.ssl_certfile is not None and self.ssl_keyfile is not None
+
+    @property
+    def public_scheme(self) -> str:
+        """Scheme for links handed to players (see api/routers/players.py)."""
+        return "https" if self.tls_enabled else "http"
 
     @property
     def import_checkpoint_db_path(self) -> Path:

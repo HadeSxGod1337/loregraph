@@ -112,8 +112,13 @@ async def _require_in_project(
 
 
 def _play_url(settings: Settings, token: str) -> str:
+    # Scheme follows the TLS config, so a link handed to a player over the
+    # internet points at https when a certificate is configured.
     host = settings.play_host or "localhost"
-    return f"http://{host}:{settings.play_frontend_port}/play/{token}"
+    return (
+        f"{settings.public_scheme}://{host}:{settings.play_frontend_port}"
+        f"/play/{token}"
+    )
 
 
 def _with_token(
