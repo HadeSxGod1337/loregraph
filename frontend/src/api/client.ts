@@ -1,17 +1,12 @@
-// The backend runs on port 8000 alongside the frontend. Derive its host from
-// the page's own host, not a hardcoded "localhost", so it works no matter how
-// the page was reached: the DM on 127.0.0.1 talks to 127.0.0.1:8000 (loopback
-// → recognised as master), a player on the LAN talks to <lan-ip>:8000 (→ their
-// token). A hardcoded localhost:8000 would send every player's browser to
-// their own machine. VITE_API_URL still overrides for custom deployments.
-function defaultApiUrl(): string {
-  if (typeof window !== "undefined" && window.location.hostname) {
-    return `${window.location.protocol}//${window.location.hostname}:8000`;
-  }
-  return "http://localhost:8000";
-}
-
-export const API_URL = import.meta.env.VITE_API_URL ?? defaultApiUrl();
+// Same origin as the page: in the packaged setup the backend serves this
+// bundle itself, so the API is wherever the page came from — localhost for the
+// DM, the LAN or public address for a player, http or https, whatever port.
+// Hardcoding a host here is what sent every player's browser to its own
+// machine. VITE_API_URL overrides it for a dev run where Vite (5173) and the
+// backend (8000) are separate processes — see frontend/.env.development.
+export const API_URL =
+  import.meta.env.VITE_API_URL ??
+  (typeof window !== "undefined" ? window.location.origin : "");
 
 export class ApiError extends Error {
   status: number;

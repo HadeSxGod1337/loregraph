@@ -178,6 +178,8 @@ function previewEntity(draft: EntityTemplateCreate): Entity {
     icon: null,
     pos_x: null,
     pos_y: null,
+    revealed_to_players: false,
+    player_text: null,
     created_at: "",
     updated_at: "",
   };

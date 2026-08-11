@@ -30,6 +30,7 @@ from loregraph.api.routers import (
     usage,
 )
 from loregraph.api.security import require_master
+from loregraph.api.spa import mount_frontend
 from loregraph.composition import AppComposition
 from loregraph.config import Settings
 from loregraph.connectors.runtime import ConnectorRuntime
@@ -290,6 +291,10 @@ def create_app(
     @app.get("/api/version")
     def app_version_endpoint() -> dict[str, str]:
         return {"version": app_version()}
+
+    # Last: the SPA fallback claims every remaining path, so it must be
+    # registered after every API route or it would swallow them.
+    mount_frontend(app, settings.frontend_dist)
 
     return app
 

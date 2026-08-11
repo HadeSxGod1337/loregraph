@@ -200,6 +200,10 @@ export interface ProjectExport {
     icon_attachment_id: string | null;
     pos_x: number | null;
     pos_y: number | null;
+    // Optional: files exported before limited player access existed have
+    // neither, and import treats them as all-hidden.
+    revealed_to_players?: boolean;
+    player_text?: ProseMirrorDoc | null;
   }[];
   edges: {
     source_entity_id: string;

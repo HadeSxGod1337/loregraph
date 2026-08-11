@@ -26,8 +26,12 @@ done
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BACKEND="$ROOT/backend"
 FRONTEND="$ROOT/frontend"
-BACKEND_URL="http://127.0.0.1:8000"
-FRONTEND_URL="http://127.0.0.1:5173"
+# One process serves both the interface and the API, so there is a single port
+# to allow through a firewall or forward on a router.
+APP_PORT=8000
+LOCAL_URL="http://127.0.0.1:$APP_PORT"
+# Where players connect; only differs from LOCAL_URL in LAN mode.
+FRONTEND_URL="$LOCAL_URL"
 # uvicorn runs with backend/ as its working directory, so Settings.data_dir
 # ("./data") resolves HERE — not at the repo root. The backend reads the same
 # update files (see backend/src/loregraph/services/update_status.py).
@@ -623,6 +627,12 @@ step "Устанавливаю зависимости фронтенда (npm in
 (cd "$FRONTEND" && npm install --no-fund --no-audit) || die "npm install завершился с ошибкой - смотрите сообщения выше."
 ok "Фронтенд готов."
 
+# The backend serves this build itself, so there is one process and one port:
+# one firewall rule, one port to forward, and no CORS at all.
+step "Собираю интерфейс..."
+(cd "$FRONTEND" && npm run build) || die "Сборка интерфейса не удалась - смотрите сообщения выше."
+ok "Интерфейс собран."
+
 # --- 5. LAN play mode (opt-in) --------------------------------------------------
 
 detect_lan_ip() {
@@ -640,18 +650,15 @@ detect_lan_ip() {
 }
 
 BIND_HOST="127.0.0.1"
-FRONTEND_HOST_ARGS=""
 if [ "$LAN" -eq 1 ]; then
     if [ -z "$LAN_HOST" ]; then
         LAN_HOST="$(detect_lan_ip)"
         [ -n "$LAN_HOST" ] || die "Не удалось определить IP в сети. Укажите: bash start.sh --lan --lan-host 192.168.1.5"
     fi
     BIND_HOST="0.0.0.0"
-    FRONTEND_URL="http://${LAN_HOST}:5173"
-    FRONTEND_HOST_ARGS="-- --host 0.0.0.0"
+    FRONTEND_URL="http://${LAN_HOST}:${APP_PORT}"
     export CAMPAIGN_PLAY_MODE_ENABLED=1
     export CAMPAIGN_PLAY_HOST="$LAN_HOST"
-    export CAMPAIGN_CORS_ORIGINS="[\"http://${LAN_HOST}:5173\",\"http://localhost:5173\",\"http://127.0.0.1:5173\"]"
 fi
 
 # --- 6. Launch ------------------------------------------------------------------
@@ -659,56 +666,54 @@ fi
 step "Запускаю Loregraph..."
 
 port_busy() { ( exec 3<>"/dev/tcp/127.0.0.1/$1" ) 2>/dev/null; }
-if port_busy 8000 || port_busy 5173; then
-    die "Порт 8000 или 5173 уже занят. Возможно, Loregraph уже запущен - проверьте браузер: $FRONTEND_URL"
+if port_busy "$APP_PORT"; then
+    die "Порт $APP_PORT уже занят. Возможно, Loregraph уже запущен - проверьте браузер: $LOCAL_URL"
 fi
 
 echo "    Первый запуск может занять пару минут (скачивается локальная embedding-модель)."
 
-(cd "$BACKEND" && exec uv run uvicorn loregraph.main:app --host "$BIND_HOST" --port 8000) &
+# One process, one port: the backend serves the built interface too.
+(cd "$BACKEND" && exec uv run uvicorn loregraph.main:app --host "$BIND_HOST" --port "$APP_PORT") &
 BACK_PID=$!
-# shellcheck disable=SC2086 -- FRONTEND_HOST_ARGS is intentionally word-split
-(cd "$FRONTEND" && exec npm run dev $FRONTEND_HOST_ARGS) &
-FRONT_PID=$!
 
 cleanup() {
     trap - INT TERM EXIT
     printf '\n\033[36mОстанавливаю Loregraph...\033[0m\n'
-    kill "$BACK_PID" "$FRONT_PID" 2>/dev/null
-    wait "$BACK_PID" "$FRONT_PID" 2>/dev/null
-    # Belt and braces: anything left in our process group (vite workers etc.)
+    kill "$BACK_PID" 2>/dev/null
+    wait "$BACK_PID" 2>/dev/null
+    # Belt and braces: anything left in our process group.
     kill 0 2>/dev/null
 }
 trap cleanup INT TERM EXIT
 
-# Wait for the backend health endpoint before opening the browser.
+# Wait for the health endpoint before opening the browser.
 HEALTHY=0
 i=0
 while [ "$i" -lt 120 ]; do
-    kill -0 "$BACK_PID" 2>/dev/null || die "Бэкенд завершился с ошибкой - смотрите сообщения выше."
-    if curl -fsS -m 2 "$BACKEND_URL/api/health" >/dev/null 2>&1; then
+    kill -0 "$BACK_PID" 2>/dev/null || die "Loregraph завершился с ошибкой - смотрите сообщения выше."
+    if curl -fsS -m 2 "$LOCAL_URL/api/health" >/dev/null 2>&1; then
         HEALTHY=1
         break
     fi
     sleep 2
     i=$((i + 1))
 done
-[ "$HEALTHY" -eq 1 ] || die "Бэкенд не ответил за 4 минуты - смотрите сообщения выше."
+[ "$HEALTHY" -eq 1 ] || die "Loregraph не ответил за 4 минуты - смотрите сообщения выше."
 
 # The DM opens the app on this machine via localhost even in LAN mode.
 if command -v open >/dev/null 2>&1; then
-    open "http://127.0.0.1:5173"
+    open "$LOCAL_URL"
 elif command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "http://127.0.0.1:5173" >/dev/null 2>&1 || true
+    xdg-open "$LOCAL_URL" >/dev/null 2>&1 || true
 fi
 
 printf '\n\033[32m=========================================================\033[0m\n'
-printf '\033[32m  Loregraph запущен: http://127.0.0.1:5173\033[0m\n'
+printf '\033[32m  Loregraph запущен: %s\033[0m\n' "$LOCAL_URL"
 if [ "$LAN" -eq 1 ]; then
     printf '\033[32m  Режим игры по сети включён.\033[0m\n'
     printf '\033[32m  Ссылки-приглашения создавайте в: Настройки проекта -> Игроки.\033[0m\n'
     printf '\033[32m  Игроки подключаются на: %s\033[0m\n' "$FRONTEND_URL"
-    printf '\033[33m  Если не открывается - разрешите порты 5173 и 8000 в брандмауэре.\033[0m\n'
+    printf '\033[33m  Если не открывается - разрешите порт %s в брандмауэре.\033[0m\n' "$APP_PORT"
     printf '\033[33m  ВНИМАНИЕ: ваш мир доступен всем в этой сети по ссылкам,\033[0m\n'
     printf '\033[33m  трафик не шифруется. Отзывайте ссылки, когда они не нужны.\033[0m\n'
 fi
@@ -723,8 +728,8 @@ SINCE_CHECK=0
 while :; do
     sleep 15
     SINCE_CHECK=$((SINCE_CHECK + 15))
-    if ! kill -0 "$BACK_PID" 2>/dev/null || ! kill -0 "$FRONT_PID" 2>/dev/null; then
-        warn "Один из процессов завершился, останавливаю всё."
+    if ! kill -0 "$BACK_PID" 2>/dev/null; then
+        warn "Loregraph завершился, останавливаю."
         break
     fi
     if [ "$SINCE_CHECK" -ge "$UPDATE_CHECK_INTERVAL" ] && [ "$HAS_GIT" -eq 1 ] && [ "$(update_mode)" != "never" ]; then

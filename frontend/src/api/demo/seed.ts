@@ -86,6 +86,8 @@ function ent(
     icon: null,
     pos_x: pos[0],
     pos_y: pos[1],
+    revealed_to_players: false,
+    player_text: null,
     created_at: TS,
     updated_at: TS,
   };

@@ -24,8 +24,12 @@ $Utf8NoBom = New-Object System.Text.UTF8Encoding $false
 $Root = Split-Path -Parent $PSScriptRoot
 $Backend = Join-Path $Root "backend"
 $Frontend = Join-Path $Root "frontend"
-$BackendUrl = "http://127.0.0.1:8000"
-$FrontendUrl = "http://127.0.0.1:5173"
+# One process serves both the interface and the API, so there is a single port
+# to allow through a firewall or forward on a router.
+$AppPort = 8000
+$LocalUrl = "http://127.0.0.1:$AppPort"
+# Where players connect; only differs from $LocalUrl in LAN mode.
+$FrontendUrl = $LocalUrl
 # uvicorn runs with backend/ as its working directory, so Settings.data_dir
 # ("./data") resolves HERE - not at the repo root. The backend reads the same
 # update files (see backend/src/loregraph/services/update_status.py).
@@ -675,11 +679,17 @@ Push-Location $Frontend
 try { npm install --no-fund --no-audit } finally { Pop-Location }
 Write-Ok "Фронтенд готов."
 
+# The backend serves this build itself, so there is one process and one port:
+# one firewall rule, one port to forward, and no CORS at all.
+Write-Step "Собираю интерфейс..."
+Push-Location $Frontend
+try { npm run build } finally { Pop-Location }
+Write-Ok "Интерфейс собран."
+
 # --- 5. LAN play mode (opt-in) --------------------------------------------------
 
 # Loopback-only by default; --Lan opens the app to the local network.
 $BindHost = "127.0.0.1"
-$FrontendArgs = "npm run dev"
 if ($Lan) {
     if ([string]::IsNullOrWhiteSpace($LanHost)) {
         $ips = Get-LanIp
@@ -692,12 +702,10 @@ if ($Lan) {
         $LanHost = $ips[0]
     }
     $BindHost = "0.0.0.0"
-    $FrontendUrl = "http://${LanHost}:5173"
-    $FrontendArgs = "npm run dev -- --host 0.0.0.0"
-    # Passed to the child processes via inherited environment (see config.py).
+    $FrontendUrl = "http://${LanHost}:$AppPort"
+    # Passed to the child process via inherited environment (see config.py).
     $env:CAMPAIGN_PLAY_MODE_ENABLED = "1"
     $env:CAMPAIGN_PLAY_HOST = $LanHost
-    $env:CAMPAIGN_CORS_ORIGINS = ('["http://{0}:5173","http://localhost:5173","http://127.0.0.1:5173"]' -f $LanHost)
 }
 
 # --- 6. Launch ------------------------------------------------------------------
@@ -705,47 +713,44 @@ if ($Lan) {
 Write-Step "Запускаю Loregraph..."
 
 $portsBusy = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
-    Where-Object { $_.LocalPort -eq 8000 -or $_.LocalPort -eq 5173 }
+    Where-Object { $_.LocalPort -eq $AppPort }
 if ($null -ne $portsBusy) {
-    throw "Порт 8000 или 5173 уже занят. Возможно, Loregraph уже запущен - проверьте открытые окна (или браузер: $FrontendUrl)."
+    throw "Порт $AppPort уже занят. Возможно, Loregraph уже запущен - проверьте открытые окна (или браузер: $LocalUrl)."
 }
 
 Write-Host "    Первый запуск может занять пару минут (скачивается локальная embedding-модель)." -ForegroundColor Gray
 
-# -NoNewWindow keeps both servers attached to this console: closing this
-# window (or Ctrl+C) takes everything down with it.
+# One process, one port: the backend serves the built interface too.
+# -NoNewWindow keeps it attached to this console, so closing this window
+# (or Ctrl+C) takes it down with it.
 $backendProc = Start-Process -FilePath "uv" `
-    -ArgumentList "run", "uvicorn", "loregraph.main:app", "--host", $BindHost, "--port", "8000" `
+    -ArgumentList "run", "uvicorn", "loregraph.main:app", "--host", $BindHost, "--port", "$AppPort" `
     -WorkingDirectory $Backend -NoNewWindow -PassThru
 
-$frontendProc = Start-Process -FilePath "cmd" `
-    -ArgumentList "/c", $FrontendArgs `
-    -WorkingDirectory $Frontend -NoNewWindow -PassThru
-
 try {
-    # Wait for the backend health endpoint before opening the browser.
+    # Wait for the health endpoint before opening the browser.
     $healthy = $false
     foreach ($i in 1..120) {
-        if ($backendProc.HasExited) { throw "Бэкенд завершился с ошибкой - смотрите сообщения выше." }
+        if ($backendProc.HasExited) { throw "Loregraph завершился с ошибкой - смотрите сообщения выше." }
         try {
-            $resp = Invoke-WebRequest -Uri "$BackendUrl/api/health" -UseBasicParsing -TimeoutSec 2
+            $resp = Invoke-WebRequest -Uri "$LocalUrl/api/health" -UseBasicParsing -TimeoutSec 2
             if ($resp.StatusCode -eq 200) { $healthy = $true; break }
         } catch {}
         Start-Sleep -Seconds 2
     }
-    if (-not $healthy) { throw "Бэкенд не ответил за 4 минуты - смотрите сообщения выше." }
+    if (-not $healthy) { throw "Loregraph не ответил за 4 минуты - смотрите сообщения выше." }
 
     # In LAN mode the DM still opens the app on this machine via localhost.
-    Start-Process "http://127.0.0.1:5173"
+    Start-Process $LocalUrl
     Write-Host ""
     Write-Host "=========================================================" -ForegroundColor Green
-    Write-Host "  Loregraph запущен: http://127.0.0.1:5173" -ForegroundColor Green
+    Write-Host "  Loregraph запущен: $LocalUrl" -ForegroundColor Green
     if ($Lan) {
         Write-Host "  Режим игры по сети включён." -ForegroundColor Green
         Write-Host "  Ссылки-приглашения для игроков создавайте в:" -ForegroundColor Green
         Write-Host "  Настройки проекта -> Игроки." -ForegroundColor Green
         Write-Host "  Игроки подключаются на: $FrontendUrl" -ForegroundColor Green
-        Write-Host "  Если не открывается - разрешите порты 5173 и 8000 в брандмауэре." -ForegroundColor Yellow
+        Write-Host "  Если не открывается - разрешите порт $AppPort в брандмауэре." -ForegroundColor Yellow
         Write-Host "  ВНИМАНИЕ: ваш мир доступен всем в этой сети по ссылкам," -ForegroundColor Yellow
         Write-Host "  трафик не шифруется. Отзывайте ссылки, когда они не нужны." -ForegroundColor Yellow
     }
@@ -760,8 +765,8 @@ try {
     while ($true) {
         Start-Sleep -Seconds 15
         $sinceCheck += 15
-        if ($backendProc.HasExited -or $frontendProc.HasExited) {
-            Write-Warn2 "Один из процессов завершился, останавливаю всё."
+        if ($backendProc.HasExited) {
+            Write-Warn2 "Loregraph завершился, останавливаю."
             break
         }
         if ($sinceCheck -ge $UpdateCheckInterval -and $hasGit -and (Read-UpdatePrefs).mode -ne "never") {
@@ -791,10 +796,8 @@ try {
     }
 } finally {
     Write-Host "`nОстанавливаю Loregraph..." -ForegroundColor Cyan
-    foreach ($p in @($backendProc, $frontendProc)) {
-        if ($null -ne $p -and -not $p.HasExited) {
-            # /T kills the whole tree (uv -> python, cmd -> node).
-            cmd /c "taskkill /PID $($p.Id) /T /F >nul 2>&1"
-        }
+    if ($null -ne $backendProc -and -not $backendProc.HasExited) {
+        # /T kills the whole tree (uv -> python).
+        cmd /c "taskkill /PID $($backendProc.Id) /T /F >nul 2>&1"
     }
 }

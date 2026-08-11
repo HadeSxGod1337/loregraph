@@ -55,7 +55,15 @@ class Settings(BaseSettings):
     # frontend is served.
     play_mode_enabled: bool = False
     play_host: str | None = None
-    play_frontend_port: int = 5173
+    # Where the app is reachable. In the packaged single-port setup the backend
+    # serves the frontend too, so this is its own port; a dev setup running
+    # Vite separately overrides it with 5173.
+    play_frontend_port: int = 8000
+    # Built frontend (npm run build). When present, the backend serves it, so
+    # there is one process and one port to allow through a firewall or forward
+    # on a router. Missing (a dev checkout that only ever ran `vite`) simply
+    # means no SPA is served and the API still works.
+    frontend_dist: Path = Path("../frontend/dist")
 
     # --- LLM (BYOK) ---
     llm_provider: LLMProvider = "anthropic"
