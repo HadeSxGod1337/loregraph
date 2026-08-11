@@ -23,6 +23,8 @@ import type {
   EntityField,
   EntityPlayerViewUpdate,
   EntityUpdate,
+  Player,
+  PlayerCreated,
   Project,
   ProjectCreate,
   ProjectExport,
@@ -194,6 +196,29 @@ const routes: Route[] = [
     method: "GET",
     pattern: "/api/projects/:id/entities/:eid/player-notes",
     handler: () => [],
+  },
+
+  // --- players (demo: in-memory, links are fake) ---
+  { method: "GET", pattern: "/api/projects/:id/players", handler: (m) => demoPlayers(m.id) },
+  {
+    method: "POST",
+    pattern: "/api/projects/:id/players",
+    handler: (m, body) => createDemoPlayer(m.id, (body as { name: string }).name),
+  },
+  {
+    method: "POST",
+    pattern: "/api/projects/:id/players/:pid/rotate",
+    handler: (m) => rotateDemoPlayer(m.pid),
+  },
+  {
+    method: "POST",
+    pattern: "/api/projects/:id/players/:pid/revoke",
+    handler: (m) => revokeDemoPlayer(m.pid),
+  },
+  {
+    method: "DELETE",
+    pattern: "/api/projects/:id/players/:pid",
+    handler: (m) => deleteDemoPlayer(m.pid),
   },
 
   // --- edges ---
@@ -431,6 +456,59 @@ function createEntity(projectId: string, data: EntityCreate): Entity {
   };
   db.entities.push(entity);
   return entity;
+}
+
+// Players live in a local array, not the shared store — they exist only to
+// demo the DM panel; the links are fake and there's no player-side view here.
+const demoPlayerStore: Player[] = [];
+
+function demoPlayers(projectId: string): Player[] {
+  return demoPlayerStore.filter((p) => p.project_id === projectId);
+}
+
+function createDemoPlayer(projectId: string, name: string): PlayerCreated {
+  const token = uid("tok");
+  const player: Player = {
+    id: uid("plr"),
+    project_id: projectId,
+    name,
+    token_prefix: token.slice(0, 8),
+    revoked: false,
+    last_seen_at: null,
+    note_count: 0,
+    play_url: null,
+    created_at: nowIso(),
+    updated_at: nowIso(),
+  };
+  demoPlayerStore.push(player);
+  return { ...player, token, play_url: `http://localhost:5173/play/${token}` };
+}
+
+function requireDemoPlayer(playerId: string): Player {
+  const player = demoPlayerStore.find((p) => p.id === playerId);
+  if (!player) throw new ApiError(404, "Not Found (demo)", "player_not_found");
+  return player;
+}
+
+function rotateDemoPlayer(playerId: string): PlayerCreated {
+  const player = requireDemoPlayer(playerId);
+  const token = uid("tok");
+  player.token_prefix = token.slice(0, 8);
+  player.revoked = false;
+  player.updated_at = nowIso();
+  return { ...player, token, play_url: `http://localhost:5173/play/${token}` };
+}
+
+function revokeDemoPlayer(playerId: string): Player {
+  const player = requireDemoPlayer(playerId);
+  player.revoked = true;
+  player.updated_at = nowIso();
+  return player;
+}
+
+function deleteDemoPlayer(playerId: string): void {
+  const i = demoPlayerStore.findIndex((p) => p.id === playerId);
+  if (i >= 0) demoPlayerStore.splice(i, 1);
 }
 
 function setPlayerView(id: string, data: EntityPlayerViewUpdate): Entity {

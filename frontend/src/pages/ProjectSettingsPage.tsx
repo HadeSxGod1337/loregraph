@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useBlocker, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { KnowledgeBasePanel } from "../components/knowledge/KnowledgeBasePanel";
+import { PlayersPanel } from "../components/players/PlayersPanel";
 import { TemplatesPanel } from "../components/sheet/designer/TemplatesPanel";
 import { TokenUsagePanel } from "../components/usage/TokenUsagePanel";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -21,6 +22,7 @@ import { translateApiError } from "../i18n/eventText";
 type SettingsSection =
   | "general"
   | "templates"
+  | "players"
   | "knowledge"
   | "usage"
   | "danger";
@@ -28,6 +30,7 @@ type SettingsSection =
 const NAV_SECTIONS: { id: SettingsSection; icon: IconName; labelKey: string }[] = [
   { id: "general", icon: "settings", labelKey: "projectSettings.navGeneral" },
   { id: "templates", icon: "layers", labelKey: "projectSettings.navTemplates" },
+  { id: "players", icon: "users", labelKey: "projectSettings.navPlayers" },
   { id: "knowledge", icon: "folder", labelKey: "projectSettings.navKnowledge" },
   { id: "usage", icon: "bar-chart", labelKey: "projectSettings.navUsage" },
 ];
@@ -225,6 +228,8 @@ export function ProjectSettingsPage() {
           )}
 
           {section === "templates" && <TemplatesPanel projectId={projectId!} />}
+
+          {section === "players" && <PlayersPanel projectId={projectId!} />}
 
           {section === "knowledge" && (
             <section className="settings-card">
