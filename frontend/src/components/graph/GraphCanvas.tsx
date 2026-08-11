@@ -388,7 +388,7 @@ export function GraphCanvas(props: GraphCanvasProps) {
   // page reload.
   const canvasKey = props.viewMode === "focused" ? props.rootId : "all";
   return (
-    <div className="graph-canvas">
+    <div className="graph-canvas flow-surface">
       <ReactFlowProvider key={canvasKey}>
         <GraphCanvasInner {...props} />
       </ReactFlowProvider>

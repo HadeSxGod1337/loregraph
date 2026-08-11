@@ -131,7 +131,9 @@ function Canvas({
         minZoom={MIN_ZOOM}
         fitView
       >
-        <Background />
+        {/* Same grid as the DM board — the stock <Background /> defaults to a
+            light-mode grey that reads as noise on this theme. */}
+        <Background color="var(--border)" gap={22} size={1} />
         <Controls showInteractive={false} />
       </ReactFlow>
     </ActiveRootContext.Provider>

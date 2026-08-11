@@ -2286,28 +2286,33 @@
 
 /* React Flow ships its own light-mode chrome (controls, edge label
    background) with a stylesheet that (depending on JS import order) can
-   load after App.css, so these overrides are nested under .graph-canvas to
+   load after App.css, so these overrides are nested under a class to
    out-specificity the defaults regardless of load order rather than
-   relying on source order or !important. */
-.graph-canvas .react-flow__controls {
+   relying on source order or !important.
+
+   That class is .flow-surface, carried by every container that mounts a
+   <ReactFlow> — the DM canvas and the player board. Scoping this to
+   .graph-canvas is what left the player board with the stock white
+   controls and grey dots on a dark background. */
+.flow-surface .react-flow__controls {
   box-shadow: var(--shadow);
 }
 
-.graph-canvas .react-flow__controls-button {
+.flow-surface .react-flow__controls-button {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   color: var(--text);
 }
 
-.graph-canvas .react-flow__controls-button:hover {
+.flow-surface .react-flow__controls-button:hover {
   background: var(--bg-subtle);
 }
 
-.graph-canvas .react-flow__controls-button svg {
+.flow-surface .react-flow__controls-button svg {
   fill: var(--text);
 }
 
-.graph-canvas .react-flow__attribution {
+.flow-surface .react-flow__attribution {
   background: transparent;
   color: var(--text-muted);
 }
@@ -2335,14 +2340,14 @@
    library ships a `.dark` class variant of these tokens, but this app
    doesn't toggle that class — it drives its own theme through --bg/--surface/
    etc., so those are what these tokens are pinned to instead. */
-.graph-canvas .react-flow {
+.flow-surface .react-flow {
   --xy-edge-stroke-default: var(--border-strong);
   --xy-edge-stroke-selected-default: var(--accent);
   --xy-minimap-background-color-default: var(--surface);
   --xy-minimap-mask-background-color-default: color-mix(in srgb, var(--bg) 60%, transparent);
 }
 
-.graph-canvas .react-flow__minimap {
+.flow-surface .react-flow__minimap {
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow);
@@ -2491,10 +2496,22 @@
 
 /* --- Player view (/play/:token) -------------------------------------------- */
 
+/* Column so the board page can claim exactly the height the sticky header
+   leaves over, instead of guessing that header's pixel height. */
 .play-shell {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
+}
+
+/* The board is the only page that must not grow the document — and for its
+   `height: 100%` to resolve, an ancestor needs a definite height, which
+   `min-height` alone never gives. Pinned to the viewport here only, so the
+   card pages keep scrolling normally. */
+.play-shell:has(.play-board) {
+  height: 100vh;
 }
 
 .play-splash {
@@ -2557,9 +2574,21 @@
 }
 
 .play-main {
+  flex: 1;
+  width: 100%;
   max-width: 900px;
   margin: 0 auto;
   padding: 20px;
+}
+
+/* The board is the one player page that isn't a reading column. Left in the
+   900px measure, its dot grid and zoom controls sat in a narrow strip down
+   the middle of an otherwise empty dark screen. Widening the wrapper only
+   when it actually holds the board keeps the card pages' measure intact. */
+.play-main:has(> .play-board) {
+  max-width: none;
+  padding: 0;
+  min-height: 0;
 }
 
 .play-empty {
@@ -2569,9 +2598,7 @@
 }
 
 .play-board {
-  /* Fill the viewport minus the sticky header (roughly 60px). */
-  height: calc(100vh - 62px);
-  margin: -20px;
+  height: 100%;
 }
 
 .play-card-grid {

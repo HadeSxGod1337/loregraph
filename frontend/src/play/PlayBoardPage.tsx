@@ -16,7 +16,7 @@ export function PlayBoardPage() {
   }
 
   return (
-    <div className="play-board">
+    <div className="play-board flow-surface">
       <PlayBoardCanvas
         nodes={graph.nodes}
         edges={graph.edges}
