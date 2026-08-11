@@ -107,6 +107,14 @@ drives the drawer, the full sheet and printing at once, including computed value
 (skill bonuses, AC, carrying capacity) written as small formulas over other fields.
 See [docs/templates.en.md](docs/templates.en.md).
 
+### Limited player access
+
+Reveal a card and your players see it — only the text you wrote for them and the
+fields you allow — through an invite link, with a read-only board and their own
+public/private notes. Nothing is shared until you reveal it. Launch with
+`start.bat --lan` to let players connect from their own devices on the network.
+See [docs/players.md](docs/players.md).
+
 ### Documentation
 
 - **User guide** — [docs/](docs/README.md): install, world building, the AI
