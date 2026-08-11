@@ -21,6 +21,7 @@ from loregraph.api.routers import (
     graph,
     import_jobs,
     knowledge,
+    play,
     projects,
     realtime,
     sheet_presets,
@@ -228,6 +229,10 @@ def create_app(
         allow_origins=settings.cors_origins,
         allow_methods=["*"],
         allow_headers=["*"],
+        # Players authenticate with a session cookie, so cross-origin requests
+        # must be allowed to carry it. Valid because allow_origins is an
+        # explicit list, not a wildcard (the two are mutually exclusive).
+        allow_credentials=True,
     )
 
     _register_exception_handlers(app)
@@ -257,6 +262,9 @@ def create_app(
     app.include_router(updates.router, prefix=_API_PREFIX, dependencies=_master)
     # No master dependency: the websocket authenticates itself per-route.
     app.include_router(realtime.router, prefix=_API_PREFIX)
+    # Player-facing API: its own player-token guard, never the master one, and
+    # it takes the project from the token, not the URL.
+    app.include_router(play.router, prefix=_API_PREFIX)
     # Attachments: an access-checked route, not a bare StaticFiles mount (which
     # would bypass every guard and hand any file to anyone on the network).
     # Its own route resolves either identity, so no blanket master dependency.

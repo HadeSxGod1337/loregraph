@@ -46,6 +46,7 @@ from loregraph.services.entity_service import EntityService
 from loregraph.services.entity_template_service import EntityTemplateService
 from loregraph.services.event_bus import EventBus
 from loregraph.services.knowledge_index import KnowledgeIndex
+from loregraph.services.player_view import PlayerViewService
 from loregraph.services.sheet_preset_service import SheetPresetService
 from loregraph.services.update_status import UpdateService, app_version
 from loregraph.services.vector_index import VectorIndex
@@ -260,6 +261,19 @@ async def get_player_note_store(
 
 PlayerStoreDep = Annotated[PlayerStore, Depends(get_player_store)]
 PlayerNoteStoreDep = Annotated[PlayerNoteStore, Depends(get_player_note_store)]
+
+
+async def get_player_view_service(
+    entity_store: EntityStoreDep,
+    edge_store: EdgeStoreDep,
+    note_store: PlayerNoteStoreDep,
+) -> PlayerViewService:
+    return PlayerViewService(entity_store, edge_store, note_store)
+
+
+PlayerViewServiceDep = Annotated[
+    PlayerViewService, Depends(get_player_view_service)
+]
 
 
 async def get_optional_player_identity(
