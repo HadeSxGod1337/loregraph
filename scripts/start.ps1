@@ -4,7 +4,12 @@
 # Run via start.bat in the repo root (double-click).
 
 param(
-    [switch]$SkipUpdate
+    [switch]$SkipUpdate,
+    # LAN play mode: bind to all interfaces so players on the same network can
+    # reach the app through an invite link. Off by default — the app stays on
+    # localhost, exactly as before.
+    [switch]$Lan,
+    [string]$LanHost = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -45,6 +50,17 @@ function Update-SessionPath {
 function Test-Command($name) {
     $found = Get-Command $name -ErrorAction SilentlyContinue
     return ($null -ne $found)
+}
+
+function Get-LanIp {
+    # Real IPv4 addresses: skip link-local (169.254.*) and loopback.
+    $addrs = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.PrefixOrigin -in 'Dhcp', 'Manual' -and
+            $_.IPAddress -notlike '169.254.*' -and
+            $_.IPAddress -ne '127.0.0.1'
+        }
+    return @($addrs | Select-Object -ExpandProperty IPAddress)
 }
 
 # --- Update preferences and status (shared with the backend) -----------------
@@ -659,7 +675,32 @@ Push-Location $Frontend
 try { npm install --no-fund --no-audit } finally { Pop-Location }
 Write-Ok "Фронтенд готов."
 
-# --- 5. Launch ------------------------------------------------------------------
+# --- 5. LAN play mode (opt-in) --------------------------------------------------
+
+# Loopback-only by default; --Lan opens the app to the local network.
+$BindHost = "127.0.0.1"
+$FrontendArgs = "npm run dev"
+if ($Lan) {
+    if ([string]::IsNullOrWhiteSpace($LanHost)) {
+        $ips = Get-LanIp
+        if ($ips.Count -eq 0) {
+            throw "Не удалось определить IP в сети. Укажите вручную: start.bat -Lan -LanHost 192.168.1.5"
+        } elseif ($ips.Count -gt 1) {
+            Write-Warn2 "Найдено несколько сетевых адресов: $($ips -join ', ')"
+            throw "Выберите один: start.bat -Lan -LanHost <адрес из списка выше>"
+        }
+        $LanHost = $ips[0]
+    }
+    $BindHost = "0.0.0.0"
+    $FrontendUrl = "http://${LanHost}:5173"
+    $FrontendArgs = "npm run dev -- --host 0.0.0.0"
+    # Passed to the child processes via inherited environment (see config.py).
+    $env:CAMPAIGN_PLAY_MODE_ENABLED = "1"
+    $env:CAMPAIGN_PLAY_HOST = $LanHost
+    $env:CAMPAIGN_CORS_ORIGINS = ('["http://{0}:5173","http://localhost:5173","http://127.0.0.1:5173"]' -f $LanHost)
+}
+
+# --- 6. Launch ------------------------------------------------------------------
 
 Write-Step "Запускаю Loregraph..."
 
@@ -674,11 +715,11 @@ Write-Host "    Первый запуск может занять пару ми�
 # -NoNewWindow keeps both servers attached to this console: closing this
 # window (or Ctrl+C) takes everything down with it.
 $backendProc = Start-Process -FilePath "uv" `
-    -ArgumentList "run", "uvicorn", "loregraph.main:app", "--host", "127.0.0.1", "--port", "8000" `
+    -ArgumentList "run", "uvicorn", "loregraph.main:app", "--host", $BindHost, "--port", "8000" `
     -WorkingDirectory $Backend -NoNewWindow -PassThru
 
 $frontendProc = Start-Process -FilePath "cmd" `
-    -ArgumentList "/c", "npm run dev" `
+    -ArgumentList "/c", $FrontendArgs `
     -WorkingDirectory $Frontend -NoNewWindow -PassThru
 
 try {
@@ -694,10 +735,20 @@ try {
     }
     if (-not $healthy) { throw "Бэкенд не ответил за 4 минуты - смотрите сообщения выше." }
 
-    Start-Process $FrontendUrl
+    # In LAN mode the DM still opens the app on this machine via localhost.
+    Start-Process "http://127.0.0.1:5173"
     Write-Host ""
     Write-Host "=========================================================" -ForegroundColor Green
-    Write-Host "  Loregraph запущен: $FrontendUrl" -ForegroundColor Green
+    Write-Host "  Loregraph запущен: http://127.0.0.1:5173" -ForegroundColor Green
+    if ($Lan) {
+        Write-Host "  Режим игры по сети включён." -ForegroundColor Green
+        Write-Host "  Ссылки-приглашения для игроков создавайте в:" -ForegroundColor Green
+        Write-Host "  Настройки проекта -> Игроки." -ForegroundColor Green
+        Write-Host "  Игроки подключаются на: $FrontendUrl" -ForegroundColor Green
+        Write-Host "  Если не открывается - разрешите порты 5173 и 8000 в брандмауэре." -ForegroundColor Yellow
+        Write-Host "  ВНИМАНИЕ: ваш мир доступен всем в этой сети по ссылкам," -ForegroundColor Yellow
+        Write-Host "  трафик не шифруется. Отзывайте ссылки, когда они не нужны." -ForegroundColor Yellow
+    }
     Write-Host "  Чтобы остановить - закройте это окно или нажмите Ctrl+C" -ForegroundColor Green
     Write-Host "=========================================================" -ForegroundColor Green
 

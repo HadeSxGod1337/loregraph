@@ -7,9 +7,19 @@
 set -u
 
 SKIP_UPDATE=0
+LAN=0
+LAN_HOST=""
+prev=""
 for arg in "$@"; do
+    case "$prev" in
+        --lan-host) LAN_HOST="$arg"; prev=""; continue ;;
+    esac
     case "$arg" in
         --skip-update) SKIP_UPDATE=1 ;;
+        # LAN play mode: bind to all interfaces so players on the same network
+        # can connect. Off by default — the app stays on localhost.
+        --lan)         LAN=1 ;;
+        --lan-host)    prev="--lan-host" ;;
     esac
 done
 
@@ -613,7 +623,38 @@ step "Устанавливаю зависимости фронтенда (npm in
 (cd "$FRONTEND" && npm install --no-fund --no-audit) || die "npm install завершился с ошибкой - смотрите сообщения выше."
 ok "Фронтенд готов."
 
-# --- 5. Launch ------------------------------------------------------------------
+# --- 5. LAN play mode (opt-in) --------------------------------------------------
+
+detect_lan_ip() {
+    # macOS first, then Linux, then a route-based fallback.
+    if command -v ipconfig >/dev/null 2>&1; then
+        ipconfig getifaddr en0 2>/dev/null && return 0
+        ipconfig getifaddr en1 2>/dev/null && return 0
+    fi
+    if command -v hostname >/dev/null 2>&1; then
+        local ip
+        ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+        [ -n "$ip" ] && { printf '%s' "$ip"; return 0; }
+    fi
+    ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}'
+}
+
+BIND_HOST="127.0.0.1"
+FRONTEND_HOST_ARGS=""
+if [ "$LAN" -eq 1 ]; then
+    if [ -z "$LAN_HOST" ]; then
+        LAN_HOST="$(detect_lan_ip)"
+        [ -n "$LAN_HOST" ] || die "Не удалось определить IP в сети. Укажите: bash start.sh --lan --lan-host 192.168.1.5"
+    fi
+    BIND_HOST="0.0.0.0"
+    FRONTEND_URL="http://${LAN_HOST}:5173"
+    FRONTEND_HOST_ARGS="-- --host 0.0.0.0"
+    export CAMPAIGN_PLAY_MODE_ENABLED=1
+    export CAMPAIGN_PLAY_HOST="$LAN_HOST"
+    export CAMPAIGN_CORS_ORIGINS="[\"http://${LAN_HOST}:5173\",\"http://localhost:5173\",\"http://127.0.0.1:5173\"]"
+fi
+
+# --- 6. Launch ------------------------------------------------------------------
 
 step "Запускаю Loregraph..."
 
@@ -624,9 +665,10 @@ fi
 
 echo "    Первый запуск может занять пару минут (скачивается локальная embedding-модель)."
 
-(cd "$BACKEND" && exec uv run uvicorn loregraph.main:app --host 127.0.0.1 --port 8000) &
+(cd "$BACKEND" && exec uv run uvicorn loregraph.main:app --host "$BIND_HOST" --port 8000) &
 BACK_PID=$!
-(cd "$FRONTEND" && exec npm run dev) &
+# shellcheck disable=SC2086 -- FRONTEND_HOST_ARGS is intentionally word-split
+(cd "$FRONTEND" && exec npm run dev $FRONTEND_HOST_ARGS) &
 FRONT_PID=$!
 
 cleanup() {
@@ -653,14 +695,23 @@ while [ "$i" -lt 120 ]; do
 done
 [ "$HEALTHY" -eq 1 ] || die "Бэкенд не ответил за 4 минуты - смотрите сообщения выше."
 
+# The DM opens the app on this machine via localhost even in LAN mode.
 if command -v open >/dev/null 2>&1; then
-    open "$FRONTEND_URL"
+    open "http://127.0.0.1:5173"
 elif command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$FRONTEND_URL" >/dev/null 2>&1 || true
+    xdg-open "http://127.0.0.1:5173" >/dev/null 2>&1 || true
 fi
 
 printf '\n\033[32m=========================================================\033[0m\n'
-printf '\033[32m  Loregraph запущен: %s\033[0m\n' "$FRONTEND_URL"
+printf '\033[32m  Loregraph запущен: http://127.0.0.1:5173\033[0m\n'
+if [ "$LAN" -eq 1 ]; then
+    printf '\033[32m  Режим игры по сети включён.\033[0m\n'
+    printf '\033[32m  Ссылки-приглашения создавайте в: Настройки проекта -> Игроки.\033[0m\n'
+    printf '\033[32m  Игроки подключаются на: %s\033[0m\n' "$FRONTEND_URL"
+    printf '\033[33m  Если не открывается - разрешите порты 5173 и 8000 в брандмауэре.\033[0m\n'
+    printf '\033[33m  ВНИМАНИЕ: ваш мир доступен всем в этой сети по ссылкам,\033[0m\n'
+    printf '\033[33m  трафик не шифруется. Отзывайте ссылки, когда они не нужны.\033[0m\n'
+fi
 printf '\033[32m  Чтобы остановить - нажмите Ctrl+C\033[0m\n'
 printf '\033[32m=========================================================\033[0m\n'
 
