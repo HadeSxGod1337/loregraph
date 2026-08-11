@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     data_dir: Path = Path("./data")
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     log_level: str = "INFO"
+    # The public default trusts loopback as the DM (see api/security.py). Turn
+    # this off when running behind a reverse proxy, where the peer address is
+    # the proxy and loopback trust would let anyone in.
+    trust_loopback: bool = True
 
     # --- LLM (BYOK) ---
     llm_provider: LLMProvider = "anthropic"

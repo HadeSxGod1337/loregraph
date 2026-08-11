@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -27,6 +27,7 @@ from loregraph.api.routers import (
     updates,
     usage,
 )
+from loregraph.api.security import require_master
 from loregraph.composition import AppComposition
 from loregraph.config import Settings
 from loregraph.connectors.runtime import ConnectorRuntime
@@ -151,6 +152,12 @@ def create_app(
         # that needs a different backend passes its own AppComposition here
         # instead of forking this function.
         app.state.store_factories = composition.build_store_factories(settings)
+        # Access layer: who counts as the DM. The public default trusts
+        # loopback (see api/security.py); a private build swaps in real auth
+        # through this same seam, exactly like the storage/vector ones above.
+        app.state.master_authenticator = composition.build_master_authenticator(
+            settings
+        )
         # External-tool connectors: the registry maps connector types to
         # implementations; the runtime hosts long-lived clients (Foundry MCP
         # sessions) for the app's lifetime and is closed with the lifespan.
@@ -225,21 +232,31 @@ def create_app(
 
     _register_exception_handlers(app)
     _API_PREFIX = "/api"
-    app.include_router(projects.router, prefix=_API_PREFIX)
-    app.include_router(entities.router, prefix=_API_PREFIX)
-    app.include_router(entity_templates.router, prefix=_API_PREFIX)
-    app.include_router(sheet_presets.router, prefix=_API_PREFIX)
-    app.include_router(edges.router, prefix=_API_PREFIX)
-    app.include_router(graph.router, prefix=_API_PREFIX)
-    app.include_router(attachments.router, prefix=_API_PREFIX)
-    app.include_router(agent.router, prefix=_API_PREFIX)
-    app.include_router(import_jobs.router, prefix=_API_PREFIX)
-    app.include_router(knowledge.router, prefix=_API_PREFIX)
-    app.include_router(usage.router, prefix=_API_PREFIX)
-    app.include_router(connections.types_router, prefix=_API_PREFIX)
-    app.include_router(connections.router, prefix=_API_PREFIX)
+    # Every DM router is gated on master identity in one place, so a new route
+    # can't accidentally ship unguarded. The public default trusts loopback;
+    # the realtime websocket guards itself (an HTTP dependency can't close a
+    # socket cleanly), and the player-facing routers carry their own guard.
+    _master = [Depends(require_master)]
+    app.include_router(projects.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(entities.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(
+        entity_templates.router, prefix=_API_PREFIX, dependencies=_master
+    )
+    app.include_router(sheet_presets.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(edges.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(graph.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(attachments.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(agent.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(import_jobs.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(knowledge.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(usage.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(
+        connections.types_router, prefix=_API_PREFIX, dependencies=_master
+    )
+    app.include_router(connections.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(updates.router, prefix=_API_PREFIX, dependencies=_master)
+    # No master dependency: the websocket authenticates itself per-route.
     app.include_router(realtime.router, prefix=_API_PREFIX)
-    app.include_router(updates.router, prefix=_API_PREFIX)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

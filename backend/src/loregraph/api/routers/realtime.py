@@ -1,7 +1,10 @@
 import contextlib
 import logging
+from typing import Annotated
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+
+from loregraph.api.security import MasterIdentity, require_master_ws
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +12,11 @@ router = APIRouter(tags=["realtime"])
 
 
 @router.websocket("/ws/projects/{project_id}")
-async def project_events_ws(websocket: WebSocket, project_id: str) -> None:
+async def project_events_ws(
+    websocket: WebSocket,
+    project_id: str,
+    _master: Annotated[MasterIdentity, Depends(require_master_ws)],
+) -> None:
     """Server-push only: the client's sole input is the `catch_up_from`
     query param on (re)connect, so a dropped connection can resume without
     missing events still in the per-project ring buffer (see

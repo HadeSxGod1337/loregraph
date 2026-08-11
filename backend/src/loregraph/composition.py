@@ -10,6 +10,10 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from loregraph.api.security import (
+    LoopbackMasterAuthenticator,
+    MasterAuthenticator,
+)
 from loregraph.config import Settings
 from loregraph.llm.embeddings import EmbeddingProvider
 from loregraph.storage.composition import StoreFactories
@@ -69,6 +73,10 @@ def default_vector_store(
     return ChromaVectorStore(settings.chroma_dir, embedder)
 
 
+def default_master_authenticator(settings: Settings) -> MasterAuthenticator:
+    return LoopbackMasterAuthenticator(trust_loopback=settings.trust_loopback)
+
+
 @dataclass(frozen=True)
 class AppComposition:
     """Public defaults — sqlite + chroma, exactly what `lifespan()` built
@@ -83,3 +91,6 @@ class AppComposition:
     build_vector_store: Callable[
         [Settings, EmbeddingProvider | None], VectorStore | None
     ] = default_vector_store
+    build_master_authenticator: Callable[[Settings], MasterAuthenticator] = (
+        default_master_authenticator
+    )

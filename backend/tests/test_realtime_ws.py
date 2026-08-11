@@ -8,7 +8,7 @@ from loregraph.services.event_bus import EventBus
 
 def test_ws_streams_live_events_published_after_connect(app: FastAPI) -> None:
     with (
-        TestClient(app) as client,
+        TestClient(app, client=("127.0.0.1", 50000)) as client,
         client.websocket_connect("/api/ws/projects/p1") as ws,
     ):
         event_bus: EventBus = app.state.event_bus
@@ -21,7 +21,7 @@ def test_ws_streams_live_events_published_after_connect(app: FastAPI) -> None:
 
 
 def test_ws_catch_up_from_replays_buffered_events(app: FastAPI) -> None:
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 50000)) as client:
         event_bus: EventBus = app.state.event_bus
         e1 = event_bus.publish("p2", "job.phase", phase="a")
         event_bus.publish("p2", "job.phase", phase="b")
@@ -36,7 +36,7 @@ def test_ws_catch_up_from_replays_buffered_events(app: FastAPI) -> None:
 
 def test_ws_projects_are_isolated(app: FastAPI) -> None:
     with (
-        TestClient(app) as client,
+        TestClient(app, client=("127.0.0.1", 50000)) as client,
         client.websocket_connect("/api/ws/projects/p3") as ws,
     ):
         event_bus: EventBus = app.state.event_bus
