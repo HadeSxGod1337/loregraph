@@ -25,6 +25,8 @@ from loregraph.storage.sqlite.entity_store import SqliteEntityStore
 from loregraph.storage.sqlite.entity_template_store import SqliteEntityTemplateStore
 from loregraph.storage.sqlite.import_job_store import SqliteImportJobStore
 from loregraph.storage.sqlite.knowledge_source_store import SqliteKnowledgeSourceStore
+from loregraph.storage.sqlite.player_note_store import SqlitePlayerNoteStore
+from loregraph.storage.sqlite.player_store import SqlitePlayerStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
 from loregraph.storage.sqlite.sheet_preset_store import SqliteSheetPresetStore
 from loregraph.storage.sqlite.usage_store import SqliteUsageStore
@@ -54,6 +56,8 @@ def default_store_factories(settings: Settings) -> StoreFactories:
         usage=SqliteUsageStore,
         connection=SqliteConnectionStore,
         connection_entity_link=SqliteConnectionEntityLinkStore,
+        player=SqlitePlayerStore,
+        player_note=SqlitePlayerNoteStore,
     )
 
 

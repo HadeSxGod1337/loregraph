@@ -13,6 +13,8 @@ from loregraph.storage.protocols import (
     EntityTemplateStore,
     ImportJobStore,
     KnowledgeSourceStore,
+    PlayerNoteStore,
+    PlayerStore,
     ProjectStore,
     SheetPresetStore,
     UsageStore,
@@ -37,3 +39,5 @@ class StoreFactories:
     usage: Callable[[AsyncSession], UsageStore]
     connection: Callable[[AsyncSession], ConnectionStore]
     connection_entity_link: Callable[[AsyncSession], ConnectionEntityLinkStore]
+    player: Callable[[AsyncSession], PlayerStore]
+    player_note: Callable[[AsyncSession], PlayerNoteStore]

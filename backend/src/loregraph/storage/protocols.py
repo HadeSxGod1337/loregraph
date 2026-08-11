@@ -31,6 +31,7 @@ from loregraph.schemas.import_job import (
     ImportReviewPayload,
 )
 from loregraph.schemas.knowledge import KnowledgeSourceOut
+from loregraph.schemas.player import PlayerNoteRecord, PlayerOut
 from loregraph.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
 from loregraph.schemas.sheet_preset import SheetPresetCreate, SheetPresetOut
 from loregraph.schemas.usage import UsageEvent, UsageRollupRow
@@ -208,6 +209,52 @@ class ConnectionEntityLinkStore(Protocol):
         self, connection_id: str, entity_id: str
     ) -> list[ConnectionEntityLinkOut]: ...
     async def delete_for_entity(self, connection_id: str, entity_id: str) -> None: ...
+
+
+@runtime_checkable
+class PlayerStore(Protocol):
+    """Invited players of a project. Tokens are handled as hashes only — the
+    caller generates and hashes the raw token; this store never sees it in
+    the clear (see api/routers/players.py)."""
+
+    async def list_for_project(self, project_id: str) -> list[PlayerOut]: ...
+    async def get(self, player_id: str) -> PlayerOut: ...
+    async def create(
+        self, project_id: str, name: str, token_hash: str, token_prefix: str
+    ) -> PlayerOut: ...
+    async def rename(self, player_id: str, name: str) -> PlayerOut: ...
+    async def set_token(
+        self, player_id: str, token_hash: str, token_prefix: str
+    ) -> PlayerOut: ...
+    async def set_revoked(self, player_id: str, revoked: bool) -> PlayerOut: ...
+    async def delete(self, player_id: str) -> None: ...
+    async def find_active_by_token_hash(
+        self, token_hash: str
+    ) -> PlayerOut | None: ...
+    async def touch_last_seen(self, player_id: str) -> None: ...
+
+
+@runtime_checkable
+class PlayerNoteStore(Protocol):
+    """Per-entity player notes. Returns storage records (with the author id)
+    so the service can decide what each viewer is allowed to see — the store
+    itself does no visibility filtering."""
+
+    async def list_for_entity(self, entity_id: str) -> list[PlayerNoteRecord]: ...
+    async def get(self, note_id: str) -> PlayerNoteRecord: ...
+    async def create(
+        self,
+        project_id: str,
+        player_id: str,
+        entity_id: str,
+        body: dict[str, object],
+        is_public: bool,
+    ) -> PlayerNoteRecord: ...
+    async def update(
+        self, note_id: str, body: dict[str, object], is_public: bool
+    ) -> PlayerNoteRecord: ...
+    async def delete(self, note_id: str) -> None: ...
+    async def count_by_player(self, project_id: str) -> dict[str, int]: ...
 
 
 @runtime_checkable

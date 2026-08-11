@@ -53,8 +53,11 @@ from loregraph.exceptions import (
     ImportJobNotIdleError,
     InvalidEdgeReferenceError,
     InvalidIconReferenceError,
+    InvalidPlayerTokenError,
     KnowledgeSourceNotFoundError,
     KnowledgeSourceNotReadyError,
+    PlayerNoteNotFoundError,
+    PlayerNotFoundError,
     ProjectNotFoundError,
     SheetPresetNotFoundError,
     SkillInputInvalidError,
@@ -277,9 +280,16 @@ def _register_exception_handlers(app: FastAPI) -> None:
         ImportJobNotFoundError,
         EntityTemplateNotFoundError,
         SheetPresetNotFoundError,
+        PlayerNotFoundError,
+        PlayerNoteNotFoundError,
     )
     for exc_type in _not_found:
         app.add_exception_handler(exc_type, lambda _r, e: _error_response(404, e))
+
+    # An unknown or revoked play token is an auth failure, not a 400.
+    app.add_exception_handler(
+        InvalidPlayerTokenError, lambda _r, e: _error_response(401, e)
+    )
 
     _unprocessable = (
         InvalidEdgeReferenceError,

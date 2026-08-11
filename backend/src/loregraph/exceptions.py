@@ -233,6 +233,27 @@ class BuiltinPresetReadOnlyError(CampaignError):
         self.preset_id = preset_id
 
 
+class PlayerNotFoundError(CampaignError):
+    def __init__(self, player_id: str) -> None:
+        super().__init__(f"Player not found: {player_id}")
+        self.player_id = player_id
+
+
+class PlayerNoteNotFoundError(CampaignError):
+    def __init__(self, note_id: str) -> None:
+        super().__init__(f"Player note not found: {note_id}")
+        self.note_id = note_id
+
+
+class InvalidPlayerTokenError(CampaignError):
+    """Raised when a play link's token is unknown or has been revoked. The
+    token itself is never included — it is a secret, and error bodies are
+    surfaced to the client."""
+
+    def __init__(self) -> None:
+        super().__init__("Invalid or revoked player token")
+
+
 class ConnectorError(CampaignError):
     """Base class for external-tool connector errors (Obsidian, Foundry, …)."""
 

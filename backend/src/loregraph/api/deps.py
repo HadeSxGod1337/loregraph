@@ -52,6 +52,8 @@ from loregraph.storage.protocols import (
     EntityTemplateStore,
     ImportJobStore,
     KnowledgeSourceStore,
+    PlayerNoteStore,
+    PlayerStore,
     ProjectStore,
     SheetPresetStore,
     UsageStore,
@@ -236,6 +238,20 @@ ConnectionStoreDep = Annotated[ConnectionStore, Depends(get_connection_store)]
 ConnectionEntityLinkStoreDep = Annotated[
     ConnectionEntityLinkStore, Depends(get_connection_entity_link_store)
 ]
+
+
+async def get_player_store(request: Request, session: SessionDep) -> PlayerStore:
+    return _factories(request).player(session)
+
+
+async def get_player_note_store(
+    request: Request, session: SessionDep
+) -> PlayerNoteStore:
+    return _factories(request).player_note(session)
+
+
+PlayerStoreDep = Annotated[PlayerStore, Depends(get_player_store)]
+PlayerNoteStoreDep = Annotated[PlayerNoteStore, Depends(get_player_note_store)]
 
 
 def get_connector_registry(request: Request) -> ConnectorRegistry:

@@ -250,6 +250,54 @@ class ConnectionEntityLinkRow(Base):
     last_synced_at: Mapped[datetime]
 
 
+class PlayerRow(Base):
+    """A player invited to view a project. The token is stored as a hash only:
+    the row travels in project exports and backups, and a plaintext token there
+    would be a standing key to the world. A lost link is not recovered, it is
+    rotated (see api/routers/players.py)."""
+
+    __tablename__ = "players"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str]
+    token_hash: Mapped[str] = mapped_column(unique=True, index=True)  # sha256 hex
+    # First few chars of the raw token, so the DM can tell links apart in the
+    # UI without the secret ever being stored in full.
+    token_prefix: Mapped[str]
+    # NULL = active. Set = revoked; the note history is kept (revoke != delete).
+    revoked_at: Mapped[datetime | None] = mapped_column(default=None)
+    last_seen_at: Mapped[datetime | None] = mapped_column(default=None)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
+
+
+class PlayerNoteRow(Base):
+    """A note a player keeps on one entity. Public notes are visible to the
+    whole party (and the DM); private ones only to their author and the DM.
+    Cascades from both the player (a note without its author is orphaned
+    scribble) and the entity."""
+
+    __tablename__ = "player_notes"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    player_id: Mapped[str] = mapped_column(
+        ForeignKey("players.id", ondelete="CASCADE"), index=True
+    )
+    entity_id: Mapped[str] = mapped_column(
+        ForeignKey("entities.id", ondelete="CASCADE"), index=True
+    )
+    is_public: Mapped[bool] = mapped_column(default=False)
+    body: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)  # ProseMirror
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
+
+
 class KnowledgeSourceRow(Base):
     """A reference document (rulebook, setting bible) uploaded to a project's
     knowledge base — grounding material for the agent, kept out of the
