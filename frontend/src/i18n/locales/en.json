@@ -132,6 +132,24 @@
     "accent": "Accent",
     "language": "Language"
   },
+  "play": {
+    "loading": "Loading…",
+    "linkInvalidTitle": "This link no longer works",
+    "linkInvalidBody": "Ask your game master for a new invite link.",
+    "tabCards": "Cards",
+    "tabBoard": "Board",
+    "noCards": "Nothing has been shared with you yet.",
+    "cardGone": "This card isn't available anymore.",
+    "backToCards": "Back to cards",
+    "emptyValue": "—",
+    "notesTitle": "Notes",
+    "notePublic": "Share with the party",
+    "addNote": "Add note",
+    "noNotes": "No notes yet.",
+    "you": "You",
+    "public": "public",
+    "private": "private"
+  },
   "playerAccess": {
     "title": "Player access",
     "on": "on",

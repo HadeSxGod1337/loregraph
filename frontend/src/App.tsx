@@ -17,6 +17,9 @@ import { HelpPage } from "./pages/HelpPage";
 import { IntegrationsPage } from "./pages/IntegrationsPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectSettingsPage } from "./pages/ProjectSettingsPage";
+import { PlayEntityListPage } from "./play/PlayEntityListPage";
+import { PlayEntityPage } from "./play/PlayEntityPage";
+import { PlayLayout } from "./play/PlayLayout";
 
 // Data router (not <BrowserRouter>) — pages with unsaved edits use
 // useBlocker to intercept in-app navigation, which plain routers don't
@@ -28,6 +31,17 @@ const createRouter = import.meta.env.VITE_DEMO
   : createBrowserRouter;
 
 const router = createRouter([
+  {
+    // Player view: sibling to the DM Layout, not a child — no DM sidebar or
+    // tools. The token in the path is exchanged for a session cookie in
+    // PlayLayout.
+    path: "/play/:token",
+    element: <PlayLayout />,
+    children: [
+      { index: true, element: <PlayEntityListPage /> },
+      { path: "entity/:id", element: <PlayEntityPage /> },
+    ],
+  },
   {
     element: (
       <Layout>

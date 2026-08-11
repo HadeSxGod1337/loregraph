@@ -49,7 +49,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     return demoRequest(method, path, params, json ?? body) as Promise<T>;
   }
 
-  const init: RequestInit = { method };
+  // credentials: player sessions authenticate with a cookie the play-session
+  // endpoint sets; including it is harmless for the loopback DM requests.
+  const init: RequestInit = { method, credentials: "include" };
   if (json !== undefined) {
     init.headers = { "Content-Type": "application/json" };
     init.body = JSON.stringify(json);

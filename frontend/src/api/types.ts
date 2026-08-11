@@ -98,6 +98,37 @@ export interface PlayerNote {
   updated_at: string;
 }
 
+// --- player-facing (the /play view) ---
+
+export interface PlaySession {
+  player_id: string;
+  project_id: string;
+  project_name: string;
+  name: string;
+}
+
+/** An entity as a player sees it — only what the DM revealed. */
+export interface PlayerEntity {
+  id: string;
+  type: string;
+  title: string;
+  icon: AttachmentRef | null;
+  player_text: ProseMirrorDoc | null;
+  fields: EntityField[];
+  pos_x: number | null;
+  pos_y: number | null;
+}
+
+export interface PlayerSubgraph {
+  nodes: PlayerEntity[];
+  edges: Edge[];
+}
+
+export interface PlayerNoteWrite {
+  body: ProseMirrorDoc;
+  is_public: boolean;
+}
+
 export interface EntityCreate {
   type: string;
   title: string;
