@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     # address to put in a player's invite link; play_frontend_port is where the
     # frontend is served.
     play_mode_enabled: bool = False
+    # Internet mode (--internet): also ask the router, over UPnP, to forward
+    # the port so players outside the local network can connect. Never on by
+    # default — opening a port is the DM's decision, not a side effect.
+    internet_mode_enabled: bool = False
     play_host: str | None = None
     # Where the app is reachable. In the packaged single-port setup the backend
     # serves the frontend too, so this is its own port; a dev setup running

@@ -4,13 +4,12 @@ from fastapi import APIRouter
 
 from loregraph.api.deps import (
     EntityServiceDep,
+    NetworkStatusDep,
     PlayerNoteStoreDep,
     PlayerStoreDep,
     ProjectStoreDep,
-    SettingsDep,
 )
 from loregraph.api.security import hash_token
-from loregraph.config import Settings
 from loregraph.exceptions import PlayerNotFoundError
 from loregraph.schemas.player import (
     PlayerCreate,
@@ -18,6 +17,7 @@ from loregraph.schemas.player import (
     PlayerNoteOut,
     PlayerOut,
 )
+from loregraph.services.network import NetworkStatus
 
 router = APIRouter(prefix="/projects/{project_id}", tags=["players"])
 
@@ -45,14 +45,14 @@ async def create_player(
     data: PlayerCreate,
     project_store: ProjectStoreDep,
     player_store: PlayerStoreDep,
-    settings: SettingsDep,
+    network: NetworkStatusDep,
 ) -> PlayerCreatedOut:
     await project_store.get(project_id)
     token = secrets.token_urlsafe(32)
     player = await player_store.create(
         project_id, data.name, hash_token(token), token[:8]
     )
-    return _with_token(player, token, settings)
+    return _with_token(player, token, network)
 
 
 @router.post("/players/{player_id}/rotate", response_model=PlayerCreatedOut)
@@ -60,13 +60,13 @@ async def rotate_player_token(
     project_id: str,
     player_id: str,
     player_store: PlayerStoreDep,
-    settings: SettingsDep,
+    network: NetworkStatusDep,
 ) -> PlayerCreatedOut:
     """Issue a new link and kill the old one — for a leaked or lost invite."""
     await _require_in_project(player_store, project_id, player_id)
     token = secrets.token_urlsafe(32)
     player = await player_store.set_token(player_id, hash_token(token), token[:8])
-    return _with_token(player, token, settings)
+    return _with_token(player, token, network)
 
 
 @router.post("/players/{player_id}/revoke", response_model=PlayerOut)
@@ -111,21 +111,14 @@ async def _require_in_project(
         raise PlayerNotFoundError(player_id)
 
 
-def _play_url(settings: Settings, token: str) -> str:
-    # Scheme follows the TLS config, so a link handed to a player over the
-    # internet points at https when a certificate is configured.
-    host = settings.play_host or "localhost"
-    return (
-        f"{settings.public_scheme}://{host}:{settings.play_frontend_port}"
-        f"/play/{token}"
-    )
-
-
 def _with_token(
-    player: PlayerOut, token: str, settings: Settings
+    player: PlayerOut, token: str, network: NetworkStatus
 ) -> PlayerCreatedOut:
+    # The address comes from the live network status, not raw settings: in
+    # internet mode that is the public address the router reported, so the link
+    # a player is handed is the one that actually reaches this machine.
     return PlayerCreatedOut(
         **player.model_dump(exclude={"play_url"}),
         token=token,
-        play_url=_play_url(settings, token),
+        play_url=f"{network.base_url}/play/{token}",
     )

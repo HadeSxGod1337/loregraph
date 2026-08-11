@@ -29,6 +29,9 @@ from loregraph.api.routers import (
     updates,
     usage,
 )
+from loregraph.api.routers import (
+    network as network_router,
+)
 from loregraph.api.security import require_master
 from loregraph.api.spa import mount_frontend
 from loregraph.composition import AppComposition
@@ -77,6 +80,7 @@ from loregraph.observability import create_tracing
 from loregraph.schemas.project_transfer import ProjectExport
 from loregraph.services.event_bus import EventBus
 from loregraph.services.knowledge_index import KnowledgeIndex
+from loregraph.services.network import NetworkService
 from loregraph.services.project_transfer import import_project
 from loregraph.services.update_status import app_version
 from loregraph.services.vector_index import VectorIndex
@@ -166,6 +170,12 @@ def create_app(
         # sessions) for the app's lifetime and is closed with the lifespan.
         app.state.connector_registry = build_default_registry()
         app.state.connector_runtime = ConnectorRuntime()
+        # Reachability: in internet mode this asks the router to forward the
+        # port and remembers why it couldn't, so invite links and the
+        # explanation the DM sees always come from the same place.
+        network = NetworkService(settings)
+        app.state.network = network
+        await network.start()
         # Vector layer is optional derived data: None when embeddings are
         # disabled, and the manual editor must keep working either way.
         # knowledge_index reuses the SAME vector store instance as
@@ -215,6 +225,9 @@ def create_app(
                 app.state.tracing_config = config
                 app.state.tracing_lifecycle = lifecycle
             yield
+            # Before anything else on the way out: an app that is gone must not
+            # leave the router forwarding a port to this machine.
+            await network.stop()
             await app.state.connector_runtime.aclose()
             if hasattr(app.state, "tracing_lifecycle"):
                 app.state.tracing_lifecycle.stop()
@@ -272,6 +285,9 @@ def create_app(
     app.include_router(connections.router, prefix=_API_PREFIX, dependencies=_master)
     app.include_router(updates.router, prefix=_API_PREFIX, dependencies=_master)
     app.include_router(players.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(
+        network_router.router, prefix=_API_PREFIX, dependencies=_master
+    )
     # No master dependency: the websocket authenticates itself per-route.
     app.include_router(realtime.router, prefix=_API_PREFIX)
     # Player-facing API: its own player-token guard, never the master one, and

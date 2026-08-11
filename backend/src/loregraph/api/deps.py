@@ -46,6 +46,7 @@ from loregraph.services.entity_service import EntityService
 from loregraph.services.entity_template_service import EntityTemplateService
 from loregraph.services.event_bus import EventBus
 from loregraph.services.knowledge_index import KnowledgeIndex
+from loregraph.services.network import NetworkStatus
 from loregraph.services.player_view import PlayerViewService
 from loregraph.services.sheet_preset_service import SheetPresetService
 from loregraph.services.update_status import UpdateService, app_version
@@ -163,6 +164,15 @@ def get_event_bus(request: Request) -> EventBus:
 
 
 EventBusDep = Annotated[EventBus, Depends(get_event_bus)]
+
+
+def get_network_status(request: Request) -> NetworkStatus:
+    """How the app is reachable right now — the single source for the address
+    invite links use and for the explanation shown when players can't get in."""
+    return cast(NetworkStatus, request.app.state.network.status)
+
+
+NetworkStatusDep = Annotated[NetworkStatus, Depends(get_network_status)]
 
 
 def get_update_service(settings: SettingsDep) -> UpdateService:

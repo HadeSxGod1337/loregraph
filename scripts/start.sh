@@ -8,6 +8,7 @@ set -u
 
 SKIP_UPDATE=0
 LAN=0
+INTERNET=0
 LAN_HOST=""
 prev=""
 for arg in "$@"; do
@@ -20,6 +21,9 @@ for arg in "$@"; do
         # can connect. Off by default — the app stays on localhost.
         --lan)         LAN=1 ;;
         --lan-host)    prev="--lan-host" ;;
+        # Internet mode: LAN plus asking the router (over UPnP) to forward the
+        # port, so players outside the local network can connect.
+        --internet)    INTERNET=1; LAN=1 ;;
     esac
 done
 
@@ -670,6 +674,7 @@ if [ "$LAN" -eq 1 ]; then
     FRONTEND_URL="${APP_SCHEME}://${LAN_HOST}:${APP_PORT}"
     export CAMPAIGN_PLAY_MODE_ENABLED=1
     export CAMPAIGN_PLAY_HOST="$LAN_HOST"
+    [ "$INTERNET" -eq 1 ] && export CAMPAIGN_INTERNET_MODE_ENABLED=1
 fi
 
 # --- 6. Launch ------------------------------------------------------------------
@@ -722,8 +727,41 @@ elif command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$LOCAL_URL" >/dev/null 2>&1 || true
 fi
 
+# Ask the app where it actually ended up reachable, so this banner and the
+# links in the interface can never disagree (see api/routers/network.py).
+NET_JSON="$(curl -fsSk -m 5 "$LOCAL_URL/api/network" 2>/dev/null || true)"
+net_field() { printf '%s' "$NET_JSON" | sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p"; }
+NET_BASE_URL="$(net_field base_url)"
+UPNP_OUTCOME="$(net_field outcome)"
+EXTERNAL_IP="$(net_field external_ip)"
+[ -n "$NET_BASE_URL" ] && FRONTEND_URL="$NET_BASE_URL"
+
 printf '\n\033[32m=========================================================\033[0m\n'
 printf '\033[32m  Loregraph запущен: %s\033[0m\n' "$LOCAL_URL"
+if [ "$INTERNET" -eq 1 ]; then
+    case "$UPNP_OUTCOME" in
+        mapped)
+            printf '\033[32m  Доступ из интернета настроен автоматически.\033[0m\n'
+            ;;
+        cgnat)
+            warn "Доступ из интернета невозможен: провайдер выдал адрес"
+            warn "$EXTERNAL_IP - это общий адрес (CGNAT), а не ваш личный."
+            warn "Закажите у провайдера 'белый IP' либо используйте Tailscale."
+            warn "По локальной сети всё работает."
+            ;;
+        no_router)
+            warn "Роутер не ответил на UPnP - скорее всего он выключен в его настройках."
+            warn "Включите UPnP или пробросьте порт $APP_PORT вручную. По сети всё работает."
+            ;;
+        refused)
+            warn "Роутер отказался пробрасывать порт. Пробросьте порт $APP_PORT вручную."
+            warn "По локальной сети всё работает."
+            ;;
+        *)
+            warn "Не удалось настроить доступ из интернета. По локальной сети всё работает."
+            ;;
+    esac
+fi
 if [ "$LAN" -eq 1 ]; then
     printf '\033[32m  Режим игры по сети включён.\033[0m\n'
     printf '\033[32m  Ссылки-приглашения создавайте в: Настройки проекта -> Игроки.\033[0m\n'

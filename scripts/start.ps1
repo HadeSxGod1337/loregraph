@@ -9,7 +9,10 @@ param(
     # reach the app through an invite link. Off by default — the app stays on
     # localhost, exactly as before.
     [switch]$Lan,
-    [string]$LanHost = ""
+    [string]$LanHost = "",
+    # Internet mode: LAN plus asking the router (over UPnP) to forward the port,
+    # so players outside the local network can connect. Implies -Lan.
+    [switch]$Internet
 )
 
 $ErrorActionPreference = "Stop"
@@ -701,6 +704,8 @@ $LocalUrl = "${AppScheme}://127.0.0.1:$AppPort"
 $FrontendUrl = $LocalUrl
 
 # Loopback-only by default; --Lan opens the app to the local network.
+# -Internet is LAN plus a router port-forward, so it implies -Lan.
+if ($Internet) { $Lan = $true }
 $BindHost = "127.0.0.1"
 if ($Lan) {
     if ([string]::IsNullOrWhiteSpace($LanHost)) {
@@ -718,6 +723,7 @@ if ($Lan) {
     # Passed to the child process via inherited environment (see config.py).
     $env:CAMPAIGN_PLAY_MODE_ENABLED = "1"
     $env:CAMPAIGN_PLAY_HOST = $LanHost
+    if ($Internet) { $env:CAMPAIGN_INTERNET_MODE_ENABLED = "1" }
 }
 
 # --- 6. Launch ------------------------------------------------------------------
@@ -761,11 +767,43 @@ try {
     }
     if (-not $healthy) { throw "Loregraph не ответил за 4 минуты - смотрите сообщения выше." }
 
+    # Ask the app where it actually ended up reachable, so this banner and the
+    # links in the interface can never disagree (see api/routers/network.py).
+    $net = $null
+    try {
+        $net = Invoke-RestMethod -Uri "$LocalUrl/api/network" -UseBasicParsing -TimeoutSec 5
+        if ($net.base_url) { $FrontendUrl = $net.base_url }
+    } catch {}
+
     # In LAN mode the DM still opens the app on this machine via localhost.
     Start-Process $LocalUrl
     Write-Host ""
     Write-Host "=========================================================" -ForegroundColor Green
     Write-Host "  Loregraph запущен: $LocalUrl" -ForegroundColor Green
+    if ($Internet) {
+        switch ($net.upnp.outcome) {
+            "mapped" {
+                Write-Host "  Доступ из интернета настроен автоматически." -ForegroundColor Green
+            }
+            "cgnat" {
+                Write-Warn2 "Доступ из интернета невозможен: провайдер выдал адрес"
+                Write-Warn2 "$($net.upnp.external_ip) - это общий адрес (CGNAT), а не ваш личный."
+                Write-Warn2 "Закажите у провайдера 'белый IP' либо используйте Tailscale."
+                Write-Warn2 "По локальной сети всё работает."
+            }
+            "no_router" {
+                Write-Warn2 "Роутер не ответил на UPnP - скорее всего он выключен в настройках роутера."
+                Write-Warn2 "Включите UPnP или пробросьте порт $AppPort вручную. По локальной сети всё работает."
+            }
+            "refused" {
+                Write-Warn2 "Роутер отказался пробрасывать порт. Пробросьте порт $AppPort вручную."
+                Write-Warn2 "По локальной сети всё работает."
+            }
+            default {
+                Write-Warn2 "Не удалось настроить доступ из интернета. По локальной сети всё работает."
+            }
+        }
+    }
     if ($Lan) {
         Write-Host "  Режим игры по сети включён." -ForegroundColor Green
         Write-Host "  Ссылки-приглашения для игроков создавайте в:" -ForegroundColor Green
