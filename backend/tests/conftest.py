@@ -35,7 +35,12 @@ def app(settings: Settings) -> FastAPI:
 
 @pytest.fixture
 def client(app: FastAPI) -> Iterator[TestClient]:
-    with TestClient(app) as test_client:
+    # client=("127.0.0.1", ...): the master guard trusts loopback, and
+    # Starlette's default test client host is "testclient" (not an IP), which
+    # would be rejected as a non-loopback caller. Pinning it to a loopback
+    # address makes the whole existing suite the DM, exactly as before the
+    # guard existed. Player tests override the identity per-request instead.
+    with TestClient(app, client=("127.0.0.1", 50000)) as test_client:
         yield test_client
 
 
