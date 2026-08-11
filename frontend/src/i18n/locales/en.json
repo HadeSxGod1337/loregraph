@@ -136,6 +136,7 @@
     "reachLocal": "Reachable on this computer only:",
     "reachLan": "Reachable on your local network:",
     "reachInternet": "Reachable from the internet:",
+    "hairpinHint": "Test this address from outside — a phone with Wi-Fi turned off, for instance. From inside your own network it often won't open, and that isn't a fault: most routers behave that way.",
     "localHint": "To let players connect from their own devices, close the app and start it again with start.bat --lan (players on your Wi-Fi) or start.bat --internet (players anywhere).",
     "cgnat": "Internet access isn't possible: your provider gave this connection the shared address {{ip}}, not one of your own (CGNAT). Ask them for a dedicated (\"white\") IP, or use Tailscale. Your local network still works.",
     "noRouter": "The router didn't answer the automatic port request — UPnP is most likely turned off in its settings. Turn it on, or forward the port by hand. Your local network still works.",

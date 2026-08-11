@@ -33,6 +33,13 @@ export function NetworkStatusNotice({ status }: { status: NetworkStatus }) {
         <p className="field-hint">{t("network.localHint")}</p>
       )}
 
+      {/* Opening your own public address from inside your own network needs
+          NAT hairpinning, which many routers lack — so a failed test here says
+          nothing, and people conclude the setup is broken when it isn't. */}
+      {status.reach === "internet" && (
+        <p className="field-hint">{t("network.hairpinHint")}</p>
+      )}
+
       {problem === "cgnat" && (
         <p className="field-hint">
           {t("network.cgnat", { ip: status.upnp?.external_ip ?? "" })}
