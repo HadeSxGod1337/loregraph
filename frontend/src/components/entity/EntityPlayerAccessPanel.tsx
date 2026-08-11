@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { Entity, ProseMirrorDoc } from "../../api/types";
 import { useEntityPlayerNotes, useSetEntityPlayerView } from "../../hooks/useEntity";
+import { Checkbox } from "../ui/Checkbox";
 import { Icon } from "../ui/Icon";
 import { RichTextField } from "./RichTextField";
 import { RichTextView } from "./RichTextView";
@@ -74,14 +75,18 @@ export function EntityPlayerAccessPanel({
         {revealed && <span className="player-access-badge">{t("playerAccess.on")}</span>}
       </summary>
 
-      <label className="player-access-toggle">
-        <input
-          type="checkbox"
+      {/* The shared Checkbox, not a bare <input>: both hosts of this panel
+          blanket-style their form controls (`.panel-section input` in the
+          graph drawer, `.entity-edit-page label` in the editor), which
+          stretched the box across the row and shoved the label to the far
+          side. Checkbox hides the native input and draws its own box. */}
+      <div className="player-access-toggle">
+        <Checkbox
+          label={t("playerAccess.revealed")}
           checked={revealed}
           onChange={(e) => setRevealed(e.target.checked)}
         />
-        {t("playerAccess.revealed")}
-      </label>
+      </div>
 
       <div className="player-access-section">
         <span className="player-access-label">{t("playerAccess.playerText")}</span>
@@ -98,14 +103,11 @@ export function EntityPlayerAccessPanel({
           <ul className="player-access-fields">
             {fieldKeys.map((key) => (
               <li key={key}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={visibleKeys.has(key)}
-                    onChange={() => toggleKey(key)}
-                  />
-                  {key}
-                </label>
+                <Checkbox
+                  label={key}
+                  checked={visibleKeys.has(key)}
+                  onChange={() => toggleKey(key)}
+                />
               </li>
             ))}
           </ul>
