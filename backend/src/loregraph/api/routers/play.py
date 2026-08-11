@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 
 from loregraph.api.deps import (
     PlayerIdentityDep,
     PlayerStoreDep,
     PlayerViewServiceDep,
     ProjectStoreDep,
+    SessionRateLimiterDep,
 )
+from loregraph.api.rate_limit import enforce
 from loregraph.api.security import PLAY_COOKIE_NAME, hash_token
 from loregraph.exceptions import InvalidPlayerTokenError
 from loregraph.schemas.play import (
@@ -24,14 +26,20 @@ router = APIRouter(prefix="/play", tags=["play"])
 @router.post("/session", response_model=PlaySessionOut)
 async def start_session(
     data: PlaySessionRequest,
+    request: Request,
     response: Response,
     player_store: PlayerStoreDep,
     project_store: ProjectStoreDep,
+    limiter: SessionRateLimiterDep,
 ) -> PlaySessionOut:
     """Exchange a play token for a session cookie. The raw token is kept in the
     cookie itself (HttpOnly), so <img> and WebSocket subresource requests carry
     it without a header, and revocation still works through the same hash
-    lookup — no separate session store to keep in sync."""
+    lookup — no separate session store to keep in sync.
+
+    The only unauthenticated endpoint, so the only one worth hammering once the
+    port is open: rate limited per address (see api/rate_limit.py)."""
+    enforce(limiter, request)
     player = await player_store.find_active_by_token_hash(hash_token(data.token))
     if player is None:
         raise InvalidPlayerTokenError()

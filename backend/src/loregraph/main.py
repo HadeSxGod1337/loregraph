@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from loregraph.api.rate_limit import RateLimiter
 from loregraph.api.routers import (
     agent,
     attachments,
@@ -152,6 +153,9 @@ def create_app(
         # Realtime pub/sub for the whole app lifetime — in-process, one
         # channel per project, created lazily (see services/event_bus.py).
         app.state.event_bus = EventBus()
+        # Shared across requests: the limiter's job is remembering recent
+        # attempts (see api/rate_limit.py).
+        app.state.session_rate_limiter = RateLimiter()
         # Composition root: the only place that maps storage Protocols to
         # concrete classes. api/deps.py depends only on this bundle and on
         # the Protocol types, never on a concrete store implementation. The

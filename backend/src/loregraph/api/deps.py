@@ -12,6 +12,7 @@ from loregraph.agent.import_runner import ImportJobRunner
 from loregraph.agent.import_source import ImportSourceResolver
 from loregraph.agent.mcp_tools import McpConnection, McpToolProvider
 from loregraph.agent.runner import AgentRunner
+from loregraph.api.rate_limit import RateLimiter
 from loregraph.api.security import (
     MasterAuthenticatorDep,
     MasterIdentity,
@@ -164,6 +165,15 @@ def get_event_bus(request: Request) -> EventBus:
 
 
 EventBusDep = Annotated[EventBus, Depends(get_event_bus)]
+
+
+def get_session_rate_limiter(request: Request) -> RateLimiter:
+    """One limiter for the app's lifetime — its whole job is remembering
+    recent attempts, which a per-request instance could not do."""
+    return cast(RateLimiter, request.app.state.session_rate_limiter)
+
+
+SessionRateLimiterDep = Annotated[RateLimiter, Depends(get_session_rate_limiter)]
 
 
 def get_network_status(request: Request) -> NetworkStatus:
