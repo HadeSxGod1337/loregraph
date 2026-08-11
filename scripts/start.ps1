@@ -8,15 +8,29 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+# Three different encodings matter here, and missing any one gives mojibake:
+#   OutputEncoding (console)  - how native command output is DECODED
+#   $OutputEncoding           - how text piped INTO native commands is encoded
+#   UTF8Encoding($false)      - how we WRITE files the bash launcher also reads
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = New-Object System.Text.UTF8Encoding $false
+$Utf8NoBom = New-Object System.Text.UTF8Encoding $false
 
 $Root = Split-Path -Parent $PSScriptRoot
 $Backend = Join-Path $Root "backend"
 $Frontend = Join-Path $Root "frontend"
 $BackendUrl = "http://127.0.0.1:8000"
 $FrontendUrl = "http://127.0.0.1:5173"
+# uvicorn runs with backend/ as its working directory, so Settings.data_dir
+# ("./data") resolves HERE - not at the repo root. The backend reads the same
+# update files (see backend/src/loregraph/services/update_status.py).
+$DataDir = Join-Path $Backend "data"
 # How often the background loop checks the git remote for updates (seconds).
 $UpdateCheckInterval = 600
+# How long the update prompt waits before assuming "later". Double-clicking
+# start.bat has always been unattended; a prompt that blocks forever would
+# break that, so an unanswered question just continues without updating.
+$UpdatePromptTimeout = 30
 
 function Write-Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg) { Write-Host "    $msg" -ForegroundColor Green }
@@ -33,32 +47,233 @@ function Test-Command($name) {
     return ($null -ne $found)
 }
 
-# --- 1. Git update (skipped for zip downloads without .git) -----------------
+# --- Update preferences and status (shared with the backend) -----------------
+# Flat key=value files, not JSON: this runs BEFORE uv and Node are installed,
+# so neither Python nor jq is guaranteed to exist, and scripts/start.sh has to
+# parse the very same files with plain POSIX tools. The changelog lives in its
+# own file so neither shell ever has to escape multi-line markdown.
 
-if (-not $SkipUpdate -and (Test-Path (Join-Path $Root ".git")) -and (Test-Command "git")) {
-    Write-Step "Проверяю обновления проекта..."
-    Push-Location $Root
+function Write-FileAtomic($path, $text) {
+    $dir = Split-Path -Parent $path
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force $dir | Out-Null }
+    $tmp = "$path.tmp"
+    [System.IO.File]::WriteAllText($tmp, $text, $Utf8NoBom)
+    # Rename, so a reader never sees a half-written file.
+    Move-Item -LiteralPath $tmp -Destination $path -Force
+}
+
+function Read-KeyValueFile($path) {
+    $map = @{}
+    if (-not (Test-Path $path)) { return $map }
+    try { $lines = [System.IO.File]::ReadAllLines($path) } catch { return $map }
+    foreach ($line in $lines) {
+        $trimmed = $line.Trim()
+        if ($trimmed -eq "" -or $trimmed.StartsWith("#")) { continue }
+        $sep = $trimmed.IndexOf("=")
+        if ($sep -lt 1) { continue }
+        $map[$trimmed.Substring(0, $sep).Trim()] = $trimmed.Substring($sep + 1).Trim()
+    }
+    return $map
+}
+
+function Read-UpdatePrefs {
+    $map = Read-KeyValueFile (Join-Path $DataDir "update.conf")
+    $mode = "ask"
+    if ($map.ContainsKey("mode") -and @("ask", "auto", "never") -contains $map["mode"]) {
+        $mode = $map["mode"]
+    }
+    $skipped = @()
+    if ($map.ContainsKey("skipped_versions")) {
+        $skipped = @($map["skipped_versions"] -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" })
+    }
+    return @{ mode = $mode; skipped = $skipped }
+}
+
+function Write-UpdatePrefs($mode, $skipped) {
+    $text = "# Loregraph update preferences.`n" +
+            "# Edit here or in the app (sidebar -> preferences -> updates).`n" +
+            "# mode: ask | auto | never`n" +
+            "mode=$mode`n" +
+            "skipped_versions=$($skipped -join ',')`n"
+    Write-FileAtomic (Join-Path $DataDir "update.conf") $text
+}
+
+function Write-UpdateStatus($gitAvailable, $dirty, $current, $latest, $changelog) {
+    $stamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+    $text = "git_available=$gitAvailable`n" +
+            "worktree_dirty=$dirty`n" +
+            "current_version=$current`n" +
+            "latest_version=$latest`n" +
+            "checked_at=$stamp`n"
+    Write-FileAtomic (Join-Path $DataDir "update-status.conf") $text
+    $changelogPath = Join-Path $DataDir "update-changelog.md"
+    if ([string]::IsNullOrWhiteSpace($changelog)) {
+        if (Test-Path $changelogPath) { Remove-Item $changelogPath -Force }
+    } else {
+        Write-FileAtomic $changelogPath $changelog
+    }
+}
+
+function Get-LocalVersion {
+    $tomlPath = Join-Path $Backend "pyproject.toml"
+    if (-not (Test-Path $tomlPath)) { return "" }
+    $toml = [System.IO.File]::ReadAllText($tomlPath)
+    if ($toml -match '(?m)^version = "([^"]+)"') { return $Matches[1] }
+    return ""
+}
+
+function Get-RemoteVersion($ref) {
+    # --no-pager: without it git may hand the output to `less` and hang.
+    $toml = (git --no-pager show "${ref}:backend/pyproject.toml") -join "`n"
+    if ($toml -match '(?m)^version = "([^"]+)"') { return $Matches[1] }
+    return ""
+}
+
+# Same extraction as scripts/changelog-section.sh, reimplemented because bash
+# is not guaranteed on Windows (winget's MinGit ships none). Keep the two in
+# sync if the CHANGELOG heading format ever changes.
+function Get-ChangelogSection([string]$text, [string]$targetVersion) {
+    if ([string]::IsNullOrWhiteSpace($text) -or [string]::IsNullOrWhiteSpace($targetVersion)) { return "" }
+    $collected = New-Object System.Collections.Generic.List[string]
+    $found = $false
+    foreach ($line in ($text -split "`r?`n")) {
+        if (-not $found) {
+            if ($line -match ('^## \[' + [regex]::Escape($targetVersion) + '\]')) { $found = $true }
+            continue
+        }
+        if ($line -match '^## ') { break }
+        if ($line -match '^\[[^\]]+\]: http') { break }
+        $collected.Add($line)
+    }
+    return ($collected -join "`n").Trim()
+}
+
+function Show-ChangelogPreview([string]$section) {
+    if ([string]::IsNullOrWhiteSpace($section)) { return }
+    $lines = $section -split "`n"
+    $limit = 25
+    foreach ($line in ($lines | Select-Object -First $limit)) {
+        Write-Host "      $line" -ForegroundColor Gray
+    }
+    if ($lines.Count -gt $limit) {
+        Write-Host "      ... ещё $($lines.Count - $limit) строк, полный список - в CHANGELOG.md" -ForegroundColor DarkGray
+    }
+}
+
+# Digits, not letters: a Russian keyboard layout can't type [Y]/[N] or [О]/[П]
+# without switching, and the whole point is that this is one keypress.
+function Read-ChoiceWithTimeout([string[]]$valid, [string]$enterChoice, [string]$timeoutChoice) {
+    if (-not [Environment]::UserInteractive -or [Console]::IsInputRedirected) {
+        # Non-interactive (scheduled task, piped stdin): never block.
+        return $timeoutChoice
+    }
+    $deadline = (Get-Date).AddSeconds($UpdatePromptTimeout)
+    $shown = -1
     try {
-        cmd /c "git fetch --quiet 2>nul"
-        $local = git rev-parse HEAD
-        # --verify --quiet: empty output instead of stderr noise when no upstream
-        $remote = git rev-parse --verify --quiet '@{u}'
-        if (-not [string]::IsNullOrWhiteSpace($remote) -and $local -ne $remote) {
-            $dirty = git status --porcelain
-            if ([string]::IsNullOrWhiteSpace($dirty)) {
-                Write-Warn2 "Найдено обновление, скачиваю..."
-                git pull --ff-only --quiet
-                Write-Ok "Проект обновлён."
-            } else {
-                Write-Warn2 "Есть обновление, но у вас локальные изменения - пропускаю git pull."
+        while ($true) {
+            $left = [int][Math]::Ceiling(($deadline - (Get-Date)).TotalSeconds)
+            if ($left -le 0) { Write-Host ""; return $timeoutChoice }
+            if ($left -ne $shown) {
+                Write-Host ("`r    Ваш выбор ($($valid -join '/'), Enter = $enterChoice), автоматически через $left с... ") -NoNewline -ForegroundColor Cyan
+                $shown = $left
             }
-        } else {
-            Write-Ok "Проект актуален."
+            if ([Console]::KeyAvailable) {
+                $key = [Console]::ReadKey($true)
+                if ($key.Key -eq "Enter") { Write-Host ""; return $enterChoice }
+                $char = ([string]$key.KeyChar)
+                if ($valid -contains $char) { Write-Host ""; return $char }
+            }
+            Start-Sleep -Milliseconds 150
         }
     } catch {
-        Write-Warn2 "Не удалось проверить обновления (нет сети?), продолжаю."
-    } finally {
-        Pop-Location
+        # No real console behind the host - behave as if nobody answered.
+        return $timeoutChoice
+    }
+}
+
+# --- 1. Git update (skipped for zip downloads without .git) -----------------
+
+$hasGit = (Test-Path (Join-Path $Root ".git")) -and (Test-Command "git")
+$localVersion = Get-LocalVersion
+
+if (-not $hasGit) {
+    # Zip install or no git binary: say so instead of letting the app claim
+    # everything is up to date.
+    Write-UpdateStatus 0 0 $localVersion "" ""
+}
+
+if (-not $SkipUpdate -and $hasGit) {
+    $prefs = Read-UpdatePrefs
+    if ($prefs.mode -eq "never") {
+        Write-Ok "Проверка обновлений выключена в настройках."
+    } else {
+        Write-Step "Проверяю обновления проекта..."
+        Push-Location $Root
+        try {
+            cmd /c "git fetch --quiet 2>nul"
+            $local = git rev-parse HEAD
+            # --verify --quiet: empty output instead of stderr noise when no upstream
+            $remote = git rev-parse --verify --quiet '@{u}'
+            if ([string]::IsNullOrWhiteSpace($remote) -or $local -eq $remote) {
+                Write-UpdateStatus 1 0 $localVersion $localVersion ""
+                Write-Ok "Проект актуален."
+            } else {
+                $upstream = git rev-parse --abbrev-ref --symbolic-full-name '@{u}'
+                $latestVersion = Get-RemoteVersion $upstream
+                # The new section only exists in the REMOTE changelog.
+                $remoteChangelog = (git --no-pager show "${upstream}:CHANGELOG.md") -join "`n"
+                $section = Get-ChangelogSection $remoteChangelog $latestVersion
+                $dirty = git status --porcelain
+                $isDirty = -not [string]::IsNullOrWhiteSpace($dirty)
+                Write-UpdateStatus 1 ([int]$isDirty) $localVersion $latestVersion $section
+
+                if ($prefs.skipped -contains $latestVersion) {
+                    Write-Ok "Доступна версия $latestVersion, но вы её пропустили."
+                } elseif ($prefs.mode -eq "auto") {
+                    if ($isDirty) {
+                        Write-Warn2 "Есть обновление, но у вас локальные изменения - пропускаю git pull."
+                    } else {
+                        Write-Warn2 "Найдено обновление $latestVersion, скачиваю..."
+                        git pull --ff-only --quiet
+                        Write-UpdateStatus 1 0 $latestVersion $latestVersion ""
+                        Write-Ok "Проект обновлён."
+                    }
+                } else {
+                    Write-Host ""
+                    if ([string]::IsNullOrWhiteSpace($latestVersion)) {
+                        Write-Warn2 "Доступно обновление Loregraph."
+                    } else {
+                        Write-Warn2 "Доступна версия $latestVersion (у вас $localVersion). Что нового:"
+                        Show-ChangelogPreview $section
+                    }
+                    Write-Host ""
+                    if ($isDirty) {
+                        Write-Warn2 "Обновиться сейчас нельзя: в папке проекта есть ваши изменения."
+                        Write-Host "      Сохраните или отмените их (git status), потом запустите снова." -ForegroundColor Gray
+                        Write-Host "      [2] Позже   [3] Больше не предлагать эту версию" -ForegroundColor White
+                        $answer = Read-ChoiceWithTimeout @("2", "3") "2" "2"
+                    } else {
+                        Write-Host "      [1] Обновить сейчас   [2] Позже   [3] Больше не предлагать эту версию" -ForegroundColor White
+                        $answer = Read-ChoiceWithTimeout @("1", "2", "3") "1" "2"
+                    }
+                    if ($answer -eq "1") {
+                        Write-Warn2 "Обновляю..."
+                        git pull --ff-only --quiet
+                        Write-UpdateStatus 1 0 $latestVersion $latestVersion ""
+                        Write-Ok "Проект обновлён до $latestVersion."
+                    } elseif ($answer -eq "3" -and -not [string]::IsNullOrWhiteSpace($latestVersion)) {
+                        Write-UpdatePrefs $prefs.mode (@($prefs.skipped) + $latestVersion)
+                        Write-Ok "Версия $latestVersion больше не будет предлагаться."
+                    } else {
+                        Write-Ok "Хорошо, обновимся позже."
+                    }
+                }
+            }
+        } catch {
+            Write-Warn2 "Не удалось проверить обновления (нет сети?), продолжаю."
+        } finally {
+            Pop-Location
+        }
     }
 }
 
@@ -487,6 +702,8 @@ try {
     Write-Host "=========================================================" -ForegroundColor Green
 
     # Keep the console alive; periodically check the remote for new commits.
+    # The console is told once, but the status file is refreshed on every
+    # check so the in-app updates section doesn't go stale.
     $updateAnnounced = $false
     $sinceCheck = 0
     while ($true) {
@@ -496,7 +713,7 @@ try {
             Write-Warn2 "Один из процессов завершился, останавливаю всё."
             break
         }
-        if (-not $updateAnnounced -and $sinceCheck -ge $UpdateCheckInterval -and (Test-Path (Join-Path $Root ".git")) -and (Test-Command "git")) {
+        if ($sinceCheck -ge $UpdateCheckInterval -and $hasGit -and (Read-UpdatePrefs).mode -ne "never") {
             $sinceCheck = 0
             Push-Location $Root
             try {
@@ -504,9 +721,19 @@ try {
                 $local = git rev-parse HEAD
                 $remote = git rev-parse --verify --quiet '@{u}'
                 if (-not [string]::IsNullOrWhiteSpace($remote) -and $local -ne $remote) {
-                    Write-Host ""
-                    Write-Warn2 "Вышло обновление Loregraph! Закройте окно и запустите start.bat заново, чтобы обновиться."
-                    $updateAnnounced = $true
+                    $upstream = git rev-parse --abbrev-ref --symbolic-full-name '@{u}'
+                    $latestVersion = Get-RemoteVersion $upstream
+                    $remoteChangelog = (git --no-pager show "${upstream}:CHANGELOG.md") -join "`n"
+                    $section = Get-ChangelogSection $remoteChangelog $latestVersion
+                    $dirty = git status --porcelain
+                    Write-UpdateStatus 1 ([int](-not [string]::IsNullOrWhiteSpace($dirty))) $localVersion $latestVersion $section
+                    if (-not $updateAnnounced) {
+                        Write-Host ""
+                        Write-Warn2 "Вышло обновление Loregraph! Закройте окно и запустите start.bat заново, чтобы обновиться."
+                        $updateAnnounced = $true
+                    }
+                } else {
+                    Write-UpdateStatus 1 0 $localVersion $localVersion ""
                 }
             } catch {} finally { Pop-Location }
         }
