@@ -17,6 +17,7 @@ import { HelpPage } from "./pages/HelpPage";
 import { IntegrationsPage } from "./pages/IntegrationsPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectSettingsPage } from "./pages/ProjectSettingsPage";
+import { PlayBoardPage } from "./play/PlayBoardPage";
 import { PlayEntityListPage } from "./play/PlayEntityListPage";
 import { PlayEntityPage } from "./play/PlayEntityPage";
 import { PlayLayout } from "./play/PlayLayout";
@@ -39,6 +40,7 @@ const router = createRouter([
     element: <PlayLayout />,
     children: [
       { index: true, element: <PlayEntityListPage /> },
+      { path: "board", element: <PlayBoardPage /> },
       { path: "entity/:id", element: <PlayEntityPage /> },
     ],
   },

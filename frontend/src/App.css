@@ -2577,6 +2577,12 @@
   padding: 40px 0;
 }
 
+.play-board {
+  /* Fill the viewport minus the sticky header (roughly 60px). */
+  height: calc(100vh - 62px);
+  margin: -20px;
+}
+
 .play-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
