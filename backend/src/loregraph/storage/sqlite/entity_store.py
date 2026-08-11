@@ -15,6 +15,7 @@ from loregraph.schemas.entity import (
     EntityCreate,
     EntityFieldOut,
     EntityOut,
+    EntityPlayerViewUpdate,
     EntityPositionEntry,
     EntityUpdate,
 )
@@ -117,6 +118,26 @@ class SqliteEntityStore:
         await self._session.refresh(row, attribute_names=["icon"])
         return _row_to_out(row)
 
+    async def set_player_view(
+        self, entity_id: str, data: EntityPlayerViewUpdate
+    ) -> EntityOut:
+        row = await self._session.get(EntityRow, entity_id)
+        if row is None:
+            raise EntityNotFoundError(entity_id)
+        row.revealed_to_players = data.revealed_to_players
+        row.player_text = data.player_text
+        # The whitelist lives inside each field's JSON, so flip visible_to_players
+        # per field to match the requested key set. A new list is assigned (not
+        # mutated in place) so SQLAlchemy sees the JSON column as dirty.
+        visible = set(data.visible_field_keys)
+        row.fields = [
+            {**field, "visible_to_players": field.get("key") in visible}
+            for field in row.fields
+        ]
+        row.updated_at = datetime.now(UTC)
+        await self._session.commit()
+        return _row_to_out(row)
+
     async def update_positions(
         self, positions: Sequence[EntityPositionEntry]
     ) -> list[EntityOut]:
@@ -150,6 +171,8 @@ def _row_to_out(row: EntityRow) -> EntityOut:
         icon=icon,
         pos_x=row.pos_x,
         pos_y=row.pos_y,
+        revealed_to_players=bool(row.revealed_to_players),
+        player_text=row.player_text,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )

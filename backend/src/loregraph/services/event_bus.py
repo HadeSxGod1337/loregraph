@@ -52,6 +52,10 @@ EVENT_KNOWLEDGE_INGEST_STATUS = "knowledge.ingest_status"
 # commits, instead of only refreshing on next manual navigation.
 EVENT_WORLD_ENTITY_COMMITTED = "world.entity_committed"
 EVENT_WORLD_EDGE_COMMITTED = "world.edge_committed"
+# A DM changed what players see for an entity (revealed/hid it, edited the
+# player text, or the field whitelist). Lets open DM tabs refresh live; a
+# future player-facing WebSocket can build on the same event.
+EVENT_WORLD_PLAYER_VIEW_CHANGED = "world.player_view_changed"
 
 
 class Event(BaseModel):

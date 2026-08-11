@@ -45,6 +45,13 @@ class EntityRow(Base):
     # root/depth changes in the graph view.
     pos_x: Mapped[float | None] = mapped_column(default=None)
     pos_y: Mapped[float | None] = mapped_column(default=None)
+    # Limited player access. Both nullable because init_db can only ADD COLUMN
+    # (no backfill, see db.py): NULL == not revealed / no player text. The API
+    # contract is a strict bool, coerced on read.
+    revealed_to_players: Mapped[bool | None] = mapped_column(default=None)
+    player_text: Mapped[dict[str, object] | None] = mapped_column(
+        JSON, default=None
+    )
     created_at: Mapped[datetime]
     updated_at: Mapped[datetime]
 

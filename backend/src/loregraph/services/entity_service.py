@@ -4,6 +4,7 @@ from loregraph.exceptions import EntityNotFoundError
 from loregraph.schemas.entity import (
     EntityCreate,
     EntityOut,
+    EntityPlayerViewUpdate,
     EntityPositionEntry,
     EntityUpdate,
 )
@@ -72,6 +73,15 @@ class EntityService:
     ) -> EntityOut:
         await self.get_in_project(project_id, entity_id)
         return await self._store.set_icon(entity_id, attachment_id)
+
+    async def set_player_view(
+        self, project_id: str, entity_id: str, data: EntityPlayerViewUpdate
+    ) -> EntityOut:
+        # Same project-scoping guarantee as update()/set_icon(). Deliberately
+        # does NOT touch the vector index: player_text is not part of the
+        # "index == fields" invariant, and players never drive retrieval.
+        await self.get_in_project(project_id, entity_id)
+        return await self._store.set_player_view(entity_id, data)
 
     async def update_positions(
         self, project_id: str, positions: list[EntityPositionEntry]

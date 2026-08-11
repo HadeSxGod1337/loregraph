@@ -17,6 +17,7 @@ from loregraph.schemas.edge import EdgeCreate, EdgeOut, EdgeUpdate
 from loregraph.schemas.entity import (
     EntityCreate,
     EntityOut,
+    EntityPlayerViewUpdate,
     EntityPositionEntry,
     EntityUpdate,
 )
@@ -61,6 +62,9 @@ class EntityStore(Protocol):
     async def delete(self, entity_id: str) -> None: ...
     async def set_icon(
         self, entity_id: str, attachment_id: str | None
+    ) -> EntityOut: ...
+    async def set_player_view(
+        self, entity_id: str, data: EntityPlayerViewUpdate
     ) -> EntityOut: ...
     async def update_positions(
         self, positions: Sequence[EntityPositionEntry]

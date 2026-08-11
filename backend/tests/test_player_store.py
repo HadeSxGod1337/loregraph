@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -13,7 +14,7 @@ from loregraph.storage.sqlite.player_note_store import SqlitePlayerNoteStore
 from loregraph.storage.sqlite.player_store import SqlitePlayerStore
 
 
-async def _session_factory(tmp_path) -> async_sessionmaker[AsyncSession]:
+async def _session_factory(tmp_path: Path) -> async_sessionmaker[AsyncSession]:
     engine = create_engine_for(tmp_path / "test.sqlite3")
     await init_db(engine)
     return make_session_factory(engine)
@@ -29,7 +30,7 @@ async def _make_project(factory: async_sessionmaker[AsyncSession]) -> str:
 
 
 @pytest.mark.asyncio
-async def test_player_lifecycle(tmp_path) -> None:
+async def test_player_lifecycle(tmp_path: Path) -> None:
     session_factory = await _session_factory(tmp_path)
     project_id = await _make_project(session_factory)
     async with session_factory() as session:
@@ -39,7 +40,8 @@ async def test_player_lifecycle(tmp_path) -> None:
         assert created.token_prefix == "prefixaa"
 
         # Active lookup finds it; revoke makes it disappear from active lookup.
-        assert (await store.find_active_by_token_hash("hash-a")).id == created.id
+        active = await store.find_active_by_token_hash("hash-a")
+        assert active is not None and active.id == created.id
         await store.set_revoked(created.id, True)
         assert await store.find_active_by_token_hash("hash-a") is None
         assert (await store.get(created.id)).revoked is True
@@ -56,7 +58,7 @@ async def test_player_lifecycle(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_deleting_player_cascades_notes(tmp_path) -> None:
+async def test_deleting_player_cascades_notes(tmp_path: Path) -> None:
     session_factory = await _session_factory(tmp_path)
     project_id = await _make_project(session_factory)
     async with session_factory() as session:
@@ -66,7 +68,7 @@ async def test_deleting_player_cascades_notes(tmp_path) -> None:
         players = SqlitePlayerStore(session)
         notes = SqlitePlayerNoteStore(session)
         player = await players.create(project_id, "Bob", "h", "pfx")
-        doc = {"type": "doc", "content": []}
+        doc: dict[str, object] = {"type": "doc", "content": []}
         await notes.create(project_id, player.id, entity.id, doc, is_public=True)
 
         record = (await notes.list_for_entity(entity.id))[0]

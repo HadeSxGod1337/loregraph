@@ -2,14 +2,16 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from loregraph.api.deps import EntityServiceDep
+from loregraph.api.deps import EntityServiceDep, EventBusDep
 from loregraph.schemas.entity import (
     EntityCreate,
     EntityIconSet,
     EntityOut,
+    EntityPlayerViewUpdate,
     EntityPositionEntry,
     EntityUpdate,
 )
+from loregraph.services.event_bus import EVENT_WORLD_PLAYER_VIEW_CHANGED
 
 router = APIRouter(prefix="/projects/{project_id}/entities", tags=["entities"])
 
@@ -74,3 +76,25 @@ async def clear_entity_icon(
     project_id: str, entity_id: str, service: EntityServiceDep
 ) -> EntityOut:
     return await service.set_icon(project_id, entity_id, None)
+
+
+@router.put("/{entity_id}/player-view", response_model=EntityOut)
+async def set_entity_player_view(
+    project_id: str,
+    entity_id: str,
+    data: EntityPlayerViewUpdate,
+    service: EntityServiceDep,
+    event_bus: EventBusDep,
+) -> EntityOut:
+    """DM-only: reveal/hide an entity for players, set the player-facing text,
+    and choose which fields players may see — all in one atomic write, kept
+    off EntityUpdate so a normal save can't wipe it. Publishes a realtime
+    event so open DM tabs refresh live."""
+    entity = await service.set_player_view(project_id, entity_id, data)
+    event_bus.publish(
+        project_id,
+        EVENT_WORLD_PLAYER_VIEW_CHANGED,
+        entity_id=entity_id,
+        revealed=entity.revealed_to_players,
+    )
+    return entity

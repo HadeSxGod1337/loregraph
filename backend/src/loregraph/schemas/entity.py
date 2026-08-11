@@ -26,6 +26,12 @@ class EntityFieldIn(BaseModel):
     field_type: FieldType
     value: Any
     show_on_card: bool = False
+    # Whitelist for limited player access: a field is shown to players only
+    # when the DM explicitly flips this on. It lives inside the fields JSON, so
+    # no DB migration is needed and old rows read back as False (deny by
+    # default). Connectors and the vector index only read key/field_type/value,
+    # so this flag never leaks through export or grounding.
+    visible_to_players: bool = False
 
     @model_validator(mode="after")
     def check_value_matches_type(self) -> "EntityFieldIn":
@@ -89,6 +95,12 @@ class EntityOut(BaseModel):
     icon: AttachmentRef | None = None
     pos_x: float | None = None
     pos_y: float | None = None
+    # Limited player access: whether the whole party can see this entity, and
+    # the separate text the DM wrote for them (a ProseMirror doc). Strict bool
+    # on the way out even though the column is nullable — NULL reads as "not
+    # revealed", so the frontend toggle is never left indeterminate.
+    revealed_to_players: bool = False
+    player_text: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -101,3 +113,15 @@ class EntityPositionEntry(BaseModel):
     entity_id: str
     pos_x: float
     pos_y: float
+
+
+class EntityPlayerViewUpdate(BaseModel):
+    """Everything about what players see, in one atomic write. Kept off
+    EntityUpdate (which replaces the whole row) so a plain title/fields save
+    from the editor can never silently wipe player_text — the same reason
+    icon and positions have their own endpoints."""
+
+    revealed_to_players: bool
+    player_text: dict[str, Any] | None = None
+    # Field keys to expose to players; every other field stays hidden.
+    visible_field_keys: list[str] = []

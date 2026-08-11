@@ -9,6 +9,7 @@ from loregraph.schemas.entity import (
     EntityCreate,
     EntityFieldIn,
     EntityFieldOut,
+    EntityPlayerViewUpdate,
     EntityPositionEntry,
     EntityUpdate,
     FieldType,
@@ -72,6 +73,8 @@ async def export_project(
                 icon_attachment_id=entity.icon.attachment_id if entity.icon else None,
                 pos_x=entity.pos_x,
                 pos_y=entity.pos_y,
+                revealed_to_players=entity.revealed_to_players,
+                player_text=entity.player_text,
             )
         )
 
@@ -195,7 +198,49 @@ async def import_project(
             if new_icon_id is not None:
                 await entity_store.set_icon(new_id, new_icon_id)
 
+        # Limited player access, applied through its own write so it survives
+        # the round trip. The field whitelist already came back through
+        # _rewrite_fields (visible_to_players rides inside each field), so the
+        # key set is derived from the just-imported fields and set_player_view
+        # reproduces it idempotently. player_text gets the same url/link
+        # rewrite rich_text fields get.
+        if entity.revealed_to_players or entity.player_text is not None:
+            visible_keys = [
+                f.key for f in entity.fields if f.visible_to_players and f.key
+            ]
+            player_text = (
+                _rewrite_rich_value(entity.player_text, url_rewrites, entity_id_map)
+                if entity.player_text is not None
+                else None
+            )
+            await entity_store.set_player_view(
+                new_id,
+                EntityPlayerViewUpdate(
+                    revealed_to_players=entity.revealed_to_players,
+                    player_text=player_text,
+                    visible_field_keys=visible_keys,
+                ),
+            )
+
     return project
+
+
+def _rewrite_rich_value(
+    value: dict[str, object],
+    url_rewrites: dict[str, str],
+    entity_id_map: dict[str, str],
+) -> dict[str, object]:
+    """Remap attachment urls and wikilink targets inside a ProseMirror doc.
+    Shared by rich_text fields and player_text — both are the same doc shape
+    and both must not keep pointing at pre-import ids."""
+    rewritten = value
+    if url_rewrites:
+        serialized = json.dumps(value)
+        for old_fragment, new_fragment in url_rewrites.items():
+            serialized = serialized.replace(old_fragment, new_fragment)
+        rewritten = json.loads(serialized)
+    _rewrite_entity_links(rewritten, entity_id_map)
+    return rewritten
 
 
 def _rewrite_fields(
@@ -207,12 +252,9 @@ def _rewrite_fields(
     for field in fields:
         data = field.model_dump(mode="json")
         if field.field_type is FieldType.RICH_TEXT:
-            if url_rewrites:
-                serialized = json.dumps(data["value"])
-                for old_fragment, new_fragment in url_rewrites.items():
-                    serialized = serialized.replace(old_fragment, new_fragment)
-                data["value"] = json.loads(serialized)
-            _rewrite_entity_links(data["value"], entity_id_map)
+            data["value"] = _rewrite_rich_value(
+                data["value"], url_rewrites, entity_id_map
+            )
         rewritten.append(EntityFieldIn(**data))
     return rewritten
 

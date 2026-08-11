@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel
 
 from loregraph.schemas.entity import EntityFieldOut
@@ -26,6 +28,11 @@ class ProjectExportEntity(BaseModel):
     icon_attachment_id: str | None = None
     pos_x: float | None = None
     pos_y: float | None = None
+    # Limited player access. Defaulted so files exported before this existed
+    # import cleanly (everything hidden). Players and their notes are NOT part
+    # of an export — tokens and personal notes must not travel in a file.
+    revealed_to_players: bool = False
+    player_text: dict[str, Any] | None = None
 
 
 class ProjectExportEdge(BaseModel):
