@@ -7,7 +7,6 @@ from pathlib import Path
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -18,6 +17,7 @@ from loregraph.api.routers import (
     edges,
     entities,
     entity_templates,
+    files,
     graph,
     import_jobs,
     knowledge,
@@ -257,6 +257,10 @@ def create_app(
     app.include_router(updates.router, prefix=_API_PREFIX, dependencies=_master)
     # No master dependency: the websocket authenticates itself per-route.
     app.include_router(realtime.router, prefix=_API_PREFIX)
+    # Attachments: an access-checked route, not a bare StaticFiles mount (which
+    # would bypass every guard and hand any file to anyone on the network).
+    # Its own route resolves either identity, so no blanket master dependency.
+    app.include_router(files.router)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
@@ -267,8 +271,6 @@ def create_app(
     @app.get("/api/version")
     def app_version_endpoint() -> dict[str, str]:
         return {"version": app_version()}
-
-    app.mount("/files", StaticFiles(directory=settings.attachments_dir), name="files")
 
     return app
 

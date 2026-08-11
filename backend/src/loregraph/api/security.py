@@ -6,6 +6,7 @@ behind a Protocol so a private build (real accounts, a DM token, SSO) is a new
 authenticator, not a rewrite of every router.
 """
 
+import hashlib
 import ipaddress
 from dataclasses import dataclass
 from typing import Annotated, Protocol, cast, runtime_checkable
@@ -18,6 +19,27 @@ from fastapi import (
     WebSocketException,
     status,
 )
+
+# Cookie a play session sets, holding the raw token. HttpOnly so page scripts
+# can't read it; the token is exchanged for this cookie at POST /api/play/session
+# so <img> and WebSocket subresource requests (which can't set headers) carry it.
+PLAY_COOKIE_NAME = "lg_play"
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def extract_player_token(request: Request) -> str | None:
+    """A play token from the session cookie, or an Authorization: Bearer header
+    as a fallback for tests and scripts."""
+    cookie = request.cookies.get(PLAY_COOKIE_NAME)
+    if cookie:
+        return cookie
+    header = request.headers.get("Authorization", "")
+    if header.startswith("Bearer "):
+        return header.removeprefix("Bearer ").strip() or None
+    return None
 
 
 @dataclass(frozen=True)

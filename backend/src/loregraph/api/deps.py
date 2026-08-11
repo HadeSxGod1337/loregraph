@@ -2,7 +2,7 @@ import logging
 from collections.abc import AsyncGenerator
 from typing import Annotated, cast
 
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,13 @@ from loregraph.agent.import_runner import ImportJobRunner
 from loregraph.agent.import_source import ImportSourceResolver
 from loregraph.agent.mcp_tools import McpConnection, McpToolProvider
 from loregraph.agent.runner import AgentRunner
+from loregraph.api.security import (
+    MasterAuthenticatorDep,
+    MasterIdentity,
+    PlayerIdentity,
+    extract_player_token,
+    hash_token,
+)
 from loregraph.config import Settings
 from loregraph.connectors.context import ConnectorContext
 from loregraph.connectors.live import LiveSourceEntry, LiveSourceProvider
@@ -27,6 +34,7 @@ from loregraph.connectors.runtime import ConnectorRuntime
 from loregraph.exceptions import (
     CampaignError,
     ConnectionNotFoundError,
+    InvalidPlayerTokenError,
     UnsupportedConnectorCapabilityError,
 )
 from loregraph.llm.factory import get_chat_model
@@ -252,6 +260,60 @@ async def get_player_note_store(
 
 PlayerStoreDep = Annotated[PlayerStore, Depends(get_player_store)]
 PlayerNoteStoreDep = Annotated[PlayerNoteStore, Depends(get_player_note_store)]
+
+
+async def get_optional_player_identity(
+    request: Request, player_store: PlayerStoreDep
+) -> PlayerIdentity | None:
+    """The player behind a play token, or None when there's no valid one.
+    project_id comes from the token — never the URL — so a token can't address
+    another project."""
+    token = extract_player_token(request)
+    if token is None:
+        return None
+    player = await player_store.find_active_by_token_hash(hash_token(token))
+    if player is None:
+        return None
+    await player_store.touch_last_seen(player.id)
+    return PlayerIdentity(
+        player_id=player.id, project_id=player.project_id, name=player.name
+    )
+
+
+OptionalPlayerIdentityDep = Annotated[
+    PlayerIdentity | None, Depends(get_optional_player_identity)
+]
+
+
+async def require_player(identity: OptionalPlayerIdentityDep) -> PlayerIdentity:
+    if identity is None:
+        raise InvalidPlayerTokenError()
+    return identity
+
+
+PlayerIdentityDep = Annotated[PlayerIdentity, Depends(require_player)]
+
+
+async def get_master_or_player_identity(
+    request: Request,
+    auth: MasterAuthenticatorDep,
+    player_store: PlayerStoreDep,
+) -> MasterIdentity | PlayerIdentity:
+    """Either the DM (loopback) or a valid player. Used where both may read the
+    same resource under different rules — the attachment route resolves the
+    file, then decides access from which identity this returned."""
+    master = await auth.identify(request)
+    if master is not None:
+        return master
+    player = await get_optional_player_identity(request, player_store)
+    if player is not None:
+        return player
+    raise HTTPException(status_code=401, detail="Master or player access required")
+
+
+IdentityDep = Annotated[
+    MasterIdentity | PlayerIdentity, Depends(get_master_or_player_identity)
+]
 
 
 def get_connector_registry(request: Request) -> ConnectorRegistry:
