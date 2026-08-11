@@ -642,17 +642,39 @@ ok "Интерфейс собран."
 # --- 5. LAN play mode (opt-in) --------------------------------------------------
 
 detect_lan_ip() {
-    # macOS first, then Linux, then a route-based fallback.
-    if command -v ipconfig >/dev/null 2>&1; then
-        ipconfig getifaddr en0 2>/dev/null && return 0
-        ipconfig getifaddr en1 2>/dev/null && return 0
+    # The address players on this network can reach us at — which is the one
+    # facing the real router, not necessarily the one that reaches the
+    # internet: a VPN or virtual adapter often owns the default route, and its
+    # address is invisible to everyone else in the house.
+    local gateway ip
+
+    # Linux: ask for the route to the default gateway, and take its source.
+    if command -v ip >/dev/null 2>&1; then
+        gateway="$(ip route show default 2>/dev/null | awk '/via/ {print $3; exit}')"
+        if [ -n "$gateway" ]; then
+            ip="$(ip route get "$gateway" 2>/dev/null |
+                awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')"
+            [ -n "$ip" ] && { printf '%s' "$ip"; return 0; }
+        fi
     fi
-    if command -v hostname >/dev/null 2>&1; then
-        local ip
-        ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+
+    # macOS: the interface carrying the default route, then its address.
+    if command -v route >/dev/null 2>&1 && command -v ipconfig >/dev/null 2>&1; then
+        local iface
+        iface="$(route -n get default 2>/dev/null | awk '/interface:/ {print $2; exit}')"
+        if [ -n "$iface" ]; then
+            ip="$(ipconfig getifaddr "$iface" 2>/dev/null)"
+            [ -n "$ip" ] && { printf '%s' "$ip"; return 0; }
+        fi
+    fi
+
+    # Fallbacks: whatever reaches the wider internet, then the first address.
+    if command -v ip >/dev/null 2>&1; then
+        ip="$(ip route get 1.1.1.1 2>/dev/null |
+            awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')"
         [ -n "$ip" ] && { printf '%s' "$ip"; return 0; }
     fi
-    ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}'
+    hostname -I 2>/dev/null | awk '{print $1}'
 }
 
 # The server reads TLS settings itself (see loregraph/server.py); this only
@@ -669,6 +691,7 @@ if [ "$LAN" -eq 1 ]; then
     if [ -z "$LAN_HOST" ]; then
         LAN_HOST="$(detect_lan_ip)"
         [ -n "$LAN_HOST" ] || die "Не удалось определить IP в сети. Укажите: bash start.sh --lan --lan-host 192.168.1.5"
+        ok "Адрес в сети: $LAN_HOST (изменить: --lan-host <адрес>)"
     fi
     BIND_HOST="0.0.0.0"
     FRONTEND_URL="${APP_SCHEME}://${LAN_HOST}:${APP_PORT}"

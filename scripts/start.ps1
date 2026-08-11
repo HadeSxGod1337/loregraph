@@ -61,8 +61,54 @@ function Test-Command($name) {
     return ($null -ne $found)
 }
 
-function Get-LanIp {
-    # Real IPv4 addresses: skip link-local (169.254.*) and loopback.
+function Get-LocalAddressToward($target) {
+    # A connected UDP socket sends nothing — it only resolves which local
+    # address the OS would use to reach `target`.
+    try {
+        $sock = New-Object System.Net.Sockets.Socket(
+            [System.Net.Sockets.AddressFamily]::InterNetwork,
+            [System.Net.Sockets.SocketType]::Dgram,
+            [System.Net.Sockets.ProtocolType]::Udp)
+        try {
+            $sock.Connect($target, 80)
+            return $sock.LocalEndPoint.Address.IPAddressToString
+        } finally { $sock.Close() }
+    } catch { return $null }
+}
+
+function Get-PrimaryLanIp {
+    # The address players on this network can reach us at.
+    #
+    # Deliberately NOT "the address that reaches the internet": a VPN or a
+    # virtual adapter routinely owns that route, and its address is invisible
+    # to everyone else in the house. What we want is the address facing the
+    # real router, so we rank the default routes the way Windows does —
+    # RouteMetric + InterfaceMetric, lowest wins — and ask the OS which local
+    # address reaches that route's gateway. An adapter with no interface metric
+    # is pushed to the back: those are the virtual ones.
+    try {
+        $best = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction Stop |
+            Where-Object { $_.NextHop -and $_.NextHop -ne "0.0.0.0" } |
+            Sort-Object -Property @{ Expression = {
+                $ifMetric = if ($null -eq $_.InterfaceMetric -or "" -eq "$($_.InterfaceMetric)") { 10000 }
+                            else { [int]$_.InterfaceMetric }
+                [int]$_.RouteMetric + $ifMetric
+            }} |
+            Select-Object -First 1
+        if ($null -ne $best) {
+            $local = Get-LocalAddressToward $best.NextHop
+            if (-not [string]::IsNullOrWhiteSpace($local) -and $local -ne "0.0.0.0") {
+                return $local
+            }
+        }
+    } catch {}
+
+    # Last resort: whatever address reaches the wider internet.
+    return Get-LocalAddressToward "8.8.8.8"
+}
+
+function Get-LanIpCandidates {
+    # Only used to help when auto-detection fails.
     $addrs = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
         Where-Object {
             $_.PrefixOrigin -in 'Dhcp', 'Manual' -and
@@ -709,14 +755,15 @@ if ($Internet) { $Lan = $true }
 $BindHost = "127.0.0.1"
 if ($Lan) {
     if ([string]::IsNullOrWhiteSpace($LanHost)) {
-        $ips = Get-LanIp
-        if ($ips.Count -eq 0) {
-            throw "Не удалось определить IP в сети. Укажите вручную: start.bat -Lan -LanHost 192.168.1.5"
-        } elseif ($ips.Count -gt 1) {
-            Write-Warn2 "Найдено несколько сетевых адресов: $($ips -join ', ')"
-            throw "Выберите один: start.bat -Lan -LanHost <адрес из списка выше>"
+        $LanHost = Get-PrimaryLanIp
+        if ([string]::IsNullOrWhiteSpace($LanHost)) {
+            $ips = Get-LanIpCandidates
+            if ($ips.Count -gt 0) {
+                Write-Warn2 "Не удалось определить основной адрес. Найдены: $($ips -join ', ')"
+            }
+            throw "Укажите адрес вручную: start.bat -Lan -LanHost 192.168.1.5"
         }
-        $LanHost = $ips[0]
+        Write-Ok "Адрес в сети: $LanHost (изменить: -LanHost <адрес>)"
     }
     $BindHost = "0.0.0.0"
     $FrontendUrl = "${AppScheme}://${LanHost}:$AppPort"
