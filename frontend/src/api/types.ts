@@ -87,6 +87,22 @@ export interface PlayerCreated extends Player {
   token: string;
 }
 
+/** How far the app is currently exposed, and why internet access is or isn't
+ * working. Each outcome means a different thing for the DM to do. */
+export type UpnpOutcome = "mapped" | "cgnat" | "no_router" | "refused" | "failed";
+
+export interface NetworkStatus {
+  /** local = this machine only, lan = local network, internet = port forwarded. */
+  reach: "local" | "lan" | "internet";
+  base_url: string;
+  tls: boolean;
+  upnp: {
+    outcome: UpnpOutcome;
+    external_ip: string | null;
+    reachable: boolean;
+  } | null;
+}
+
 export interface PlayerNote {
   id: string;
   entity_id: string;

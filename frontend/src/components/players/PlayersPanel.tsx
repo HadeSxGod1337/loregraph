@@ -5,12 +5,14 @@ import type { Player, PlayerCreated } from "../../api/types";
 import {
   useCreatePlayer,
   useDeletePlayer,
+  useNetworkStatus,
   usePlayers,
   useRevokePlayer,
   useRotatePlayer,
 } from "../../hooks/usePlayers";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Icon } from "../ui/Icon";
+import { NetworkStatusNotice } from "./NetworkStatusNotice";
 
 /** DM management of player invites. Full links are shown once, at create or
  * rotate time — the raw token is never stored, so a lost link is rotated, not
@@ -18,6 +20,7 @@ import { Icon } from "../ui/Icon";
 export function PlayersPanel({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const { data: players } = usePlayers(projectId);
+  const { data: network } = useNetworkStatus();
   const createPlayer = useCreatePlayer(projectId);
   const rotatePlayer = useRotatePlayer(projectId);
   const revokePlayer = useRevokePlayer(projectId);
@@ -48,7 +51,7 @@ export function PlayersPanel({ projectId }: { projectId: string }) {
   return (
     <section className="settings-card">
       <p className="field-hint">{t("players.intro")}</p>
-      <p className="field-hint">{t("players.lanHint")}</p>
+      {network && <NetworkStatusNotice status={network} />}
 
       {!inviting ? (
         <button type="button" onClick={() => setInviting(true)}>

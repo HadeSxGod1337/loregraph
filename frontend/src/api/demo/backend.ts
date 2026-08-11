@@ -198,6 +198,18 @@ const routes: Route[] = [
     handler: () => [],
   },
 
+  // The demo is a static page — nothing is hosted, nothing is reachable.
+  {
+    method: "GET",
+    pattern: "/api/network",
+    handler: () => ({
+      reach: "local",
+      base_url: "http://localhost:8000",
+      tls: false,
+      upnp: null,
+    }),
+  },
+
   // --- players (demo: in-memory, links are fake) ---
   { method: "GET", pattern: "/api/projects/:id/players", handler: (m) => demoPlayers(m.id) },
   {

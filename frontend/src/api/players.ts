@@ -1,5 +1,9 @@
 import { apiClient } from "./client";
-import type { Player, PlayerCreated, PlayerNote } from "./types";
+import type { NetworkStatus, Player, PlayerCreated, PlayerNote } from "./types";
+
+export const networkApi = {
+  get: () => apiClient.get<NetworkStatus>("/api/network"),
+};
 
 // DM-side player management (loopback-only, like every other project route).
 export const playersApi = {

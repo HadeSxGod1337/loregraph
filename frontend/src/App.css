@@ -2715,6 +2715,41 @@
 
 /* --- Players panel --------------------------------------------------------- */
 
+.network-notice {
+  margin: 12px 0 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.network-notice-internet {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.network-notice-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.network-notice-head code {
+  font-size: 12px;
+  font-weight: 400;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
+
+.network-notice .field-hint {
+  margin: 4px 0 0;
+}
+
 .player-invite-form {
   display: flex;
   gap: 8px;

@@ -132,6 +132,17 @@
     "accent": "Accent",
     "language": "Language"
   },
+  "network": {
+    "reachLocal": "Reachable on this computer only:",
+    "reachLan": "Reachable on your local network:",
+    "reachInternet": "Reachable from the internet:",
+    "localHint": "To let players connect from their own devices, close the app and start it again with start.bat --lan (players on your Wi-Fi) or start.bat --internet (players anywhere).",
+    "cgnat": "Internet access isn't possible: your provider gave this connection the shared address {{ip}}, not one of your own (CGNAT). Ask them for a dedicated (\"white\") IP, or use Tailscale. Your local network still works.",
+    "noRouter": "The router didn't answer the automatic port request — UPnP is most likely turned off in its settings. Turn it on, or forward the port by hand. Your local network still works.",
+    "refused": "The router declined to forward the port. Forward it by hand in the router's settings. Your local network still works.",
+    "failed": "Couldn't set up internet access. Your local network still works.",
+    "noTls": "Traffic isn't encrypted — anyone between you and your players could read it. See docs/players.md to add a certificate."
+  },
   "play": {
     "loading": "Loading…",
     "linkInvalidTitle": "This link no longer works",
@@ -168,7 +179,6 @@
   },
   "players": {
     "intro": "Invite players to see the cards and board you reveal, and to keep their own notes.",
-    "lanHint": "For players on other devices, launch with start.bat --lan (or start.sh --lan).",
     "invite": "Invite player",
     "namePlaceholder": "Player name",
     "createLink": "Create link",

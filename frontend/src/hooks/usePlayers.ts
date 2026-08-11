@@ -1,6 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { playersApi } from "../api/players";
+import { networkApi, playersApi } from "../api/players";
+
+/** How the app is reachable right now. Global, not project-scoped — it is a
+ * property of how this copy was launched. */
+export function useNetworkStatus() {
+  return useQuery({
+    queryKey: ["network-status"],
+    queryFn: () => networkApi.get(),
+    staleTime: 60_000,
+  });
+}
 
 export function usePlayers(projectId: string) {
   return useQuery({
