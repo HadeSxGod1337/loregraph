@@ -24,6 +24,7 @@ from loregraph.api.routers import (
     projects,
     realtime,
     sheet_presets,
+    updates,
     usage,
 )
 from loregraph.composition import AppComposition
@@ -70,6 +71,7 @@ from loregraph.schemas.project_transfer import ProjectExport
 from loregraph.services.event_bus import EventBus
 from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.project_transfer import import_project
+from loregraph.services.update_status import app_version
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.composition import StoreFactories
 from loregraph.storage.sqlite.db import init_db, make_session_factory
@@ -234,10 +236,17 @@ def create_app(
     app.include_router(connections.types_router, prefix=_API_PREFIX)
     app.include_router(connections.router, prefix=_API_PREFIX)
     app.include_router(realtime.router, prefix=_API_PREFIX)
+    app.include_router(updates.router, prefix=_API_PREFIX)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    # Separate from /api/updates on purpose: the version is always knowable
+    # and free, while the update status depends on files the launcher writes.
+    @app.get("/api/version")
+    def app_version_endpoint() -> dict[str, str]:
+        return {"version": app_version()}
 
     app.mount("/files", StaticFiles(directory=settings.attachments_dir), name="files")
 

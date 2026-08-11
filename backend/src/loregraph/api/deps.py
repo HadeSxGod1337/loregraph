@@ -39,6 +39,7 @@ from loregraph.services.entity_template_service import EntityTemplateService
 from loregraph.services.event_bus import EventBus
 from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.sheet_preset_service import SheetPresetService
+from loregraph.services.update_status import UpdateService, app_version
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.composition import StoreFactories
 from loregraph.storage.protocols import (
@@ -151,6 +152,13 @@ def get_event_bus(request: Request) -> EventBus:
 
 
 EventBusDep = Annotated[EventBus, Depends(get_event_bus)]
+
+
+def get_update_service(settings: SettingsDep) -> UpdateService:
+    return UpdateService(settings.data_dir, app_version())
+
+
+UpdateServiceDep = Annotated[UpdateService, Depends(get_update_service)]
 
 
 def get_knowledge_index(request: Request) -> KnowledgeIndex | None:
