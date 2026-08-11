@@ -205,7 +205,10 @@ export function EntityDetailPanel({
             </button>
             <button
               type="button"
-              className={"button-sm" + (entity.revealed_to_players ? " revealed" : "")}
+              className={
+                "button-sm panel-head-reveal" +
+                (entity.revealed_to_players ? " revealed" : "")
+              }
               onClick={quickToggleReveal}
               disabled={setPlayerView.isPending}
               title={

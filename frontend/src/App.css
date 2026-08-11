@@ -3052,14 +3052,26 @@
   margin: 8px 0 0;
 }
 
+/* The panel is ~350px wide and these three labels don't fit on one line in
+   any language — as a flex row the buttons wrapped their own text instead,
+   coming out ragged and at different heights. Fixed columns keep them even,
+   and the reveal toggle takes a full row of its own: it's a state switch
+   rather than a view action, and the one flipped most often at the table. */
 .panel-head-nav {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin-top: 10px;
 }
 
 .panel-head-nav .button-sm {
   border-color: var(--border-strong);
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.panel-head-reveal {
+  grid-column: 1 / -1;
 }
 
 .panel-close {
