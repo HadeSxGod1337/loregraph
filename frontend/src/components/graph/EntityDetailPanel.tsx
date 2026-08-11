@@ -5,7 +5,12 @@ import { useNavigate } from "react-router-dom";
 import { API_URL } from "../../api/client";
 import type { Edge, EntityField, EntityTemplate, ProseMirrorDoc } from "../../api/types";
 import { useEntities } from "../../hooks/useEntities";
-import { useEntity, useDeleteEntity, useUpdateEntity } from "../../hooks/useEntity";
+import {
+  useDeleteEntity,
+  useEntity,
+  useSetEntityPlayerView,
+  useUpdateEntity,
+} from "../../hooks/useEntity";
 import { useCreateEdge, useDeleteEdge, useEdgesForEntity } from "../../hooks/useEdgesForEntity";
 import { useTemplateById } from "../../hooks/useTemplates";
 import { applyFieldValue, syncTemplateFields } from "../sheet/applyTemplate";
@@ -16,6 +21,7 @@ import { SheetRenderer } from "../sheet/SheetRenderer";
 import { TemplateSelect } from "../sheet/TemplateSelect";
 import { EdgeEditPopover } from "../graph/EdgeEditPopover";
 import { EdgeList } from "../edges/EdgeList";
+import { EntityPlayerAccessPanel } from "../entity/EntityPlayerAccessPanel";
 import { FieldEditor } from "../entity/FieldEditor";
 import { IconPicker } from "../entity/IconPicker";
 import { RichTextView } from "../entity/RichTextView";
@@ -57,6 +63,7 @@ export function EntityDetailPanel({
   const { data: edges } = useEdgesForEntity(projectId, entityId ?? undefined);
   const { data: entities } = useEntities(projectId);
   const updateEntity = useUpdateEntity(projectId, entityId ?? "");
+  const setPlayerView = useSetEntityPlayerView(projectId, entityId ?? "");
   const deleteEntity = useDeleteEntity(projectId);
   const deleteEdge = useDeleteEdge(projectId);
   const createEdge = useCreateEdge(projectId);
@@ -109,6 +116,19 @@ export function EntityDetailPanel({
   function handleSave() {
     updateEntity.mutate({ type, title, fields, template_id: templateId });
     setMode("view");
+  }
+
+  function quickToggleReveal() {
+    if (!entity) return;
+    // One-click reveal/hide from the board — the most frequent action at the
+    // table. Keeps the existing player text and field whitelist untouched.
+    setPlayerView.mutate({
+      revealed_to_players: !entity.revealed_to_players,
+      player_text: entity.player_text,
+      visible_field_keys: entity.fields
+        .filter((f) => f.visible_to_players)
+        .map((f) => f.key),
+    });
   }
 
   function toggleReason(edgeId: string) {
@@ -182,6 +202,22 @@ export function EntityDetailPanel({
             >
               <Icon name="expand" size={13} />
               {t("entityDetail.focusCamera")}
+            </button>
+            <button
+              type="button"
+              className={"button-sm" + (entity.revealed_to_players ? " revealed" : "")}
+              onClick={quickToggleReveal}
+              disabled={setPlayerView.isPending}
+              title={
+                entity.revealed_to_players
+                  ? t("playerAccess.hideFromPlayers")
+                  : t("playerAccess.revealToPlayers")
+              }
+            >
+              <Icon name={entity.revealed_to_players ? "eye" : "eye-off"} size={13} />
+              {entity.revealed_to_players
+                ? t("playerAccess.revealedShort")
+                : t("playerAccess.hiddenShort")}
             </button>
           </div>
         </div>
@@ -371,6 +407,10 @@ export function EntityDetailPanel({
                   </div>
                 </div>
               )}
+
+              <div className="panel-section">
+                <EntityPlayerAccessPanel projectId={projectId} entity={entity} />
+              </div>
             </>
           ) : (
             <>

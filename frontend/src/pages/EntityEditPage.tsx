@@ -6,6 +6,7 @@ import type { EntityField, EntityTemplate, FieldType, FieldValue } from "../api/
 import { DEFAULT_ENTITY_TYPES } from "../api/types";
 import { AttachmentUploader } from "../components/entity/AttachmentUploader";
 import { CharacterSheetEmbed } from "../components/entity/CharacterSheetEmbed";
+import { EntityPlayerAccessPanel } from "../components/entity/EntityPlayerAccessPanel";
 import { FieldEditor } from "../components/entity/FieldEditor";
 import { SheetRenderer } from "../components/sheet/SheetRenderer";
 import { TemplateSelect } from "../components/sheet/TemplateSelect";
@@ -218,6 +219,9 @@ export function EntityEditPage() {
             <summary>{t("entityEdit.otherFiles")}</summary>
             <AttachmentUploader entityId={id} />
           </details>
+          {entity && (
+            <EntityPlayerAccessPanel projectId={projectId!} entity={entity} />
+          )}
         </>
       )}
 

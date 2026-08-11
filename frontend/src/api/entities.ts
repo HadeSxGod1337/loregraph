@@ -1,5 +1,10 @@
 import { apiClient } from "./client";
-import type { Entity, EntityCreate, EntityUpdate } from "./types";
+import type {
+  Entity,
+  EntityCreate,
+  EntityPlayerViewUpdate,
+  EntityUpdate,
+} from "./types";
 
 export interface PositionEntry {
   entity_id: string;
@@ -24,6 +29,11 @@ export const entitiesApi = {
     }),
   clearIcon: (projectId: string, id: string) =>
     apiClient.delete<Entity>(`/api/projects/${projectId}/entities/${id}/icon`),
+  setPlayerView: (projectId: string, id: string, data: EntityPlayerViewUpdate) =>
+    apiClient.put<Entity>(
+      `/api/projects/${projectId}/entities/${id}/player-view`,
+      data,
+    ),
   updatePositions: (projectId: string, positions: PositionEntry[]) =>
     apiClient.put<Entity[]>(
       `/api/projects/${projectId}/entities/positions`,

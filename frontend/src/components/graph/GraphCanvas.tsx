@@ -93,6 +93,7 @@ function toFlowNode(
       entityType: entity.type,
       iconUrl: entity.icon ? API_URL + entity.icon.url : null,
       previewFields: getPreviewFields(entity),
+      revealed: entity.revealed_to_players,
     },
   };
 }

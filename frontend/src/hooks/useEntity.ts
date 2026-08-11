@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { entitiesApi } from "../api/entities";
-import type { EntityUpdate } from "../api/types";
+import { playersApi } from "../api/players";
+import type { EntityPlayerViewUpdate, EntityUpdate } from "../api/types";
 
 // The graph view's nodes come from a separate `["subgraph", ...]` query, not
 // `["entities", ...]` — any entity mutation that should be visible on the
@@ -33,6 +34,27 @@ export function useUpdateEntity(projectId: string, id: string) {
   return useMutation({
     mutationFn: (data: EntityUpdate) => entitiesApi.update(projectId, id, data),
     onSuccess: () => invalidateEntityCaches(queryClient, projectId, id),
+  });
+}
+
+export function useSetEntityPlayerView(projectId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: EntityPlayerViewUpdate) =>
+      entitiesApi.setPlayerView(projectId, id, data),
+    onSuccess: () => invalidateEntityCaches(queryClient, projectId, id),
+  });
+}
+
+/** Player notes on one entity, as the DM sees them (all, including private). */
+export function useEntityPlayerNotes(
+  projectId: string,
+  entityId: string | undefined,
+) {
+  return useQuery({
+    queryKey: ["player-notes", projectId, entityId],
+    queryFn: () => playersApi.notesForEntity(projectId, entityId!),
+    enabled: entityId !== undefined,
   });
 }
 

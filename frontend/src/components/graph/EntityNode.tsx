@@ -15,6 +15,8 @@ export interface EntityNodeData extends Record<string, unknown> {
   entityType: string;
   iconUrl?: string | null;
   previewFields: PreviewField[];
+  /** Whether this entity is revealed to players — shows a small marker. */
+  revealed?: boolean;
 }
 
 // Zoomed-out simplification (hiding icon/badge/preview, dropping the
@@ -30,7 +32,8 @@ export interface EntityNodeData extends Record<string, unknown> {
 // this node's own `id`/`data` didn't change — React Flow's own performance
 // guide calls this out explicitly for custom node/edge components.
 export const EntityNode = memo(function EntityNode({ id, data }: NodeProps) {
-  const { label, entityType, iconUrl, previewFields } = data as EntityNodeData;
+  const { label, entityType, iconUrl, previewFields, revealed } =
+    data as EntityNodeData;
   const isSelected = useSelectedEntity() === id;
   // Same rationale as isSelected: read from context, not `data`, so changing
   // root only re-renders the two affected nodes instead of rebuilding the
@@ -57,6 +60,9 @@ export const EntityNode = memo(function EntityNode({ id, data }: NodeProps) {
           exact interaction this pass is meant to keep smooth). */}
       <Handle type="target" position={Position.Top} className="entity-node-handle" isConnectable />
       <Handle type="source" position={Position.Bottom} className="entity-node-handle" isConnectable />
+      {revealed && (
+        <span className="entity-node-revealed" title="Revealed to players" />
+      )}
       {iconUrl && (
         <div className="entity-node-icon-slot">
           <img className="entity-node-icon" src={iconUrl} alt="" />

@@ -38,6 +38,8 @@ export interface EntityField {
   field_type: FieldType;
   value: FieldValue;
   show_on_card: boolean;
+  /** Whitelist for limited player access: shown to players only when true. */
+  visible_to_players?: boolean;
 }
 
 export interface Entity {
@@ -51,6 +53,47 @@ export interface Entity {
   /** NULL = auto-layout should place this node; set = the user dragged it. */
   pos_x: number | null;
   pos_y: number | null;
+  /** Whether the whole party can see this entity. */
+  revealed_to_players: boolean;
+  /** The separate text the DM wrote for players (ProseMirror doc). */
+  player_text: ProseMirrorDoc | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Everything about what players see for an entity, in one write. */
+export interface EntityPlayerViewUpdate {
+  revealed_to_players: boolean;
+  player_text: ProseMirrorDoc | null;
+  visible_field_keys: string[];
+}
+
+export interface Player {
+  id: string;
+  project_id: string;
+  name: string;
+  token_prefix: string;
+  revoked: boolean;
+  last_seen_at: string | null;
+  note_count: number;
+  play_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Returned once, right after invite or rotate — the only time the raw token
+ * and full link exist. */
+export interface PlayerCreated extends Player {
+  token: string;
+}
+
+export interface PlayerNote {
+  id: string;
+  entity_id: string;
+  author_name: string;
+  is_own: boolean;
+  is_public: boolean;
+  body: ProseMirrorDoc;
   created_at: string;
   updated_at: string;
 }

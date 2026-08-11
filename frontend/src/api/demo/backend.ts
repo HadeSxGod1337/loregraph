@@ -21,6 +21,7 @@ import type {
   Entity,
   EntityCreate,
   EntityField,
+  EntityPlayerViewUpdate,
   EntityUpdate,
   Project,
   ProjectCreate,
@@ -183,6 +184,17 @@ const routes: Route[] = [
   // echo the (unchanged) entity.
   { method: "PUT", pattern: "/api/projects/:id/entities/:eid/icon", handler: (m) => requireEntity(m.eid) },
   { method: "DELETE", pattern: "/api/projects/:id/entities/:eid/icon", handler: (m) => requireEntity(m.eid) },
+  {
+    method: "PUT",
+    pattern: "/api/projects/:id/entities/:eid/player-view",
+    handler: (m, body) => setPlayerView(m.eid, body as EntityPlayerViewUpdate),
+  },
+  // No players in the demo, so there are never any notes.
+  {
+    method: "GET",
+    pattern: "/api/projects/:id/entities/:eid/player-notes",
+    handler: () => [],
+  },
 
   // --- edges ---
   {
@@ -361,6 +373,8 @@ function importProject(payload: ProjectExport): Project {
       icon: null,
       pos_x: e.pos_x,
       pos_y: e.pos_y,
+      revealed_to_players: e.revealed_to_players ?? false,
+      player_text: e.player_text ?? null,
       created_at: nowIso(),
       updated_at: nowIso(),
     });
@@ -410,10 +424,25 @@ function createEntity(projectId: string, data: EntityCreate): Entity {
     icon: null,
     pos_x: null,
     pos_y: null,
+    revealed_to_players: false,
+    player_text: null,
     created_at: ts,
     updated_at: ts,
   };
   db.entities.push(entity);
+  return entity;
+}
+
+function setPlayerView(id: string, data: EntityPlayerViewUpdate): Entity {
+  const entity = requireEntity(id);
+  entity.revealed_to_players = data.revealed_to_players;
+  entity.player_text = data.player_text;
+  const visible = new Set(data.visible_field_keys);
+  entity.fields = entity.fields.map((f) => ({
+    ...f,
+    visible_to_players: visible.has(f.key),
+  }));
+  entity.updated_at = nowIso();
   return entity;
 }
 

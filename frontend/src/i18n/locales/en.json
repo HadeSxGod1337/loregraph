@@ -132,6 +132,22 @@
     "accent": "Accent",
     "language": "Language"
   },
+  "playerAccess": {
+    "title": "Player access",
+    "on": "on",
+    "revealed": "Revealed to players",
+    "revealToPlayers": "Reveal to players",
+    "hideFromPlayers": "Hide from players",
+    "revealedShort": "Shown",
+    "hiddenShort": "Hidden",
+    "playerText": "Text for players",
+    "visibleFields": "Fields players can see",
+    "playerNotes": "Player notes",
+    "public": "public",
+    "private": "private",
+    "noNotes": "No notes yet.",
+    "save": "Save player access"
+  },
   "updates": {
     "title": "Updates",
     "currentVersion": "Version {{version}}",

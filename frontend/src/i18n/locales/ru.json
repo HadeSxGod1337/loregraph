@@ -132,6 +132,22 @@
     "accent": "Акцент",
     "language": "Язык"
   },
+  "playerAccess": {
+    "title": "Доступ игрокам",
+    "on": "вкл",
+    "revealed": "Раскрыта игрокам",
+    "revealToPlayers": "Раскрыть игрокам",
+    "hideFromPlayers": "Скрыть от игроков",
+    "revealedShort": "Видна",
+    "hiddenShort": "Скрыта",
+    "playerText": "Текст для игроков",
+    "visibleFields": "Какие поля видят игроки",
+    "playerNotes": "Заметки игроков",
+    "public": "публичная",
+    "private": "личная",
+    "noNotes": "Пока нет заметок.",
+    "save": "Сохранить доступ"
+  },
   "updates": {
     "title": "Обновления",
     "currentVersion": "Версия {{version}}",
