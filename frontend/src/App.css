@@ -2490,10 +2490,6 @@
   margin: 0;
 }
 
-.button-sm.revealed {
-  color: var(--accent);
-}
-
 /* --- Player view (/play/:token) -------------------------------------------- */
 
 /* Column so the board page can claim exactly the height the sticky header
@@ -3052,26 +3048,36 @@
   margin: 8px 0 0;
 }
 
-/* The panel is ~350px wide and these three labels don't fit on one line in
-   any language — as a flex row the buttons wrapped their own text instead,
-   coming out ragged and at different heights. Fixed columns keep them even,
-   and the reveal toggle takes a full row of its own: it's a state switch
-   rather than a view action, and the one flipped most often at the table. */
+/* Icon-only row: written-out labels never fit on one line in a ~350px
+   drawer, in any language, and letting them wrap made the buttons ragged
+   and unequal. The label lives in a tooltip instead (see Tooltip.tsx).
+   Bordered rather than bare .icon-button, so they still read as buttons
+   against the head's tinted background. */
 .panel-head-nav {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: 6px;
   margin-top: 10px;
 }
 
-.panel-head-nav .button-sm {
-  border-color: var(--border-strong);
-  white-space: nowrap;
-  min-width: 0;
+.panel-head-nav .icon-button {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
 }
 
-.panel-head-reveal {
-  grid-column: 1 / -1;
+.panel-head-nav .icon-button:hover:not(:disabled),
+.panel-head-nav .icon-button:focus-visible {
+  border-color: var(--accent);
+  background: var(--bg-subtle);
+}
+
+/* Revealed to players. Without a written label this styling is the only
+   at-a-glance signal of the state, so it changes all three of colour,
+   border and fill rather than just the text colour. */
+.panel-head-nav .icon-button.revealed {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .panel-close {
@@ -5396,6 +5402,9 @@
 .tooltip {
   position: absolute;
   z-index: 100;
+  /* Absolute positioning shrink-to-fits against the anchor, so over an
+     icon-sized anchor the label would wrap one word per line. */
+  width: max-content;
   max-width: 260px;
   padding: 6px 10px;
   font-size: 12px;
@@ -5417,6 +5426,13 @@
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
+}
+/* Centring overhangs the anchor by half the label's width, which pushes the
+   bubble off-panel for the first control in a left-aligned toolbar. This
+   variant hangs it from the anchor's left edge instead. */
+.tooltip-top-start {
+  bottom: calc(100% + 8px);
+  left: 0;
 }
 .tooltip-bottom {
   top: calc(100% + 8px);

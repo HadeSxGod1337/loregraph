@@ -27,6 +27,7 @@ import { IconPicker } from "../entity/IconPicker";
 import { RichTextView } from "../entity/RichTextView";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Icon } from "../ui/Icon";
+import { Tooltip } from "../ui/Tooltip";
 
 const SUGGESTED_EDGE_TYPES = ["contains", "ally_of", "family_of", "enemy_of"];
 
@@ -175,6 +176,12 @@ export function EntityDetailPanel({
     }
   }
 
+  // Names the action, not the current state — the state is what the eye icon
+  // and its accent styling say, plus aria-pressed for screen readers.
+  const revealLabel = entity.revealed_to_players
+    ? t("playerAccess.hideFromPlayers")
+    : t("playerAccess.revealToPlayers");
+
   return (
       <div className="panel open">
         <div className="panel-head">
@@ -183,45 +190,45 @@ export function EntityDetailPanel({
           </button>
           <span className="entity-type-badge">{entity.type}</span>
           <h2>{entity.title}</h2>
+          {/* Icon-only, with the label in a hover/focus tooltip: three
+              written-out labels never fit one line in a ~350px drawer, in any
+              language, and letting them wrap left the row ragged. */}
           <div className="panel-head-nav">
-            <button
-              type="button"
-              className="button-sm"
-              onClick={() => onSetRoot(entityId)}
-              disabled={entityId === rootId}
-              title={t("entityDetail.setAsRoot")}
-            >
-              <Icon name="target" size={13} />
-              {t("entityDetail.setAsRoot")}
-            </button>
-            <button
-              type="button"
-              className="button-sm button-ghost"
-              onClick={() => onFocusCamera(entityId)}
-              title={t("entityDetail.focusCamera")}
-            >
-              <Icon name="expand" size={13} />
-              {t("entityDetail.focusCamera")}
-            </button>
-            <button
-              type="button"
-              className={
-                "button-sm panel-head-reveal" +
-                (entity.revealed_to_players ? " revealed" : "")
-              }
-              onClick={quickToggleReveal}
-              disabled={setPlayerView.isPending}
-              title={
-                entity.revealed_to_players
-                  ? t("playerAccess.hideFromPlayers")
-                  : t("playerAccess.revealToPlayers")
-              }
-            >
-              <Icon name={entity.revealed_to_players ? "eye" : "eye-off"} size={13} />
-              {entity.revealed_to_players
-                ? t("playerAccess.revealedShort")
-                : t("playerAccess.hiddenShort")}
-            </button>
+            <Tooltip label={t("entityDetail.setAsRoot")} placement="top-start">
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => onSetRoot(entityId)}
+                disabled={entityId === rootId}
+                aria-label={t("entityDetail.setAsRoot")}
+              >
+                <Icon name="target" size={15} />
+              </button>
+            </Tooltip>
+            <Tooltip label={t("entityDetail.focusCamera")} placement="top-start">
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => onFocusCamera(entityId)}
+                aria-label={t("entityDetail.focusCamera")}
+              >
+                <Icon name="expand" size={15} />
+              </button>
+            </Tooltip>
+            <Tooltip label={revealLabel} placement="top-start">
+              <button
+                type="button"
+                className={
+                  "icon-button" + (entity.revealed_to_players ? " revealed" : "")
+                }
+                onClick={quickToggleReveal}
+                disabled={setPlayerView.isPending}
+                aria-label={revealLabel}
+                aria-pressed={entity.revealed_to_players}
+              >
+                <Icon name={entity.revealed_to_players ? "eye" : "eye-off"} size={15} />
+              </button>
+            </Tooltip>
           </div>
         </div>
 
