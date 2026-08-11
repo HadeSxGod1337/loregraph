@@ -111,9 +111,14 @@ See [docs/templates.en.md](docs/templates.en.md).
 
 Reveal a card and your players see it — only the text you wrote for them and the
 fields you allow — through an invite link, with a read-only board and their own
-public/private notes. Nothing is shared until you reveal it. Launch with
-`start.bat --lan` to let players connect from their own devices on the network.
-See [docs/players.md](docs/players.md).
+public/private notes. Nothing is shared until you reveal it.
+
+One process on one port, so there is one thing to open up: `start.bat --lan` lets
+players on your network connect, `start.bat --internet` additionally asks the
+router over UPnP to forward the port so players anywhere can — and when that
+cannot work it says which reason it is (a shared provider address, UPnP off, a
+router that refused) instead of failing silently. HTTPS is an opt-in certificate
+pair. See [docs/players.md](docs/players.md).
 
 ### Documentation
 
@@ -140,7 +145,8 @@ See [docs/players.md](docs/players.md).
 Either script installs missing tools (`uv`, Node.js), pulls the latest updates
 from git, installs dependencies, lets you pick an LLM provider (Anthropic,
 OpenAI, or local Ollama) and embedding source on first run — or press Enter to
-skip and configure the AI assistant later — then starts both servers and opens
+skip and configure the AI assistant later — then builds the interface, starts
+the server on port 8000 and opens
 the app in your browser. Close the console window (or Ctrl+C on macOS/Linux)
 to stop everything. While running, it periodically checks for new commits and
 tells you when a restart would pick up an update.
@@ -164,7 +170,9 @@ npm install
 npm run dev
 ```
 
-Runs on `http://localhost:5173` and talks to the backend on `:8000`.
+Dev server on `http://localhost:5173`, talking to the backend on `:8000`.
+The packaged app needs neither: `start.bat` builds the frontend and serves it
+from the backend on port 8000 alone.
 
 ## Development
 
@@ -293,7 +301,8 @@ MCP-сервер (`loregraph-mcp`) для внешних MCP-клиентов. �
 Скрипт ставит недостающие инструменты (`uv`, Node.js), подтягивает обновления из
 git, устанавливает зависимости, при первом запуске предлагает выбрать LLM-провайдера
 (Anthropic, OpenAI или локальный Ollama) и источник эмбеддингов — или Enter, чтобы
-пропустить и настроить ассистента позже — затем поднимает оба сервера и открывает
+пропустить и настроить ассистента позже — затем собирает интерфейс, поднимает
+сервер на порту 8000 и открывает
 приложение в браузере. Закройте окно консоли (или Ctrl+C на macOS/Linux), чтобы
 остановить всё. Пока работает, периодически проверяет новые коммиты и сообщает,
 когда перезапуск подтянет обновление.
@@ -317,7 +326,9 @@ npm install
 npm run dev
 ```
 
-Слушает `http://localhost:5173` и ходит в backend на `:8000`.
+Dev-сервер на `http://localhost:5173`, ходит в backend на `:8000`.
+Обычный запуск обходится без него: `start.bat` собирает фронтенд и отдаёт его
+бэкендом на одном порту 8000.
 
 ## Разработка
 

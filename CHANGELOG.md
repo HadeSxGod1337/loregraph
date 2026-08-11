@@ -28,12 +28,24 @@ before upgrading.
   private (you see all of them). Manage players under **Project settings →
   Players**: invite, rotate a leaked link, revoke (keeps their notes), or
   delete (removes them). Nothing is shown to anyone until you reveal it.
-- **Play over the local network.** Launch with `start.bat --lan` (or
-  `start.sh --lan`) and the app binds to your network so players can open their
-  invite links from their own devices. The launcher prints the link and a
-  reminder that, in this mode, the world is reachable by anyone on the network
-  over unencrypted traffic — revoke links when a session ends. Without the
-  flag, nothing changes: the app stays on localhost.
+- **Play over the local network, or over the internet.** `start.bat --lan` opens
+  the app to your Wi-Fi so players connect from their own devices;
+  `start.bat --internet` additionally asks the router, over UPnP, to forward the
+  port, and invite links switch to your public address — players anywhere just
+  open a link, with nothing to install. The mapping is removed when the app
+  closes. Without a flag nothing changes: the app stays on this machine.
+  When internet access can't work, the app says which of the causes it is —
+  a shared provider address (CGNAT), UPnP switched off, or a router that
+  refused — because each needs a different fix, and the local network keeps
+  working meanwhile. Shown both in the launcher and under Project settings →
+  Players.
+- **Optional HTTPS.** Point `CAMPAIGN_SSL_CERTFILE` and `CAMPAIGN_SSL_KEYFILE`
+  at a certificate and its key and everything, invite links included, moves to
+  https. Off by default; half a pair is refused at startup rather than serving
+  plain HTTP while looking secure.
+- **One process, one port.** The app and its API now share port 8000 — one
+  firewall rule, one port to forward, and no CORS. The launcher builds the
+  interface at startup instead of running a second dev server.
 - **Updates ask before they happen.** When a git-cloned copy finds a newer
   version on start, the launcher shows what version it is and the changelog for
   it, then offers *update now*, *later*, or *skip this version* — and remembers
@@ -143,6 +155,10 @@ before upgrading.
   URLs are unchanged; there is nothing to migrate. If you run behind a reverse
   proxy, set `CAMPAIGN_TRUST_LOOPBACK=false` and put real authentication in
   front — loopback trust assumes the peer address is the real client.
+- **The app now lives on port 8000 only.** Port 5173 is no longer used by the
+  launcher, so a firewall rule for it can be removed. Open `http://localhost:8000`
+  and update any bookmark. Running the frontend dev server by hand still works
+  for development and still uses 5173.
 
 ## [0.2.0] — 2026-07-22
 
