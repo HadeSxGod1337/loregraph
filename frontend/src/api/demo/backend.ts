@@ -114,6 +114,22 @@ interface Route {
 // Ordered: more specific patterns first so e.g. /entities/positions beats
 // /entities/:id. First match wins.
 const routes: Route[] = [
+  // --- updates (no launcher exists in the demo, so nothing to check) ---
+  {
+    method: "GET",
+    pattern: "/api/updates",
+    handler: () => ({
+      current_version: "demo",
+      git_available: false,
+      worktree_dirty: false,
+      latest_version: null,
+      update_available: false,
+      changelog: null,
+      checked_at: null,
+      preferences: { mode: "ask", skipped_versions: [] },
+    }),
+  },
+
   // --- projects ---
   { method: "GET", pattern: "/api/projects", handler: () => db.projects.map(projectWithCounts) },
   {

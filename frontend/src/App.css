@@ -335,6 +335,24 @@
   color: var(--accent);
 }
 
+/* A small dot the moment an update is available, so the collapsed sidebar
+   still surfaces it without opening the popover. */
+.sidebar-prefs-badge {
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.sidebar.collapsed .sidebar-prefs-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  margin-left: 0;
+}
+
 .sidebar-collapse-btn {
   margin-top: 2px;
 }
@@ -396,6 +414,76 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 7px;
+}
+
+/* Updates block sits below the appearance controls, divided from them. */
+.sidebar-pref-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-pref-section h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+
+.updates-version {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.updates-note {
+  margin: 6px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.updates-available {
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: var(--radius-control);
+  background: var(--accent-soft);
+  font-size: 12px;
+}
+
+.updates-available strong {
+  color: var(--accent);
+}
+
+.updates-changelog {
+  margin: 8px 0;
+}
+
+.updates-changelog summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.updates-changelog .markdown-view {
+  margin-top: 6px;
+  font-size: 12px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.updates-skip-btn,
+.updates-link-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.updates-skip-btn {
+  margin-top: 4px;
 }
 
 .theme-mode-toggle {

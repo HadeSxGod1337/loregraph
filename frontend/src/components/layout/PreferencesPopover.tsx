@@ -2,10 +2,12 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useDismiss } from "../../hooks/useDismiss";
+import { useUpdateStatus } from "../../hooks/useUpdates";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "../../i18n";
 import { PRESETS, type ThemeMode } from "../../theme/presets";
 import { useTheme } from "../../theme/ThemeContext";
 import { Icon } from "../ui/Icon";
+import { UpdatesSection } from "./UpdatesSection";
 
 const MODES: ThemeMode[] = ["light", "dark", "system"];
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = { en: "EN", ru: "RU" };
@@ -18,6 +20,8 @@ export function PreferencesPopover({ collapsed }: { collapsed: boolean }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   useDismiss(open, rootRef, () => setOpen(false));
+  const { data: updateStatus } = useUpdateStatus();
+  const updateAvailable = updateStatus?.update_available ?? false;
 
   const currentLanguage = (i18n.resolvedLanguage ?? "en") as SupportedLanguage;
 
@@ -33,6 +37,7 @@ export function PreferencesPopover({ collapsed }: { collapsed: boolean }) {
       >
         <Icon name="appearance" size={16} />
         {!collapsed && <span>{t("sidebar.appearance")}</span>}
+        {updateAvailable && <span className="sidebar-prefs-badge" aria-hidden />}
       </button>
 
       {open && (
@@ -90,6 +95,8 @@ export function PreferencesPopover({ collapsed }: { collapsed: boolean }) {
               ))}
             </div>
           </div>
+
+          <UpdatesSection />
         </div>
       )}
     </div>

@@ -359,3 +359,21 @@ export interface ProbeResult {
   info: Record<string, string>;
 }
 
+export type UpdateMode = "ask" | "auto" | "never";
+
+export interface UpdatePreferences {
+  mode: UpdateMode;
+  skipped_versions: string[];
+}
+
+export interface UpdateStatus {
+  current_version: string;
+  git_available: boolean;
+  worktree_dirty: boolean;
+  latest_version: string | null;
+  update_available: boolean;
+  changelog: string | null;
+  checked_at: string | null;
+  preferences: UpdatePreferences;
+}
+

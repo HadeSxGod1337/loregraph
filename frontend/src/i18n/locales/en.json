@@ -132,6 +132,25 @@
     "accent": "Accent",
     "language": "Language"
   },
+  "updates": {
+    "title": "Updates",
+    "currentVersion": "Version {{version}}",
+    "upToDate": "You're up to date.",
+    "available": "Version {{version}} is available",
+    "restartHint": "Close the app and run start.bat (or start.sh) again to update.",
+    "whatsNew": "What's new",
+    "dirty": "There are local changes in the project folder, so it can't update automatically. Deal with them (git status), then relaunch.",
+    "unavailable": "Update checks aren't available for this install (downloaded as an archive, not a git clone).",
+    "checkedAt": "Checked {{when}}",
+    "neverChecked": "Not checked yet — it runs when the app starts.",
+    "mode": "When an update is found",
+    "modeAsk": "Ask me",
+    "modeAuto": "Update automatically",
+    "modeNever": "Don't check",
+    "skip": "Skip version {{version}}",
+    "skipped": "Version {{version}} is skipped.",
+    "unskip": "Offer it again"
+  },
   "projects": {
     "title": "Projects",
     "importProject": "Import",
