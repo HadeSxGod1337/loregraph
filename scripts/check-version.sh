@@ -43,10 +43,26 @@ if [ "$lock_version" != "$version" ]; then
     status=1
 fi
 
+# package-lock.json records the project's own version twice, and npm only
+# rewrites it when something makes it resolve the tree — so bumping
+# package.json alone leaves it stale indefinitely (v0.3.0 shipped with a lock
+# still claiming 0.2.0). It breaks no build, which is exactly why nothing else
+# catches it.
+npm_lock_version="$(
+    sed -n '2,8s/.*"version": *"\([^"]*\)".*/\1/p' "$repo_root/frontend/package-lock.json" |
+        head -1
+)"
+
+if [ "$npm_lock_version" != "$version" ]; then
+    echo "frontend/package-lock.json says '$npm_lock_version', tag says '$version'" >&2
+    echo "  run: cd frontend && npm install --package-lock-only" >&2
+    status=1
+fi
+
 if [ "$status" -ne 0 ]; then
     echo "" >&2
     echo "Fix the versions, commit, then move the tag before it is pushed." >&2
     exit 1
 fi
 
-echo "Version $version is consistent across backend, frontend, uv.lock and tag."
+echo "Version $version is consistent across backend, frontend, both locks and tag."
