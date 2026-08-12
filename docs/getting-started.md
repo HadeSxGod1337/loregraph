@@ -159,6 +159,12 @@ CAMPAIGN_LLM_MODEL_GENERATION=gpt-5-codex
 start.bat -ConfigureAI
 ```
 
+На Linux и macOS:
+
+```bash
+./start.sh --configure-ai
+```
+
 Перед заменой `backend/.env` мастер автоматически создаст резервную копию с
 датой. Профили ChatGPT OAuth и Ollama Cloud получают доступные модели у
 провайдера и предлагают выбрать отдельную модель для чата, проверок и генерации.

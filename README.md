@@ -144,7 +144,7 @@ pair. See [docs/players.md](docs/players.md).
 
 Either script installs missing tools (`uv`, Node.js), pulls the latest updates
 from git, installs dependencies, lets you pick an LLM provider (Anthropic,
-OpenAI, or local Ollama) and embedding source on first run — or press Enter to
+OpenAI, ChatGPT OAuth, Ollama Cloud, or local Ollama) and embedding source on first run — or press Enter to
 skip and configure the AI assistant later — then builds the interface, starts
 the server on port 8000 and opens
 the app in your browser. Close the console window (or Ctrl+C on macOS/Linux)
@@ -300,7 +300,7 @@ MCP-сервер (`loregraph-mcp`) для внешних MCP-клиентов. �
 
 Скрипт ставит недостающие инструменты (`uv`, Node.js), подтягивает обновления из
 git, устанавливает зависимости, при первом запуске предлагает выбрать LLM-провайдера
-(Anthropic, OpenAI или локальный Ollama) и источник эмбеддингов — или Enter, чтобы
+(Anthropic, OpenAI, ChatGPT OAuth, Ollama Cloud или локальный Ollama) и источник эмбеддингов — или Enter, чтобы
 пропустить и настроить ассистента позже — затем собирает интерфейс, поднимает
 сервер на порту 8000 и открывает
 приложение в браузере. Закройте окно консоли (или Ctrl+C на macOS/Linux), чтобы
