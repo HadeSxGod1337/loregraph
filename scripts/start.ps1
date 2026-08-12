@@ -350,6 +350,38 @@ if (-not $SkipUpdate -and $hasGit) {
 
 # --- 2. Tools: uv and Node.js ------------------------------------------------
 
+# Say what this is about to download, and where, BEFORE downloading it. The
+# install is roughly a gigabyte and only part of it lands in the project folder
+# — the rest goes into per-user caches the person running this has no reason to
+# expect. Finding that out afterwards, from the free-space counter, is how you
+# get someone asking where their disk went.
+$FirstInstall = -not (Test-Path (Join-Path $Backend ".venv")) -or
+                -not (Test-Path (Join-Path $Frontend "node_modules"))
+if ($FirstInstall) {
+    Write-Step "Первая установка: что будет скачано"
+    Write-Host "    В папку проекта (удаляется вместе с ней):" -ForegroundColor Gray
+    Write-Host "         ~490 МБ  зависимости бэкенда (backend\.venv)" -ForegroundColor DarkGray
+    Write-Host "         ~140 МБ  зависимости фронтенда (frontend\node_modules)" -ForegroundColor DarkGray
+    Write-Host "         ~240 МБ  модель для поиска по лору (backend\data\models)" -ForegroundColor DarkGray
+    Write-Host "    Вне папки проекта, общее для всех проектов на этой машине:" -ForegroundColor Gray
+    Write-Host "                  кэши uv и npm (%LOCALAPPDATA%)" -ForegroundColor DarkGray
+    if (-not (Test-Command "uv")) {
+        Write-Host "                  uv (%USERPROFILE%\.local\bin)" -ForegroundColor DarkGray
+    }
+    if (-not (Test-Command "npm")) {
+        Write-Host "                  Node.js LTS (через winget, в Program Files)" -ForegroundColor DarkGray
+    }
+    Write-Host "    Итого около 1 ГБ. Удалить всё это потом: uninstall.bat" -ForegroundColor Gray
+    # Enter continues: double-clicking start.bat has always been the unattended
+    # path, and this is a notice, not a gate. Saying no exits cleanly.
+    $answer = Read-Host "    Продолжить? [Д/н]"
+    if (-not [string]::IsNullOrWhiteSpace($answer) -and $answer -notmatch '^(д|y)') {
+        Write-Host ""
+        Write-Ok "Установка отменена, ничего не скачано."
+        exit 0
+    }
+}
+
 Write-Step "Проверяю инструменты..."
 
 if (-not (Test-Command "uv")) {

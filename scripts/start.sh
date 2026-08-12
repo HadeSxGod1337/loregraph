@@ -260,6 +260,36 @@ fi
 
 # --- 2. Tools: uv and Node.js ------------------------------------------------
 
+# Say what this is about to download, and where, BEFORE downloading it. The
+# install is roughly a gigabyte and only part of it lands in the project folder
+# — the rest goes into per-user caches the person running this has no reason to
+# expect. Finding that out afterwards, from the free-space counter, is how you
+# get someone asking where their disk went.
+if [ ! -d "$BACKEND/.venv" ] || [ ! -d "$FRONTEND/node_modules" ]; then
+    step "Первая установка: что будет скачано"
+    printf '    В папку проекта (удаляется вместе с ней):\n'
+    printf '\033[90m         ~490 МБ  зависимости бэкенда (backend/.venv)\033[0m\n'
+    printf '\033[90m         ~140 МБ  зависимости фронтенда (frontend/node_modules)\033[0m\n'
+    printf '\033[90m         ~240 МБ  модель для поиска по лору (backend/data/models)\033[0m\n'
+    printf '    Вне папки проекта, общее для всех проектов на этой машине:\n'
+    printf '\033[90m                  кэши uv и npm (~/.cache, ~/.npm)\033[0m\n'
+    command -v uv >/dev/null 2>&1 || printf '\033[90m                  uv (~/.local/bin)\033[0m\n'
+    command -v npm >/dev/null 2>&1 || printf '\033[90m                  Node.js\033[0m\n'
+    printf '    Итого около 1 ГБ. Удалить всё это потом: bash uninstall.sh\n'
+    # Enter continues: this is a notice, not a gate. Saying no exits cleanly.
+    # No /dev/tty here — when there is no terminal (CI, a pipe) read fails and
+    # the install just proceeds, which is the same unattended behaviour as before.
+    printf '    Продолжить? [Д/н] '
+    if read -r answer; then
+        case "$answer" in
+            ""|[дДyY]*) ;;
+            *) echo; ok "Установка отменена, ничего не скачано."; exit 0 ;;
+        esac
+    else
+        echo
+    fi
+fi
+
 step "Проверяю инструменты..."
 
 if ! command -v uv >/dev/null 2>&1; then
