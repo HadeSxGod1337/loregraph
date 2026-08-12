@@ -17,6 +17,55 @@ before upgrading.
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-08-12
+
+Installing took about a gigabyte and never said so, and a quarter of that went
+somewhere nobody would think to look. This release makes the footprint visible
+before it happens, puts the stray part back where it belongs, and gives you a
+way to take it all off again.
+
+### Added
+
+- **An uninstaller.** `uninstall.bat` on Windows, `bash uninstall.sh` on
+  macOS/Linux. It leads with a report — what is where, with real sizes
+  measured on your machine — and only then offers to remove it, one piece at a
+  time. Your campaign data is asked about separately and defaults to *no*,
+  because it is the one thing here no download can bring back. Tools shared
+  with your other projects (uv, Node.js, their package caches) are never
+  deleted for you; they are listed with the commands to remove them yourself.
+  `--report-only` shows the report and touches nothing.
+- **The launcher says what it is about to download.** On a first install it
+  lists the sizes and destinations — including the parts that land outside the
+  project folder — and waits for you to agree. Pressing Enter continues, so
+  double-clicking `start.bat` still works unattended.
+- **A "disk space, and how to remove it" section in the README**, in both
+  languages, with the same table.
+
+### Fixed
+
+- **Loregraph starts on Apple Silicon.** On an M-series Mac the app died during
+  startup with "the greenlet library is required to use this function".
+  `greenlet` reached us only as a transitive dependency of SQLAlchemy, whose
+  own dependency marker lists the ARM machine as `aarch64` — what Linux
+  reports — while macOS reports `arm64`, so it was never installed. We now ask
+  for `sqlalchemy[asyncio]`, which requires `greenlet` on every platform.
+  Thanks to @VatariShin for the report ([#1]).
+- **The search model no longer hides in the system temp folder.** The local
+  embedding model (~240 MB, downloaded on first use) was cached wherever
+  fastembed defaults to, which on Windows is `%TEMP%`. That is wrong twice
+  over: you cannot find it, and Disk Cleanup deletes it — after which the app
+  silently downloads the same quarter of a gigabyte again. It now lives in
+  `backend/data/models`, next to the rest of the app's data, so deleting the
+  project folder really does delete the app.
+
+### Migration
+
+- The model moves on its own: nothing is copied, it is simply downloaded once
+  more into the new location on first use. The old copy in your system temp
+  folder is now orphaned — **the uninstaller lists it** (as "модель, старое
+  расположение") so you can reclaim the ~240 MB, or delete
+  `%TEMP%\fastembed_cache` by hand. Nothing else on disk changes.
+
 ## [0.3.0] — 2026-08-12
 
 A campaign is more than a graph of names. This release gives entities a
@@ -276,7 +325,9 @@ First tagged release. Everything below is the state of the app as of this tag.
 
 None — this is the first release.
 
-[Unreleased]: https://github.com/HadeSxGod1337/loregraph/compare/v0.3.0...HEAD
+[#1]: https://github.com/HadeSxGod1337/loregraph/issues/1
+[Unreleased]: https://github.com/HadeSxGod1337/loregraph/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.3.1
 [0.3.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.3.0
 [0.2.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.2.0
 [0.1.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.1.0
