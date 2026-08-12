@@ -6,7 +6,8 @@
 // import.meta.env.VITE_DEMO is set, and the dynamic import is tree-shaken out
 // otherwise.
 import type { AgentChatMessage, AgentSessionDetail } from "../agent";
-import type { Edge, Entity, Project } from "../types";
+import type { Edge, Entity, EntityTemplate, Project, SheetPreset } from "../types";
+import builtins from "./builtins.json";
 import { buildSeed } from "./seed";
 
 export interface DemoDb {
@@ -15,15 +16,29 @@ export interface DemoDb {
   edges: Edge[];
   /** Full detail objects (messages included); the list endpoint strips them. */
   sessions: AgentSessionDetail[];
+  /** Built-ins first (read-only, is_builtin), then whatever the visitor
+   * designs — the same two-source list the real service merges. */
+  templates: EntityTemplate[];
+  sheetPresets: SheetPreset[];
 }
 
 const seed = buildSeed();
+
+// Generated from the Python built-ins by backend/scripts/dump_builtin_templates.py
+// so the demo renders the very sheet an install ships with, rather than a
+// hand-maintained lookalike that drifts.
+const builtinData = builtins as {
+  templates: EntityTemplate[];
+  sheet_presets: SheetPreset[];
+};
 
 export const db: DemoDb = {
   projects: seed.projects,
   entities: seed.entities,
   edges: seed.edges,
   sessions: [],
+  templates: [...builtinData.templates],
+  sheetPresets: [...builtinData.sheet_presets],
 };
 
 let counter = 0;

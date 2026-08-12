@@ -2,10 +2,12 @@
 expression language, not arbitrary Python `eval` (injection risk, unbounded
 runtime). This module only *validates*: it checks syntax and extracts the
 field keys a formula references. Evaluating a formula against live entity
-values is a frontend concern (components/sheet/widgets/formula.ts, kept in
-lockstep with this grammar by a shared example table in the two test suites)
-— the backend has no entity field values to compute against at template-save
-time, only field_defs to validate references against.
+values is a frontend concern (components/sheet/widgets/formula.ts, which
+re-implements this grammar) — the backend has no entity field values to
+compute against at template-save time, only field_defs to validate references
+against. The two must be changed together: this module's tests cover the
+grammar, the evaluator has none of its own, so a token added here and missed
+there surfaces only as a sheet showing 0.
 
 Grammar (EBNF)::
 

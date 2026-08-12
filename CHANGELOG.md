@@ -17,7 +17,54 @@ before upgrading.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-08-12
+
+A campaign is more than a graph of names. This release gives entities a
+**sheet** — a character sheet you design yourself, fill in and print — and
+gives your **players** a way in: a link that shows them exactly the cards you
+chose to reveal, on your machine, over the Wi-Fi, or over the internet.
+
 ### Added
+
+- **Entity templates and character sheets.** An entity can now be bound to a
+  template: a set of fields plus a layout for them. One layout renders three
+  ways — a compact sheet in the graph drawer, a full one in the editor, and a
+  print version through your browser's own print dialog — so a character is
+  readable at the table and on paper without maintaining it twice. Four
+  built-in templates ship (Character, NPC, Location, Faction); the Character
+  one is a full D&D 5e sheet whose saves, skills and passive scores are
+  computed, not typed.
+
+  A template stays a **preset, never a schema**: fields it creates are yours
+  to edit, add to and delete afterwards, and a field the layout does not
+  mention is shown under "Other fields" rather than hidden — a sheet can never
+  swallow data. An entity with no template keeps the plain field list it
+  always had.
+
+- **A designer for those templates**, under **Project settings → Templates**.
+  Build a sheet out of regions (a flat band, side-by-side columns, or tabs),
+  sections and blocks, by dragging; a built-in can be duplicated and rebuilt
+  for your own system. Ten widgets draw the same stored value different ways —
+  a number can be a plain input, an ability-score box with its modifier, a row
+  of rating dots, or a current/max tracker — because how a value is *drawn* is
+  a property of your system, not of the store. The modifier next to a stat
+  carries its own formula (D&D halves the score; a system with no such notion
+  sets it to nothing), and the whole sheet is keyboard-navigable, tabs and
+  rating dots included.
+
+- **Computed values.** A block can show a value derived from other fields —
+  an ability modifier, a skill bonus that accounts for proficiency, a carrying
+  capacity — written in a small expression language of its own, with no `eval`
+  and no reach beyond the current entity's fields. Proficiency toggles sit
+  right in the row, so ticking "Stealth" recomputes the bonus in place.
+  Whether the result carries a leading "+" is per block: "+3" says "add this
+  to a roll", which a saving throw means and a passive score does not.
+  A bad formula is refused when the template is saved, with the reason shown
+  in the designer, rather than surfacing later as a wrong number on a sheet.
+
+- **Sheet presets.** A section you built — an ability with its skills, a
+  resource tracker, a checklist — can be saved and dropped whole into another
+  template. Three ship built in.
 
 - **Limited player access.** You can now let your players see the world you
   choose to show them. Reveal a card (one click from the board, or the "Player
@@ -64,14 +111,11 @@ before upgrading.
   GFM tables and `- [x]` items, and `==highlighted==` text keeps its
   highlight. Text colour, font and alignment are presentation-only and are
   dropped on Markdown export — the text itself always survives.
-- **The modifier next to a stat is no longer hard-wired to D&D.** A
-  stat-and-modifier block now carries its own formula (over `value`, its own
-  score, plus any other field on the template), or none at all for systems
-  that have no such notion. Left unset it still uses the 5e rule, so nothing
-  on an existing sheet moves.
-- **Computed values choose whether to show a sign.** "+3" says "add this to a
-  roll" — right for a saving throw, wrong for a passive score. Per block, in
-  the designer.
+- **A live demo in the browser**, at
+  [hadesxgod1337.github.io/loregraph](https://hadesxgod1337.github.io/loregraph/)
+  — a sample campaign with its graph, its sheets and a scripted assistant,
+  running entirely in your browser with no backend, no install and no API key.
+  Nothing you do there leaves the tab, and a reload restores the world.
 - **Import a whole party's character sheets in one go.** "Импорт листов
   персонажей" now sits on the Entities page, where the party is, instead of
   behind a connection you first had to create in project settings — the
@@ -110,31 +154,6 @@ before upgrading.
   stale HP can't read as current.
 - **The entity list refreshes after an import.** It kept showing the party as
   it was before.
-
-- **A stray click no longer throws away a template you were designing.** The
-  designer closed on any click that landed on the backdrop, and on Escape,
-  with no warning and no way back. Both now ask first. The sheet modal does
-  the same while you are filling one in.
-- **A refused template save says why.** The designer covers the settings page
-  behind it, so a 422 from the server was invisible — the button simply
-  appeared to do nothing. The reason now shows inside the designer, and the
-  two mistakes the server cannot describe usefully (a blank field key, two
-  fields sharing one) are caught before saving, with the offending chip
-  marked in the field palette.
-- **The field list under a block only offers fields that block can draw.**
-  Binding a stat box to a text field was possible right up until the save
-  failed. An unbound block also showed the first field as though it were
-  selected.
-- **Fields the template declares but an entity never had can be filled in.**
-  A template that gained a field left every older entity with a permanently
-  read-only slot for it, and no plain field editor to fall back on (a bound
-  template hides it). Typing into the slot now creates the field.
-- **A tracker's maximum is editable.** `HP / max HP` counted the max as
-  placed, so it never appeared under "Прочие поля" either — there was no
-  screen anywhere that could change it.
-- **Rating dots and sheet tabs work from the keyboard.** Dots were `<span>`s
-  with a click handler and no tab stop; the tab bar had no arrow-key
-  navigation and no link between a tab and its panel.
 - **Toolbar buttons show what is actually active.** Bold, lists, headings and
   the rest never lit up while typing and never turned off again — the toolbar
   was frozen at whatever the document looked like when the editor opened, so
@@ -143,14 +162,18 @@ before upgrading.
 
 ### Migration
 
-- The database gains two tables (players, player notes) and two entity columns,
-  added automatically on first start — nothing to do. **Every entity starts
-  hidden**: players see nothing until you reveal it.
-- Project export now carries each entity's reveal state, player text and field
-  whitelist. Files exported before this version import cleanly, as all-hidden.
-  Players and their notes are **not** part of an export — invite tokens and
-  personal notes never travel in a file; re-invite players after importing a
-  project elsewhere.
+- The database gains four tables (templates, sheet presets, players, player
+  notes) and three entity columns, added automatically on first start —
+  nothing to do. **Every entity starts hidden**: players see nothing until you
+  reveal it. Nothing you already have is bound to a template; existing
+  entities keep their plain field list until you pick one.
+- Project export now carries your templates and sheet presets, each entity's
+  template binding, and its reveal state, player text and field whitelist.
+  Files exported before this version import cleanly (no templates, all
+  hidden), and a file written now still opens in 0.2.0 — the older build just
+  ignores what it does not know. Players and their notes are **not** part of
+  an export — invite tokens and personal notes never travel in a file;
+  re-invite players after importing a project elsewhere.
 - Serving attachments moved from a static mount to an access-checked route.
   URLs are unchanged; there is nothing to migrate. If you run behind a reverse
   proxy, set `CAMPAIGN_TRUST_LOOPBACK=false` and put real authentication in
@@ -253,6 +276,7 @@ First tagged release. Everything below is the state of the app as of this tag.
 
 None — this is the first release.
 
-[Unreleased]: https://github.com/HadeSxGod1337/loregraph/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/HadeSxGod1337/loregraph/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.3.0
 [0.2.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.2.0
 [0.1.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.1.0

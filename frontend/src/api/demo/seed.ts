@@ -1,7 +1,9 @@
 // The demo campaign: a small dark-fantasy town ("Ravenhollow") with a web of
-// NPCs, factions, locations and items, plus one sheet template so the template
-// engine has something to render. Kept in English so the public demo reads for
-// the widest audience; the UI chrome still switches language via i18n.
+// NPCs, factions, locations and items. The party member and the NPCs are bound
+// to the built-in sheet templates (store.ts loads those from builtins.json), so
+// the demo opens on real sheets rather than on field lists. Kept in English so
+// the public demo reads for the widest audience; the UI chrome still switches
+// language via i18n.
 import type { Edge, Entity, EntityField, ProseMirrorDoc } from "../types";
 
 const PROJECT_ID = "demo";
@@ -44,6 +46,53 @@ const rich = (key: string, text: string): EntityField => ({
   show_on_card: false,
 });
 
+const flag = (key: string, value: boolean): EntityField => ({
+  key,
+  field_type: "boolean",
+  value,
+  show_on_card: false,
+});
+
+/** One player character, bound to the built-in Character template, so the demo
+ * opens on a real sheet — ability boxes, formula-driven saves and skills, the
+ * HP tracker — instead of a field list. Keys match builtin_character's
+ * field_defs (backend/src/loregraph/templates/builtins.py); the ones left out
+ * render as empty slots on the sheet, which is the point: a template declares
+ * more than any one character has filled in. */
+function partyMember(): EntityField[] {
+  return [
+    txt("player_name", "Demo player"),
+    txt("class", "Ranger", true),
+    txt("subclass", "Hollow Strider"),
+    txt("ancestry", "Half-elf", true),
+    txt("background", "Outlander"),
+    txt("alignment", "Chaotic good"),
+    num("level", 5),
+    num("proficiency", 3),
+    num("ac", 16),
+    num("speed", 30),
+    num("hp", 38),
+    num("max_hp", 44),
+    txt("hit_die", "d10"),
+    num("str", 12),
+    num("dex", 18),
+    num("con", 14),
+    num("int", 10),
+    num("wis", 15),
+    num("cha", 11),
+    flag("prof_save_str", true),
+    flag("prof_save_dex", true),
+    flag("prof_stealth", true),
+    flag("prof_survival", true),
+    flag("prof_perception", true),
+    flag("prof_nature", true),
+    rich(
+      "backstory",
+      "Grew up on the wrong side of the Sunken Chapel and came back anyway. Owes Lysa Crowe a favour she has not called in yet.",
+    ),
+  ];
+}
+
 /** The six ability scores + AC/HP an NPC statblock needs; MAX_HP mirrors HP so
  * the tracker widget has a denominator. */
 function stats(
@@ -75,6 +124,7 @@ function ent(
   title: string,
   fields: EntityField[],
   pos: [number, number],
+  templateId: string | null = null,
 ): Entity {
   return {
     id,
@@ -82,7 +132,7 @@ function ent(
     type,
     title,
     fields,
-    template_id: null,
+    template_id: templateId,
     icon: null,
     pos_x: pos[0],
     pos_y: pos[1],
@@ -157,43 +207,51 @@ function entities(): Entity[] {
       rich("agenda", "A shadow network of smugglers and cultists that answers to no one in daylight."),
     ], [400, 700]),
 
-    // NPCs
+    // The party. One character, bound to the built-in Character sheet.
+    ent("pc_talia", "party_member", "Talia Fenn", partyMember(), [200, 540],
+      "builtin_character"),
+
+    // NPCs — bound to the built-in NPC template, whose field keys these match.
     ent("npc_mira", "npc", "Mira Coalhart", [
       txt("role", "Master Smith", true),
-      txt("disposition_note", "Loyal to the Guild"),
-      tag("disposition", ["ally", "guild"], true),
+      txt("disposition", "Loyal to the Guild"),
+      tag("stance", ["ally", "guild"], true),
       ...stats(15, 11, 16, 12, 13, 10, 14, 34),
       rich("notes", "Blunt, honest, and the best smith in the Marches. Knows the ruins hold star-iron."),
       tag("tags", ["craftsman"], false),
-    ], [180, 300]),
+    ], [180, 300], "builtin_npc"),
     ent("npc_kael", "npc", "Kael Vane", [
       txt("role", "Spy", true),
-      tag("disposition", ["neutral", "shadow"], true),
+      txt("disposition", "Sells to the highest bidder"),
+      tag("stance", ["neutral", "shadow"], true),
       ...stats(10, 17, 12, 14, 13, 15, 15, 27),
       rich("notes", "Sells information to whoever pays best. Secretly a Hollow Court agent."),
       tag("tags", ["rogue"], false),
-    ], [400, 440]),
+    ], [400, 440], "builtin_npc"),
     ent("npc_surot", "npc", "Magister Surot", [
       txt("role", "Archmage", true),
-      tag("disposition", ["neutral", "arcane"], true),
+      txt("disposition", "Correct, and cold about it"),
+      tag("stance", ["neutral", "arcane"], true),
       ...stats(9, 12, 11, 18, 15, 13, 13, 40),
       rich("notes", "Leads the Concord. Believes the Sunken Chapel is a seal, not a mine."),
       tag("tags", ["mage", "leader"], false),
-    ], [640, 60]),
+    ], [640, 60], "builtin_npc"),
     ent("npc_bran", "npc", "Captain Bran Holt", [
       txt("role", "Watch Captain", true),
-      tag("disposition", ["ally", "watch"], true),
+      txt("disposition", "Helpful, within the law"),
+      tag("stance", ["ally", "watch"], true),
       ...stats(16, 12, 15, 11, 13, 14, 17, 45),
       rich("notes", "Old soldier, tired eyes. Will help the party if they respect the law."),
       tag("tags", ["soldier", "leader"], false),
-    ], [780, 300]),
+    ], [780, 300], "builtin_npc"),
     ent("npc_lysa", "npc", "Lysa Crowe", [
       txt("role", "Tavern Keeper", true),
-      tag("disposition", ["ally", "broker"], true),
+      txt("disposition", "Friendly, for a price"),
+      tag("stance", ["ally", "broker"], true),
       ...stats(10, 14, 12, 13, 16, 16, 12, 22),
       rich("notes", "Hears everything, forgets nothing. The party's best source of rumours."),
       tag("tags", ["broker"], false),
-    ], [620, 540]),
+    ], [620, 540], "builtin_npc"),
 
     // Items
     ent("item_amulet", "item", "The Hollow Amulet", [

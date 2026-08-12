@@ -14,6 +14,7 @@ from loregraph.schemas.entity import (
     EntityUpdate,
     FieldType,
 )
+from loregraph.schemas.entity_template import EntityTemplateCreate
 from loregraph.schemas.project import ProjectCreate, ProjectOut
 from loregraph.schemas.project_transfer import (
     FORMAT_VERSION,
@@ -21,12 +22,17 @@ from loregraph.schemas.project_transfer import (
     ProjectExportAttachment,
     ProjectExportEdge,
     ProjectExportEntity,
+    ProjectExportPreset,
+    ProjectExportTemplate,
 )
+from loregraph.schemas.sheet_preset import SheetPresetCreate
 from loregraph.storage.protocols import (
     AttachmentStore,
     EdgeStore,
     EntityStore,
+    EntityTemplateStore,
     ProjectStore,
+    SheetPresetStore,
 )
 
 
@@ -35,15 +41,23 @@ async def export_project(
     entity_store: EntityStore,
     edge_store: EdgeStore,
     attachment_store: AttachmentStore,
+    template_store: EntityTemplateStore,
+    preset_store: SheetPresetStore,
     attachments_dir: Path,
     project_id: str,
 ) -> ProjectExport:
-    """Serialize a project — entities, edges, and every attachment/icon they
-    reference (base64-embedded, see project_transfer schema docstring for the
-    size/simplicity tradeoff) — into a single portable, re-importable file."""
+    """Serialize a project — entities, edges, the project's own sheet templates
+    and presets, and every attachment/icon they reference (base64-embedded, see
+    project_transfer schema docstring for the size/simplicity tradeoff) — into a
+    single portable, re-importable file.
+
+    The template stores are asked only for `list_for_project`, so built-ins
+    (which live in code, not in a project) are excluded by construction."""
     project = await project_store.get(project_id)
     entities = await entity_store.list_entities(project_id)
     edges = await edge_store.list_all(project_id)
+    templates = await template_store.list_for_project(project_id)
+    presets = await preset_store.list_for_project(project_id)
 
     export_entities: list[ProjectExportEntity] = []
     export_attachments: list[ProjectExportAttachment] = []
@@ -94,6 +108,13 @@ async def export_project(
         entities=export_entities,
         edges=export_edges,
         attachments=export_attachments,
+        templates=[
+            ProjectExportTemplate(**template.model_dump(mode="json"))
+            for template in templates
+        ],
+        sheet_presets=[
+            ProjectExportPreset(**preset.model_dump(mode="json")) for preset in presets
+        ],
     )
 
 
@@ -102,6 +123,8 @@ async def import_project(
     entity_store: EntityStore,
     edge_store: EdgeStore,
     attachment_store: AttachmentStore,
+    template_store: EntityTemplateStore,
+    preset_store: SheetPresetStore,
     attachments_dir: Path,
     data: ProjectExport,
 ) -> ProjectOut:
@@ -116,6 +139,24 @@ async def import_project(
         ProjectCreate(name=data.name, description=data.description)
     )
 
+    # Templates first: an entity's template_id has to be remapped as the entity
+    # is created, and a project template gets a fresh id here like everything
+    # else in the file. An id absent from the map is passed through untouched —
+    # that is how a built-in id (fixed in code, the same in every install)
+    # keeps working, and it leaves an unknown id degrading exactly as before:
+    # the entity falls back to a plain field list.
+    template_id_map: dict[str, str] = {}
+    for template in data.templates:
+        created_template = await template_store.create(
+            project.id, EntityTemplateCreate(**template.model_dump(mode="json"))
+        )
+        template_id_map[template.id] = created_template.id
+
+    for preset in data.sheet_presets:
+        await preset_store.create(
+            project.id, SheetPresetCreate(**preset.model_dump(mode="json"))
+        )
+
     entity_id_map: dict[str, str] = {}
     for entity in data.entities:
         created_entity = await entity_store.create(
@@ -125,7 +166,7 @@ async def import_project(
                 fields=[
                     EntityFieldIn(**f.model_dump(mode="json")) for f in entity.fields
                 ],
-                template_id=entity.template_id,
+                template_id=_mapped_template_id(entity.template_id, template_id_map),
             ),
             project.id,
         )
@@ -190,7 +231,7 @@ async def import_project(
                 fields=_rewrite_fields(entity.fields, url_rewrites, entity_id_map),
                 # EntityUpdate replaces the whole row: omitting template_id
                 # here would silently clear the binding set at create time.
-                template_id=entity.template_id,
+                template_id=_mapped_template_id(entity.template_id, template_id_map),
             ),
         )
         if entity.icon_attachment_id is not None:
@@ -223,6 +264,17 @@ async def import_project(
             )
 
     return project
+
+
+def _mapped_template_id(
+    template_id: str | None, template_id_map: dict[str, str]
+) -> str | None:
+    """The imported entity's template binding. A project template exported in
+    the same file resolves to its freshly created id; anything else (a built-in
+    id, or a template the file never carried) is left as written."""
+    if template_id is None:
+        return None
+    return template_id_map.get(template_id, template_id)
 
 
 def _rewrite_rich_value(

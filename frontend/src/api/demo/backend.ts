@@ -22,6 +22,8 @@ import type {
   EntityCreate,
   EntityField,
   EntityPlayerViewUpdate,
+  EntityTemplate,
+  EntityTemplateCreate,
   EntityUpdate,
   Player,
   PlayerCreated,
@@ -29,6 +31,8 @@ import type {
   ProjectCreate,
   ProjectExport,
   ProjectUpdate,
+  SheetPreset,
+  SheetPresetCreate,
 } from "../types";
 import {
   db,
@@ -196,6 +200,57 @@ const routes: Route[] = [
     method: "GET",
     pattern: "/api/projects/:id/entities/:eid/player-notes",
     handler: () => [],
+  },
+
+  // --- templates and sheet presets ---
+  // Built-ins are real (generated from the Python ones), and anything the
+  // visitor designs is kept in memory for the session, so the designer, the
+  // sheet and printing all work exactly as they do in an install.
+  {
+    method: "GET",
+    pattern: "/api/projects/:id/templates",
+    handler: (m) => projectTemplates(m.id),
+  },
+  {
+    method: "POST",
+    pattern: "/api/projects/:id/templates",
+    handler: (m, body) => createTemplate(m.id, body as EntityTemplateCreate),
+  },
+  {
+    method: "POST",
+    pattern: "/api/projects/:id/templates/:tid/instantiate",
+    handler: (m, body) =>
+      instantiateTemplate(m.id, m.tid, (body as { title: string }).title),
+  },
+  {
+    method: "GET",
+    pattern: "/api/projects/:id/templates/:tid",
+    handler: (m) => requireTemplate(m.tid),
+  },
+  {
+    method: "PUT",
+    pattern: "/api/projects/:id/templates/:tid",
+    handler: (m, body) => updateTemplate(m.tid, body as EntityTemplateCreate),
+  },
+  {
+    method: "DELETE",
+    pattern: "/api/projects/:id/templates/:tid",
+    handler: (m) => deleteTemplate(m.tid),
+  },
+  {
+    method: "GET",
+    pattern: "/api/projects/:id/sheet-presets",
+    handler: (m) => projectPresets(m.id),
+  },
+  {
+    method: "POST",
+    pattern: "/api/projects/:id/sheet-presets",
+    handler: (m, body) => createPreset(m.id, body as SheetPresetCreate),
+  },
+  {
+    method: "DELETE",
+    pattern: "/api/projects/:id/sheet-presets/:pid",
+    handler: (m) => deletePreset(m.pid),
   },
 
   // The demo is a static page — nothing is hosted, nothing is reachable.
@@ -468,6 +523,131 @@ function createEntity(projectId: string, data: EntityCreate): Entity {
   };
   db.entities.push(entity);
   return entity;
+}
+
+// --- template handlers ----------------------------------------------------
+
+/** Built-ins carry no project_id (they belong to every project); the visitor's
+ * own are scoped like the real store scopes them. */
+function projectTemplates(projectId: string): EntityTemplate[] {
+  return db.templates.filter((t) => t.is_builtin || t.project_id === projectId);
+}
+
+function requireTemplate(id: string): EntityTemplate {
+  const template = db.templates.find((t) => t.id === id);
+  if (!template) throw new ApiError(404, `Template ${id} not found`, "not_found");
+  return template;
+}
+
+/** Built-ins are code in the real app, so editing or deleting one is a 409
+ * there — the demo answers the same way rather than letting the designer
+ * appear to save over a built-in. */
+function requireEditableTemplate(id: string): EntityTemplate {
+  const template = requireTemplate(id);
+  if (template.is_builtin) {
+    throw new ApiError(409, "Built-in templates are read-only", "conflict");
+  }
+  return template;
+}
+
+function createTemplate(
+  projectId: string,
+  data: EntityTemplateCreate,
+): EntityTemplate {
+  const template: EntityTemplate = {
+    ...data,
+    id: uid("tpl"),
+    project_id: projectId,
+    is_builtin: false,
+  };
+  db.templates.push(template);
+  return template;
+}
+
+function updateTemplate(id: string, data: EntityTemplateCreate): EntityTemplate {
+  const template = requireEditableTemplate(id);
+  Object.assign(template, data);
+  return template;
+}
+
+function deleteTemplate(id: string): null {
+  requireEditableTemplate(id);
+  db.templates = db.templates.filter((t) => t.id !== id);
+  return null;
+}
+
+/** Mirrors EMPTY_FIELD_DEFAULTS in schemas/entity_template.py: a field with no
+ * explicit default starts empty for its type, and an attachment with no default
+ * is simply not created (the demo has no uploads anyway). */
+function emptyValueFor(fieldType: EntityField["field_type"]): unknown {
+  switch (fieldType) {
+    case "text":
+      return "";
+    case "rich_text":
+      return { type: "doc", content: [{ type: "paragraph" }] };
+    case "number":
+      return 0;
+    case "boolean":
+      return false;
+    case "tag":
+      return [];
+    default:
+      return undefined;
+  }
+}
+
+function instantiateTemplate(
+  projectId: string,
+  templateId: string,
+  title: string,
+): Entity {
+  const template = requireTemplate(templateId);
+  const fields: EntityField[] = [];
+  for (const def of template.field_defs) {
+    const value = def.default_value ?? emptyValueFor(def.field_type);
+    if (value === undefined) continue;
+    fields.push({
+      key: def.key,
+      field_type: def.field_type,
+      // structuredClone so two characters made from one template never share
+      // a mutable default (the rich_text doc, the tag list).
+      value: structuredClone(value) as EntityField["value"],
+      show_on_card: def.show_on_card,
+    });
+  }
+  return createEntity(projectId, {
+    type: template.entity_type,
+    title,
+    fields,
+    template_id: template.id,
+  });
+}
+
+function projectPresets(projectId: string): SheetPreset[] {
+  return db.sheetPresets.filter(
+    (p) => p.is_builtin || p.project_id === projectId,
+  );
+}
+
+function createPreset(projectId: string, data: SheetPresetCreate): SheetPreset {
+  const preset: SheetPreset = {
+    ...data,
+    id: uid("preset"),
+    project_id: projectId,
+    is_builtin: false,
+  };
+  db.sheetPresets.push(preset);
+  return preset;
+}
+
+function deletePreset(id: string): null {
+  const preset = db.sheetPresets.find((p) => p.id === id);
+  if (!preset) throw new ApiError(404, `Preset ${id} not found`, "not_found");
+  if (preset.is_builtin) {
+    throw new ApiError(409, "Built-in presets are read-only", "conflict");
+  }
+  db.sheetPresets = db.sheetPresets.filter((p) => p.id !== id);
+  return null;
 }
 
 // Players live in a local array, not the shared store — they exist only to

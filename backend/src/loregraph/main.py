@@ -130,6 +130,8 @@ async def _seed_demo_project_if_empty(
             store_factories.entity(session),
             store_factories.edge(session),
             store_factories.attachment(session),
+            store_factories.entity_template(session),
+            store_factories.sheet_preset(session),
             attachments_dir,
             data,
         )

@@ -6,9 +6,11 @@ from loregraph.api.deps import (
     AttachmentStoreDep,
     EdgeStoreDep,
     EntityStoreDep,
+    EntityTemplateStoreDep,
     KnowledgeIndexDep,
     ProjectStoreDep,
     SettingsDep,
+    SheetPresetStoreDep,
     VectorIndexDep,
 )
 from loregraph.exceptions import ConfigurationError
@@ -96,6 +98,8 @@ async def export_project_route(
     entity_store: EntityStoreDep,
     edge_store: EdgeStoreDep,
     attachment_store: AttachmentStoreDep,
+    template_store: EntityTemplateStoreDep,
+    preset_store: SheetPresetStoreDep,
     settings: SettingsDep,
 ) -> ProjectExport:
     return await export_project(
@@ -103,6 +107,8 @@ async def export_project_route(
         entity_store,
         edge_store,
         attachment_store,
+        template_store,
+        preset_store,
         settings.attachments_dir,
         project_id,
     )
@@ -115,6 +121,8 @@ async def import_project_route(
     entity_store: EntityStoreDep,
     edge_store: EdgeStoreDep,
     attachment_store: AttachmentStoreDep,
+    template_store: EntityTemplateStoreDep,
+    preset_store: SheetPresetStoreDep,
     settings: SettingsDep,
     vector_index: VectorIndexDep,
 ) -> ProjectOut:
@@ -123,6 +131,8 @@ async def import_project_route(
         entity_store,
         edge_store,
         attachment_store,
+        template_store,
+        preset_store,
         settings.attachments_dir,
         data,
     )

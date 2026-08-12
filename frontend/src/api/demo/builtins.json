@@ -1,0 +1,2421 @@
+{
+ "templates": [
+  {
+   "name": "Персонаж",
+   "entity_type": "party_member",
+   "icon": null,
+   "field_defs": [
+    {
+     "key": "avatar_url",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Портрет (URL)",
+     "show_on_card": false
+    },
+    {
+     "key": "class",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Класс",
+     "show_on_card": true
+    },
+    {
+     "key": "subclass",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Архетип",
+     "show_on_card": false
+    },
+    {
+     "key": "ancestry",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Происхождение",
+     "show_on_card": true
+    },
+    {
+     "key": "background",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Предыстория",
+     "show_on_card": false
+    },
+    {
+     "key": "alignment",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Мировоззрение",
+     "show_on_card": false
+    },
+    {
+     "key": "level",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Уровень",
+     "show_on_card": true
+    },
+    {
+     "key": "experience",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Опыт",
+     "show_on_card": false
+    },
+    {
+     "key": "proficiency",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Бонус владения",
+     "show_on_card": false
+    },
+    {
+     "key": "ac",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Класс доспеха",
+     "show_on_card": false
+    },
+    {
+     "key": "speed",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Скорость",
+     "show_on_card": false
+    },
+    {
+     "key": "hp",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Текущие хиты",
+     "show_on_card": false
+    },
+    {
+     "key": "max_hp",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Макс. хиты",
+     "show_on_card": false
+    },
+    {
+     "key": "temp_hp",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Временные хиты",
+     "show_on_card": false
+    },
+    {
+     "key": "hit_die",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Кость хитов",
+     "show_on_card": false
+    },
+    {
+     "key": "hit_dice_current",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Осталось костей",
+     "show_on_card": false
+    },
+    {
+     "key": "exhaustion",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Истощение",
+     "show_on_card": false
+    },
+    {
+     "key": "inspiration",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Вдохновение",
+     "show_on_card": false
+    },
+    {
+     "key": "player_name",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Имя игрока",
+     "show_on_card": false
+    },
+    {
+     "key": "str",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Сила",
+     "show_on_card": false
+    },
+    {
+     "key": "dex",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Ловкость",
+     "show_on_card": false
+    },
+    {
+     "key": "con",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Телосложение",
+     "show_on_card": false
+    },
+    {
+     "key": "int",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Интеллект",
+     "show_on_card": false
+    },
+    {
+     "key": "wis",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Мудрость",
+     "show_on_card": false
+    },
+    {
+     "key": "cha",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Харизма",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_save_str",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Спасбросок: Сила (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_athletics",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Атлетика (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_save_dex",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Спасбросок: Ловкость (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_acrobatics",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Акробатика (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_sleight_of_hand",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Ловкость рук (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_stealth",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Скрытность (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_save_con",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Спасбросок: Телосложение (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_save_int",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Спасбросок: Интеллект (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_investigation",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Анализ (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_history",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "История (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_arcana",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Магия (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_nature",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Природа (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_religion",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Религия (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_save_wis",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Спасбросок: Мудрость (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_perception",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Восприятие (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_survival",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Выживание (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_medicine",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Медицина (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_insight",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Проницательность (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_animal_handling",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Уход за животными (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_save_cha",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Спасбросок: Харизма (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_performance",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Выступление (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_intimidation",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Запугивание (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_deception",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Обман (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_persuasion",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Убеждение (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "weapons",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Оружие",
+     "show_on_card": false
+    },
+    {
+     "key": "attacks",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Атаки и заклинания",
+     "show_on_card": false
+    },
+    {
+     "key": "spells",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Заклинания",
+     "show_on_card": false
+    },
+    {
+     "key": "spell_slots",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Ячейки заклинаний",
+     "show_on_card": false
+    },
+    {
+     "key": "attunements",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Настроенные предметы",
+     "show_on_card": false
+    },
+    {
+     "key": "caster_class",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Класс заклинателя",
+     "show_on_card": false
+    },
+    {
+     "key": "spell_ability",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Базовая характеристика",
+     "show_on_card": false
+    },
+    {
+     "key": "spell_save_dc",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Сложность спасброска",
+     "show_on_card": false
+    },
+    {
+     "key": "spell_attack",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Бонус атаки",
+     "show_on_card": false
+    },
+    {
+     "key": "equipment",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Снаряжение",
+     "show_on_card": false
+    },
+    {
+     "key": "treasures",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Сокровища",
+     "show_on_card": false
+    },
+    {
+     "key": "features",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Умения и способности",
+     "show_on_card": false
+    },
+    {
+     "key": "extra_features",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Дополнительные способности",
+     "show_on_card": false
+    },
+    {
+     "key": "other_proficiencies",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Прочие владения и языки",
+     "show_on_card": false
+    },
+    {
+     "key": "resources",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Ресурсы",
+     "show_on_card": false
+    },
+    {
+     "key": "coins_pp",
+     "field_type": "number",
+     "default_value": null,
+     "label": "ПМ",
+     "show_on_card": false
+    },
+    {
+     "key": "coins_gp",
+     "field_type": "number",
+     "default_value": null,
+     "label": "ЗМ",
+     "show_on_card": false
+    },
+    {
+     "key": "coins_ep",
+     "field_type": "number",
+     "default_value": null,
+     "label": "ЭМ",
+     "show_on_card": false
+    },
+    {
+     "key": "coins_sp",
+     "field_type": "number",
+     "default_value": null,
+     "label": "СМ",
+     "show_on_card": false
+    },
+    {
+     "key": "coins_cp",
+     "field_type": "number",
+     "default_value": null,
+     "label": "ММ",
+     "show_on_card": false
+    },
+    {
+     "key": "personality",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Черты характера",
+     "show_on_card": false
+    },
+    {
+     "key": "ideals",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Идеалы",
+     "show_on_card": false
+    },
+    {
+     "key": "bonds",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Привязанности",
+     "show_on_card": false
+    },
+    {
+     "key": "flaws",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Слабости",
+     "show_on_card": false
+    },
+    {
+     "key": "backstory",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Предыстория персонажа",
+     "show_on_card": false
+    },
+    {
+     "key": "allies",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Союзники и организации",
+     "show_on_card": false
+    },
+    {
+     "key": "quests",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Цели и задачи",
+     "show_on_card": false
+    },
+    {
+     "key": "notes",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Заметки",
+     "show_on_card": false
+    },
+    {
+     "key": "age",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Возраст",
+     "show_on_card": false
+    },
+    {
+     "key": "height",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Рост",
+     "show_on_card": false
+    },
+    {
+     "key": "weight",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Вес",
+     "show_on_card": false
+    },
+    {
+     "key": "eyes",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Глаза",
+     "show_on_card": false
+    },
+    {
+     "key": "skin",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Кожа",
+     "show_on_card": false
+    },
+    {
+     "key": "hair",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Волосы",
+     "show_on_card": false
+    },
+    {
+     "key": "character_sheet_url",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Ссылка на лист",
+     "show_on_card": false
+    }
+   ],
+   "layout": {
+    "regions": [
+     {
+      "id": null,
+      "name": "Шапка",
+      "kind": "band",
+      "blocks": [
+       {
+        "id": null,
+        "widget": "image",
+        "field_key": "avatar_url",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "level",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "ac",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "tracker",
+        "field_key": "hp",
+        "formula": null,
+        "label": "Хиты",
+        "colspan": 1,
+        "config": {
+         "max_field": "max_hp"
+        }
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "speed",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "proficiency",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       }
+      ],
+      "containers": []
+     },
+     {
+      "id": null,
+      "name": "Владения",
+      "kind": "band",
+      "blocks": [
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "class",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "subclass",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "ancestry",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "background",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "alignment",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "player_name",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "max_hp",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "experience",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       }
+      ],
+      "containers": []
+     },
+     {
+      "id": null,
+      "name": "Способности и навыки",
+      "kind": "columns",
+      "blocks": [],
+      "containers": [
+       {
+        "id": null,
+        "title": null,
+        "sections": [
+         {
+          "id": null,
+          "title": "Характеристики",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "stat_modifier",
+            "field_key": "str",
+            "formula": null,
+            "label": "Сила",
+            "colspan": 1,
+            "config": {
+             "mod_formula": "floor((value - 10) / 2)"
+            }
+           },
+           {
+            "id": null,
+            "widget": "stat_modifier",
+            "field_key": "dex",
+            "formula": null,
+            "label": "Ловкость",
+            "colspan": 1,
+            "config": {
+             "mod_formula": "floor((value - 10) / 2)"
+            }
+           },
+           {
+            "id": null,
+            "widget": "stat_modifier",
+            "field_key": "con",
+            "formula": null,
+            "label": "Телосложение",
+            "colspan": 1,
+            "config": {
+             "mod_formula": "floor((value - 10) / 2)"
+            }
+           },
+           {
+            "id": null,
+            "widget": "stat_modifier",
+            "field_key": "int",
+            "formula": null,
+            "label": "Интеллект",
+            "colspan": 1,
+            "config": {
+             "mod_formula": "floor((value - 10) / 2)"
+            }
+           },
+           {
+            "id": null,
+            "widget": "stat_modifier",
+            "field_key": "wis",
+            "formula": null,
+            "label": "Мудрость",
+            "colspan": 1,
+            "config": {
+             "mod_formula": "floor((value - 10) / 2)"
+            }
+           },
+           {
+            "id": null,
+            "widget": "stat_modifier",
+            "field_key": "cha",
+            "formula": null,
+            "label": "Харизма",
+            "colspan": 1,
+            "config": {
+             "mod_formula": "floor((value - 10) / 2)"
+            }
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Спасброски",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((str - 10) / 2) + (prof_save_str ? proficiency : 0)",
+            "label": "Сила",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_save_str"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((dex - 10) / 2) + (prof_save_dex ? proficiency : 0)",
+            "label": "Ловкость",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_save_dex"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((con - 10) / 2) + (prof_save_con ? proficiency : 0)",
+            "label": "Телосложение",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_save_con"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((int - 10) / 2) + (prof_save_int ? proficiency : 0)",
+            "label": "Интеллект",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_save_int"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((wis - 10) / 2) + (prof_save_wis ? proficiency : 0)",
+            "label": "Мудрость",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_save_wis"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((cha - 10) / 2) + (prof_save_cha ? proficiency : 0)",
+            "label": "Харизма",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_save_cha"
+             ],
+             "signed": true
+            }
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Пассивные значения",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "10 + floor((wis - 10) / 2) + (prof_perception ? proficiency : 0)",
+            "label": "Пассивная внимательность",
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": null,
+        "title": null,
+        "sections": [
+         {
+          "id": null,
+          "title": "Навыки",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((dex - 10) / 2) + (prof_acrobatics ? proficiency : 0)",
+            "label": "Акробатика (Лов)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_acrobatics"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((int - 10) / 2) + (prof_investigation ? proficiency : 0)",
+            "label": "Анализ (Инт)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_investigation"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((str - 10) / 2) + (prof_athletics ? proficiency : 0)",
+            "label": "Атлетика (Сил)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_athletics"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((wis - 10) / 2) + (prof_perception ? proficiency : 0)",
+            "label": "Восприятие (Муд)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_perception"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((wis - 10) / 2) + (prof_survival ? proficiency : 0)",
+            "label": "Выживание (Муд)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_survival"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((cha - 10) / 2) + (prof_performance ? proficiency : 0)",
+            "label": "Выступление (Хар)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_performance"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((cha - 10) / 2) + (prof_intimidation ? proficiency : 0)",
+            "label": "Запугивание (Хар)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_intimidation"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((int - 10) / 2) + (prof_history ? proficiency : 0)",
+            "label": "История (Инт)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_history"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((dex - 10) / 2) + (prof_sleight_of_hand ? proficiency : 0)",
+            "label": "Ловкость рук (Лов)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_sleight_of_hand"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((int - 10) / 2) + (prof_arcana ? proficiency : 0)",
+            "label": "Магия (Инт)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_arcana"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((wis - 10) / 2) + (prof_medicine ? proficiency : 0)",
+            "label": "Медицина (Муд)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_medicine"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((cha - 10) / 2) + (prof_deception ? proficiency : 0)",
+            "label": "Обман (Хар)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_deception"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((int - 10) / 2) + (prof_nature ? proficiency : 0)",
+            "label": "Природа (Инт)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_nature"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((wis - 10) / 2) + (prof_insight ? proficiency : 0)",
+            "label": "Проницательность (Муд)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_insight"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((int - 10) / 2) + (prof_religion ? proficiency : 0)",
+            "label": "Религия (Инт)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_religion"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((dex - 10) / 2) + (prof_stealth ? proficiency : 0)",
+            "label": "Скрытность (Лов)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_stealth"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((cha - 10) / 2) + (prof_persuasion ? proficiency : 0)",
+            "label": "Убеждение (Хар)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_persuasion"
+             ],
+             "signed": true
+            }
+           },
+           {
+            "id": null,
+            "widget": "computed",
+            "field_key": null,
+            "formula": "floor((wis - 10) / 2) + (prof_animal_handling ? proficiency : 0)",
+            "label": "Уход за животными (Муд)",
+            "colspan": 1,
+            "config": {
+             "toggleable": [
+              "prof_animal_handling"
+             ],
+             "signed": true
+            }
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": null,
+      "name": "Бой и снаряжение",
+      "kind": "columns",
+      "blocks": [],
+      "containers": [
+       {
+        "id": null,
+        "title": null,
+        "sections": [
+         {
+          "id": null,
+          "title": "Атаки",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "weapons",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "attacks",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Заклинания",
+          "columns": 2,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "caster_class",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "spell_ability",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "spell_save_dc",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "spell_attack",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "spell_slots",
+            "formula": null,
+            "label": "",
+            "colspan": 2,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "spells",
+            "formula": null,
+            "label": "",
+            "colspan": 2,
+            "config": {}
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Хиты и кости",
+          "columns": 2,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "temp_hp",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "hit_die",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "hit_dice_current",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "exhaustion",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": null,
+        "title": null,
+        "sections": [
+         {
+          "id": null,
+          "title": "Снаряжение",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "equipment",
+            "formula": null,
+            "label": "",
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Монеты",
+          "columns": 5,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "coins_pp",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "coins_gp",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "coins_ep",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "coins_sp",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "coins_cp",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Настроенные предметы",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "attunements",
+            "formula": null,
+            "label": "",
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Сокровища",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "treasures",
+            "formula": null,
+            "label": "",
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": null,
+      "name": "Умения и владения",
+      "kind": "columns",
+      "blocks": [],
+      "containers": [
+       {
+        "id": null,
+        "title": null,
+        "sections": [
+         {
+          "id": null,
+          "title": "Умения и способности",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "features",
+            "formula": null,
+            "label": "",
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Ресурсы",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "resources",
+            "formula": null,
+            "label": "",
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": null,
+        "title": null,
+        "sections": [
+         {
+          "id": null,
+          "title": "Дополнительные способности",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "extra_features",
+            "formula": null,
+            "label": "",
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Прочие владения и языки",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "other_proficiencies",
+            "formula": null,
+            "label": "",
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": null,
+      "name": "Биография",
+      "kind": "tabs",
+      "blocks": [],
+      "containers": [
+       {
+        "id": null,
+        "title": "Личность",
+        "sections": [
+         {
+          "id": null,
+          "title": null,
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "personality",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "ideals",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "bonds",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "flaws",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": null,
+        "title": "История",
+        "sections": [
+         {
+          "id": null,
+          "title": null,
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "backstory",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "allies",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "quests",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": null,
+        "title": "Внешность",
+        "sections": [
+         {
+          "id": null,
+          "title": null,
+          "columns": 3,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "age",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "height",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "weight",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "eyes",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "skin",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "hair",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": null,
+        "title": "Заметки",
+        "sections": [
+         {
+          "id": null,
+          "title": null,
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "notes",
+            "formula": null,
+            "label": "",
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "external_embed": {
+    "provider": "longstoryshort",
+    "url_field": "character_sheet_url"
+   },
+   "id": "builtin_character",
+   "project_id": null,
+   "is_builtin": true
+  },
+  {
+   "name": "NPC",
+   "entity_type": "npc",
+   "icon": null,
+   "field_defs": [
+    {
+     "key": "role",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Роль",
+     "show_on_card": true
+    },
+    {
+     "key": "faction",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Фракция",
+     "show_on_card": false
+    },
+    {
+     "key": "disposition",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Отношение",
+     "show_on_card": false
+    },
+    {
+     "key": "stat_block_ref",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Стат-блок (ссылка)",
+     "show_on_card": false
+    },
+    {
+     "key": "appearance",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Внешность",
+     "show_on_card": false
+    },
+    {
+     "key": "personality",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Характер",
+     "show_on_card": false
+    },
+    {
+     "key": "secret",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Секрет",
+     "show_on_card": false
+    }
+   ],
+   "layout": {
+    "regions": [
+     {
+      "id": null,
+      "name": "Шапка",
+      "kind": "band",
+      "blocks": [
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "role",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "faction",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "disposition",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       }
+      ],
+      "containers": []
+     },
+     {
+      "id": null,
+      "name": "Обзор",
+      "kind": "tabs",
+      "blocks": [],
+      "containers": [
+       {
+        "id": null,
+        "title": "Обзор",
+        "sections": [
+         {
+          "id": null,
+          "title": null,
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "appearance",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "personality",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "secret",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Механика",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "plain",
+            "field_key": "stat_block_ref",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "external_embed": null,
+   "id": "builtin_npc",
+   "project_id": null,
+   "is_builtin": true
+  },
+  {
+   "name": "Локация",
+   "entity_type": "location",
+   "icon": null,
+   "field_defs": [
+    {
+     "key": "region",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Регион",
+     "show_on_card": true
+    },
+    {
+     "key": "loc_type",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Тип",
+     "show_on_card": true
+    },
+    {
+     "key": "population",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Население",
+     "show_on_card": false
+    },
+    {
+     "key": "description",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Описание",
+     "show_on_card": false
+    },
+    {
+     "key": "points_of_interest",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Примечательные места",
+     "show_on_card": false
+    },
+    {
+     "key": "inhabitants",
+     "field_type": "tag",
+     "default_value": null,
+     "label": "Обитатели",
+     "show_on_card": false
+    }
+   ],
+   "layout": {
+    "regions": [
+     {
+      "id": null,
+      "name": "Шапка",
+      "kind": "band",
+      "blocks": [
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "region",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "loc_type",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "population",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       }
+      ],
+      "containers": []
+     },
+     {
+      "id": null,
+      "name": "Обзор",
+      "kind": "tabs",
+      "blocks": [],
+      "containers": [
+       {
+        "id": null,
+        "title": "Обзор",
+        "sections": [
+         {
+          "id": null,
+          "title": null,
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "description",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "points_of_interest",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Обитатели",
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "tag_chips",
+            "field_key": "inhabitants",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "external_embed": null,
+   "id": "builtin_location",
+   "project_id": null,
+   "is_builtin": true
+  },
+  {
+   "name": "Фракция",
+   "entity_type": "faction",
+   "icon": null,
+   "field_defs": [
+    {
+     "key": "leader",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Лидер",
+     "show_on_card": true
+    },
+    {
+     "key": "headquarters",
+     "field_type": "text",
+     "default_value": null,
+     "label": "Штаб-квартира",
+     "show_on_card": false
+    },
+    {
+     "key": "description",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Описание",
+     "show_on_card": false
+    },
+    {
+     "key": "goals",
+     "field_type": "rich_text",
+     "default_value": null,
+     "label": "Цели",
+     "show_on_card": false
+    },
+    {
+     "key": "allies",
+     "field_type": "tag",
+     "default_value": null,
+     "label": "Союзники",
+     "show_on_card": false
+    },
+    {
+     "key": "enemies",
+     "field_type": "tag",
+     "default_value": null,
+     "label": "Враги",
+     "show_on_card": false
+    }
+   ],
+   "layout": {
+    "regions": [
+     {
+      "id": null,
+      "name": "Шапка",
+      "kind": "band",
+      "blocks": [
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "leader",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       },
+       {
+        "id": null,
+        "widget": "plain",
+        "field_key": "headquarters",
+        "formula": null,
+        "label": null,
+        "colspan": 1,
+        "config": {}
+       }
+      ],
+      "containers": []
+     },
+     {
+      "id": null,
+      "name": "Обзор",
+      "kind": "tabs",
+      "blocks": [],
+      "containers": [
+       {
+        "id": null,
+        "title": "Обзор",
+        "sections": [
+         {
+          "id": null,
+          "title": null,
+          "columns": 1,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "description",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "rich_text",
+            "field_key": "goals",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         },
+         {
+          "id": null,
+          "title": "Отношения",
+          "columns": 2,
+          "blocks": [
+           {
+            "id": null,
+            "widget": "tag_chips",
+            "field_key": "allies",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           },
+           {
+            "id": null,
+            "widget": "tag_chips",
+            "field_key": "enemies",
+            "formula": null,
+            "label": null,
+            "colspan": 1,
+            "config": {}
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "external_embed": null,
+   "id": "builtin_faction",
+   "project_id": null,
+   "is_builtin": true
+  }
+ ],
+ "sheet_presets": [
+  {
+   "name": "Характеристика + навыки (D&D)",
+   "field_defs": [
+    {
+     "key": "dex",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Ловкость",
+     "show_on_card": false
+    },
+    {
+     "key": "proficiency",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Бонус владения",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_save_dex",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Спасбросок: Ловкость (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_acrobatics",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Акробатика (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_sleight_of_hand",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Ловкость рук (владение)",
+     "show_on_card": false
+    },
+    {
+     "key": "prof_stealth",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Скрытность (владение)",
+     "show_on_card": false
+    }
+   ],
+   "section": {
+    "id": null,
+    "title": "Ловкость",
+    "columns": 1,
+    "blocks": [
+     {
+      "id": null,
+      "widget": "stat_modifier",
+      "field_key": "dex",
+      "formula": null,
+      "label": "",
+      "colspan": 1,
+      "config": {}
+     },
+     {
+      "id": null,
+      "widget": "computed",
+      "field_key": null,
+      "formula": "floor((dex - 10) / 2)",
+      "label": "Проверка",
+      "colspan": 1,
+      "config": {}
+     },
+     {
+      "id": null,
+      "widget": "computed",
+      "field_key": null,
+      "formula": "floor((dex - 10) / 2) + (prof_save_dex ? proficiency : 0)",
+      "label": "Спасбросок",
+      "colspan": 1,
+      "config": {
+       "toggleable": [
+        "prof_save_dex"
+       ]
+      }
+     },
+     {
+      "id": null,
+      "widget": "computed",
+      "field_key": null,
+      "formula": "floor((dex - 10) / 2) + (prof_acrobatics ? proficiency : 0)",
+      "label": "Акробатика",
+      "colspan": 1,
+      "config": {
+       "toggleable": [
+        "prof_acrobatics"
+       ]
+      }
+     },
+     {
+      "id": null,
+      "widget": "computed",
+      "field_key": null,
+      "formula": "floor((dex - 10) / 2) + (prof_sleight_of_hand ? proficiency : 0)",
+      "label": "Ловкость рук",
+      "colspan": 1,
+      "config": {
+       "toggleable": [
+        "prof_sleight_of_hand"
+       ]
+      }
+     },
+     {
+      "id": null,
+      "widget": "computed",
+      "field_key": null,
+      "formula": "floor((dex - 10) / 2) + (prof_stealth ? proficiency : 0)",
+      "label": "Скрытность",
+      "colspan": 1,
+      "config": {
+       "toggleable": [
+        "prof_stealth"
+       ]
+      }
+     }
+    ]
+   },
+   "id": "preset_ability_skills",
+   "project_id": null,
+   "is_builtin": true
+  },
+  {
+   "name": "Ресурс (текущее / макс)",
+   "field_defs": [
+    {
+     "key": "resource_current",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Ресурс (текущее)",
+     "show_on_card": false
+    },
+    {
+     "key": "resource_max",
+     "field_type": "number",
+     "default_value": null,
+     "label": "Ресурс (макс.)",
+     "show_on_card": false
+    }
+   ],
+   "section": {
+    "id": null,
+    "title": "Ресурс",
+    "columns": 1,
+    "blocks": [
+     {
+      "id": null,
+      "widget": "tracker",
+      "field_key": "resource_current",
+      "formula": null,
+      "label": "Ресурс",
+      "colspan": 1,
+      "config": {
+       "max_field": "resource_max"
+      }
+     }
+    ]
+   },
+   "id": "preset_resource",
+   "project_id": null,
+   "is_builtin": true
+  },
+  {
+   "name": "Список с чекбоксами",
+   "field_defs": [
+    {
+     "key": "checklist_item_1",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Пункт 1",
+     "show_on_card": false
+    },
+    {
+     "key": "checklist_item_2",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Пункт 2",
+     "show_on_card": false
+    },
+    {
+     "key": "checklist_item_3",
+     "field_type": "boolean",
+     "default_value": null,
+     "label": "Пункт 3",
+     "show_on_card": false
+    }
+   ],
+   "section": {
+    "id": null,
+    "title": "Список",
+    "columns": 1,
+    "blocks": [
+     {
+      "id": null,
+      "widget": "plain",
+      "field_key": "checklist_item_1",
+      "formula": null,
+      "label": "Пункт 1",
+      "colspan": 1,
+      "config": {}
+     },
+     {
+      "id": null,
+      "widget": "plain",
+      "field_key": "checklist_item_2",
+      "formula": null,
+      "label": "Пункт 2",
+      "colspan": 1,
+      "config": {}
+     },
+     {
+      "id": null,
+      "widget": "plain",
+      "field_key": "checklist_item_3",
+      "formula": null,
+      "label": "Пункт 3",
+      "colspan": 1,
+      "config": {}
+     }
+    ]
+   },
+   "id": "preset_checklist",
+   "project_id": null,
+   "is_builtin": true
+  }
+ ]
+}

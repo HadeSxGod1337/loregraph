@@ -73,15 +73,22 @@ be a plain input, an ability-score box, or a row of rating dots.
 | `rich_text`     | rich_text             | —                                   |
 | `tag_chips`     | tag                   | —                                   |
 | `image`         | attachment, text(URL) | —                                   |
-| `stat_modifier` | number                | —                                   |
+| `stat_modifier` | number                | `mod_formula` — how the modifier is derived |
 | `dots`          | number                | `max` — how many pips (default 5)   |
 | `tracker`       | number                | `max_field` — key of the max field  |
-| `computed`      | —                     | `toggleable` — see below            |
+| `computed`      | —                     | `toggleable`, `signed` — see below  |
 | `heading`       | —                     | —                                   |
 | `divider`       | —                     | —                                   |
 
 `heading` and `divider` are decorative and need no field. `computed` is not
 bound to a single field either: its value comes entirely from a formula.
+
+`stat_modifier` draws a score plus a modifier derived from it. How it is
+derived is a property of the system, not of the renderer: D&D halves the
+score, WoD has no such notion at all. So the block carries its own formula in
+`config.mod_formula`, over `value` (the block's own score) and any other field
+on the template. Left unset it uses the 5e rule, `floor((value - 10) / 2)`;
+for no modifier at all, set the formula to `0`.
 
 An empty block label (`label: ""`) means "no caption here" on purpose, rather
 than "fall back to the field's name". That is how the ability-score box inside a
@@ -130,8 +137,9 @@ current entity's fields.
 - **A boolean field** is `1`/`0` in arithmetic; any non-zero number is true in
   boolean context.
 - **Division by zero yields 0**, not infinity and not an error.
-- A numeric result is displayed signed (`+3`, `-1`); a boolean result as
-  `✓` / `—`.
+- Whether a numeric result carries a sign is per block (`config.signed`).
+  "+3" says "add this to a roll" — right for a saving throw, wrong for a
+  passive score. Off by default. A boolean result is always `✓` / `—`.
 - A formula may only reference **real fields**, never another `computed` block.
   That restriction is intentional: circular dependencies become impossible by
   construction, so no recompute graph is needed.
