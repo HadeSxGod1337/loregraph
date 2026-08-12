@@ -35,7 +35,14 @@ dependencies = [
     "python-multipart>=0.0.32",
     "pyyaml>=6.0.3",
     "rank-bm25>=0.2.2",
-    "sqlalchemy>=2.0.51",
+    # [asyncio] for greenlet, which every async SQLAlchemy call needs. Without
+    # the extra it arrives only through SQLAlchemy's own architecture-gated
+    # marker, and that list spells the ARM machine "aarch64" — which is what
+    # Linux reports, while Apple Silicon reports "arm64". So on an M-series Mac
+    # greenlet was never installed and startup died in the lifespan handler
+    # ("the greenlet library is required to use this function"). The extra has
+    # no marker at all.
+    "sqlalchemy[asyncio]>=2.0.51",
     "uvicorn[standard]>=0.51.0",
 ]
 
