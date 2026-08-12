@@ -151,6 +151,26 @@ the app in your browser. Close the console window (or Ctrl+C on macOS/Linux)
 to stop everything. While running, it periodically checks for new commits and
 tells you when a restart would pick up an update.
 
+### Disk space, and how to remove it
+
+The first run downloads about **1 GB**, and not all of it lands in the project
+folder — the launcher says so before it starts, and here it is in full:
+
+| | |
+|---|---|
+| `backend/.venv` | ~490 MB — Python dependencies |
+| `frontend/node_modules` | ~140 MB — interface dependencies |
+| `backend/data/models` | ~240 MB — the local search model, downloaded once |
+| uv and npm caches | outside the project, shared with your other Python/Node projects |
+| `uv`, Node.js | installed only if they were missing |
+
+To remove it: **Windows** — double-click `uninstall.bat`; **macOS / Linux** —
+`bash uninstall.sh`. It first prints what is where with real sizes, then asks
+about each piece separately. Your campaign data is a separate question and
+defaults to *no*. Shared tooling (uv, Node.js, their caches) is never deleted
+for you — other projects use it — but the report shows it with the commands to
+remove it yourself. Add `--report-only` to look without deleting anything.
+
 ### Backend
 
 ```bash
@@ -306,6 +326,27 @@ git, устанавливает зависимости, при первом за
 приложение в браузере. Закройте окно консоли (или Ctrl+C на macOS/Linux), чтобы
 остановить всё. Пока работает, периодически проверяет новые коммиты и сообщает,
 когда перезапуск подтянет обновление.
+
+### Сколько занимает места и как удалить
+
+Первый запуск скачивает около **1 ГБ**, и не всё это ложится в папку проекта —
+лаунчер предупреждает об этом до начала, а вот полный список:
+
+| | |
+|---|---|
+| `backend/.venv` | ~490 МБ — зависимости Python |
+| `frontend/node_modules` | ~140 МБ — зависимости интерфейса |
+| `backend/data/models` | ~240 МБ — модель локального поиска, скачивается один раз |
+| кэши uv и npm | вне папки проекта, общие с другими вашими проектами на Python/Node |
+| `uv`, Node.js | ставятся, только если их не было |
+
+Как удалить: **Windows** — двойной клик по `uninstall.bat`; **macOS / Linux** —
+`bash uninstall.sh`. Сначала печатает, что и где лежит, с реальными размерами,
+потом спрашивает по каждому пункту отдельно. Данные кампаний — отдельный вопрос,
+и по умолчанию ответ на него «нет». Общие инструменты (uv, Node.js, их кэши)
+скрипт не удаляет за вас — ими пользуются другие проекты, — но показывает их в
+отчёте вместе с командами, которыми это делается вручную. Флаг `--report-only`
+показывает отчёт, ничего не трогая.
 
 ### Backend
 
