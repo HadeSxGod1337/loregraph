@@ -1,6 +1,7 @@
 import asyncio
 import threading
 from importlib.metadata import version as _pkg_version
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from fastembed import TextEmbedding
@@ -26,13 +27,14 @@ class EmbeddingProvider(Protocol):
 class FastEmbedProvider:
     """Local ONNX embeddings (no API key, lore never leaves the machine).
 
-    The model file is downloaded once on first use and cached; instantiation
-    of the underlying TextEmbedding is deferred to first embed() so app
-    startup stays instant and offline-safe.
+    The model file is downloaded once on first use and cached under
+    `cache_dir`; instantiation of the underlying TextEmbedding is deferred to
+    first embed() so app startup stays instant and offline-safe.
     """
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, cache_dir: Path) -> None:
         self._model_name = model_name
+        self._cache_dir = cache_dir
         self._model: TextEmbedding | None = None
         # Startup warmup and the first user request may race to initialize;
         # a plain threading lock (we run in to_thread) keeps it single-shot.
@@ -53,7 +55,12 @@ class FastEmbedProvider:
     def _embed_sync(self, texts: list[str]) -> list[list[float]]:
         with self._init_lock:
             if self._model is None:
-                self._model = TextEmbedding(model_name=self._model_name)
+                # cache_dir is passed explicitly — see Settings.models_dir for
+                # why fastembed's default (system temp) is not acceptable.
+                self._cache_dir.mkdir(parents=True, exist_ok=True)
+                self._model = TextEmbedding(
+                    model_name=self._model_name, cache_dir=str(self._cache_dir)
+                )
         return [vector.tolist() for vector in self._model.embed(texts)]
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
@@ -100,7 +107,7 @@ def get_embedding_provider(settings: Settings) -> EmbeddingProvider | None:
     """Composition root for embeddings; None means vector indexing is off."""
     match settings.embedding_provider:
         case "local":
-            return FastEmbedProvider(settings.embedding_model)
+            return FastEmbedProvider(settings.embedding_model, settings.models_dir)
         case "openai":
             if settings.openai_api_key is None:
                 raise ConfigurationError(

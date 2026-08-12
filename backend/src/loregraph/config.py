@@ -167,6 +167,18 @@ class Settings(BaseSettings):
         return self.data_dir / "knowledge"
 
     @property
+    def models_dir(self) -> Path:
+        """Where the local embedding model is cached (~240 MB, downloaded once).
+
+        Under data_dir like everything else the app owns. fastembed's own
+        default is the system temp directory, which is wrong twice over: the
+        user can neither find it nor connect it to this app, and Disk Cleanup
+        (or a reboot, on some systems) silently deletes it — after which the
+        app quietly re-downloads a quarter of a gigabyte.
+        """
+        return self.data_dir / "models"
+
+    @property
     def agent_checkpoint_db_path(self) -> Path:
         return self.data_dir / "agent_checkpoints.sqlite3"
 

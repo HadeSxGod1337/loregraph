@@ -21,6 +21,7 @@ from pathlib import Path
 
 from evals.golden_retrieval import GOLDEN_QUERIES, GoldenQuery
 from evals.metrics import ndcg_at_k, recall_at_k, reciprocal_rank
+from loregraph.config import Settings
 from loregraph.llm.embeddings import FastEmbedProvider
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.vectorstore.chroma_store import ChromaVectorStore
@@ -55,7 +56,12 @@ async def run(model_name: str) -> list[tuple[str, dict[str, float]]]:
     # report that was already computed.
     tmp = Path(tempfile.mkdtemp(prefix="loregraph-retrieval-eval-"))
     try:
-        store = ChromaVectorStore(tmp / "chroma", FastEmbedProvider(model_name))
+        # The model cache stays OUTSIDE the temp dir that gets torn down: an
+        # eval run must not re-download 240 MB every time it is invoked. It
+        # uses the app's own location, so a normal install already has it.
+        store = ChromaVectorStore(
+            tmp / "chroma", FastEmbedProvider(model_name, Settings().models_dir)
+        )
         index = VectorIndex(store)
         return [(case.case_id, await _run_case(index, case)) for case in GOLDEN_QUERIES]
     finally:
