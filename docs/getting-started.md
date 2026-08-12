@@ -124,7 +124,44 @@ CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...
 ```env
 CAMPAIGN_LLM_PROVIDER=openai
 CAMPAIGN_OPENAI_API_KEY=sk-...
+CAMPAIGN_LLM_MODEL_ASSISTANT=gpt-4o-mini
+CAMPAIGN_LLM_MODEL_EXTRACTION=gpt-4o-mini
+CAMPAIGN_LLM_MODEL_GENERATION=gpt-4o
 ```
+
+Ollama Cloud с ключом API:
+
+```env
+CAMPAIGN_LLM_PROVIDER=ollama_cloud
+CAMPAIGN_OLLAMA_CLOUD_API_KEY=...
+CAMPAIGN_LLM_MODEL_ASSISTANT=gpt-oss:120b
+CAMPAIGN_LLM_MODEL_EXTRACTION=gpt-oss:120b
+CAMPAIGN_LLM_MODEL_GENERATION=gpt-oss:120b
+```
+
+Экспериментальный вход через подписку ChatGPT / Codex:
+
+```env
+CAMPAIGN_LLM_PROVIDER=openai_codex
+CAMPAIGN_LLM_MODEL_ASSISTANT=gpt-5-codex
+CAMPAIGN_LLM_MODEL_EXTRACTION=gpt-5-codex
+CAMPAIGN_LLM_MODEL_GENERATION=gpt-5-codex
+```
+
+Перезапустите приложение и нажмите «Войти в ChatGPT» в панели ассистента.
+Этот режим использует непубличный интерфейс Codex и может перестать работать
+после изменений у OpenAI; обычный вариант `openai` с API-ключом остаётся
+поддерживаемым и не меняется.
+
+На Windows мастер можно повторно запустить, не удаляя текущие настройки:
+
+```powershell
+start.bat -ConfigureAI
+```
+
+Перед заменой `backend/.env` мастер автоматически создаст резервную копию с
+датой. Профили ChatGPT OAuth и Ollama Cloud получают доступные модели у
+провайдера и предлагают выбрать отдельную модель для чата, проверок и генерации.
 
 Полностью локально, без ключа:
 

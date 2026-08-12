@@ -94,7 +94,7 @@ are planned.
 ### AI Assistant setup (optional, BYOK)
 
 Create `backend/.env` with `CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...` (or
-`CAMPAIGN_LLM_PROVIDER=openai|ollama` + matching settings, see
+`CAMPAIGN_LLM_PROVIDER=openai|ollama|ollama_cloud|openai_codex` + matching settings, see
 `backend/src/loregraph/config.py`). Without a key the manual editor works
 fully; the Assistant tab shows setup instructions. Semantic retrieval uses a
 local multilingual embedding model by default (downloaded on first use); the
@@ -260,7 +260,7 @@ MCP-сервер (`loregraph-mcp`) для внешних MCP-клиентов. �
 ### Настройка AI Assistant (опционально, BYOK)
 
 Создайте `backend/.env` с `CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...` (или
-`CAMPAIGN_LLM_PROVIDER=openai|ollama` и соответствующие настройки, см.
+`CAMPAIGN_LLM_PROVIDER=openai|ollama|ollama_cloud|openai_codex` и соответствующие настройки, см.
 `backend/src/loregraph/config.py`). Без ключа ручной редактор работает полностью;
 на вкладке Assistant показываются инструкции по настройке. Семантический retrieval
 по умолчанию использует локальную многоязычную embedding-модель (скачивается при

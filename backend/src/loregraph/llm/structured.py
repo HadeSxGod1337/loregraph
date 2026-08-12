@@ -3,9 +3,10 @@ from typing import Any, Protocol, cast, runtime_checkable
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from loregraph.exceptions import GenerationError
+from loregraph.llm.openai_codex_oauth import CodexChatOpenAI
 from loregraph.llm.usage import LLMCallUsage, parse_usage
 
 MAX_STRUCTURED_ATTEMPTS = 3
@@ -52,7 +53,15 @@ class LangChainStructuredGenerator:
     async def generate[T: BaseModel](
         self, schema: type[T], *, system: str, user: str, cached_prefix: str = ""
     ) -> StructuredResult[T]:
-        runnable = self._model.with_structured_output(schema, include_raw=True)
+        # The ChatGPT Codex endpoint requires streaming. LangChain's streaming
+        # Responses parser returns JSON dictionaries but does not populate the
+        # Pydantic-only `parsed` field. Sending the equivalent JSON schema keeps
+        # server-side constrained output, then we validate the dict locally.
+        codex_streaming = isinstance(self._model, CodexChatOpenAI)
+        wire_schema: type[T] | dict[str, Any] = (
+            schema.model_json_schema() if codex_streaming else schema
+        )
+        runnable = self._model.with_structured_output(wire_schema, include_raw=True)
         messages: list[BaseMessage] = [
             SystemMessage(system),
             self._user_message(cached_prefix, user),
@@ -65,11 +74,17 @@ class LangChainStructuredGenerator:
             usage += parse_usage(raw_message.usage_metadata)
             parsed = raw_result.get("parsed")
             if parsed is not None:
-                return StructuredResult(cast(T, parsed), usage)
+                try:
+                    value = schema.model_validate(parsed) if codex_streaming else parsed
+                except ValidationError as exc:
+                    last_error = str(exc)
+                else:
+                    return StructuredResult(cast(T, value), usage)
             # Feed the concrete validation failure back and retry — never
             # continue silently with garbage (CLAUDE.md, "Валидация и
             # повторная генерация").
-            last_error = str(raw_result.get("parsing_error"))
+            if parsed is None:
+                last_error = str(raw_result.get("parsing_error"))
             messages = [
                 *messages,
                 raw_message,

@@ -120,6 +120,11 @@ export interface AgentConfig {
   vector_enabled: boolean;
 }
 
+export interface CodexDeviceCode {
+  user_code: string;
+  verification_url: string;
+}
+
 export type AgentEvent =
   | { type: "status"; node: string }
   | { type: "token"; text: string }
@@ -155,6 +160,9 @@ export async function fileToChatAttachment(file: File): Promise<ChatAttachment> 
 
 export const agentApi = {
   config: () => apiClient.get<AgentConfig>("/api/agent/config"),
+  startCodexOAuth: () => apiClient.post<CodexDeviceCode>("/api/agent/auth/openai-codex/start"),
+  pollCodexOAuth: () => apiClient.post<{ connected: boolean }>("/api/agent/auth/openai-codex/poll"),
+  logoutCodexOAuth: () => apiClient.delete<void>("/api/agent/auth/openai-codex"),
   createSession: (projectId: string) =>
     apiClient.post<AgentSession>(`/api/projects/${projectId}/agent/sessions`),
   list: (projectId: string) =>

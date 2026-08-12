@@ -25,6 +25,7 @@ from loregraph.exceptions import (
     SkillInputInvalidError,
     UnknownSkillError,
 )
+from loregraph.llm import openai_codex_oauth
 from loregraph.llm.factory import is_llm_configured
 from loregraph.schemas.agent import (
     AgentConfigOut,
@@ -178,6 +179,31 @@ async def agent_config(
         llm_provider=settings.llm_provider,
         vector_enabled=vector_index is not None,
     )
+
+
+@router.post("/agent/auth/openai-codex/start")
+async def start_openai_codex_auth(settings: SettingsDep) -> dict[str, str]:
+    """Start the explicitly opt-in, experimental Codex device-code login."""
+    return openai_codex_oauth.start(settings.openai_codex_oauth_path)
+
+
+@router.post("/agent/auth/openai-codex/poll")
+async def poll_openai_codex_auth(settings: SettingsDep) -> dict[str, bool]:
+    return {"connected": openai_codex_oauth.poll(settings.openai_codex_oauth_path)}
+
+
+@router.get("/agent/auth/openai-codex/models")
+async def openai_codex_models(settings: SettingsDep) -> dict[str, list[str]]:
+    return {
+        "models": openai_codex_oauth.available_models(
+            settings.openai_codex_oauth_path
+        )
+    }
+
+
+@router.delete("/agent/auth/openai-codex")
+async def logout_openai_codex_auth(settings: SettingsDep) -> None:
+    openai_codex_oauth.logout(settings.openai_codex_oauth_path)
 
 
 @router.post(

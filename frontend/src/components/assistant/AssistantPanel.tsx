@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { AgentReviewPayload, DraftEntity, LoreDraft } from "../../api/agent";
+import { agentApi, type AgentReviewPayload, type DraftEntity, type LoreDraft } from "../../api/agent";
 import { ApiError, apiClient } from "../../api/client";
 import type { Edge, Entity } from "../../api/types";
 import {
@@ -335,6 +335,59 @@ function ChatInput({
 
 function OnboardingCard({ provider }: { provider: string }) {
   const { t } = useTranslation();
+  const [deviceCode, setDeviceCode] = useState<{ user_code: string; verification_url: string } | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  if (provider === "openai_codex") {
+    const start = async () => {
+      setOauthError(null);
+      try {
+        const result = await agentApi.startCodexOAuth();
+        setDeviceCode(result);
+        window.open(result.verification_url, "_blank", "noopener,noreferrer");
+      } catch (error) {
+        setOauthError(error instanceof Error ? error.message : t("assistant.onboarding.codexStartError"));
+      }
+    };
+    const check = async () => {
+      setChecking(true);
+      setOauthError(null);
+      try {
+        const result = await agentApi.pollCodexOAuth();
+        if (result.connected) window.location.reload();
+        else setOauthError(t("assistant.onboarding.codexPending"));
+      } catch (error) {
+        setOauthError(error instanceof Error ? error.message : t("assistant.onboarding.codexPollError"));
+      } finally {
+        setChecking(false);
+      }
+    };
+    return (
+      <div className="assistant-onboarding">
+        <h2>{t("assistant.onboarding.codexHeading")}</h2>
+        <p>{t("assistant.onboarding.codexBody")}</p>
+        {!deviceCode ? (
+          <button type="button" className="button-primary" onClick={() => void start()}>
+            {t("assistant.onboarding.codexSignIn")}
+          </button>
+        ) : (
+          <>
+            <p>
+              {t("assistant.onboarding.codexEnterCode")} <strong>{deviceCode.user_code}</strong>{" "}
+              <a href={deviceCode.verification_url} target="_blank" rel="noreferrer">
+                {t("assistant.onboarding.codexOpenAIPage")}
+              </a>
+              .
+            </p>
+            <button type="button" className="button-primary" disabled={checking} onClick={() => void check()}>
+              {checking ? t("assistant.onboarding.codexChecking") : t("assistant.onboarding.codexDone")}
+            </button>
+          </>
+        )}
+        {oauthError && <p role="alert">{oauthError}</p>}
+      </div>
+    );
+  }
   return (
     <div className="assistant-onboarding">
       <h2>{t("assistant.onboarding.setupHeading")}</h2>
@@ -350,13 +403,22 @@ CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...
 # or OpenAI
 CAMPAIGN_LLM_PROVIDER=openai
 CAMPAIGN_OPENAI_API_KEY=sk-...
-CAMPAIGN_LLM_MODEL_GENERATION=gpt-...
+CAMPAIGN_LLM_MODEL_ASSISTANT=gpt-4o-mini
+CAMPAIGN_LLM_MODEL_EXTRACTION=gpt-4o-mini
+CAMPAIGN_LLM_MODEL_GENERATION=gpt-4o
 
 # or fully local via Ollama (no key, lower quality)
 CAMPAIGN_LLM_PROVIDER=ollama
-CAMPAIGN_LLM_MODEL_GENERATION=llama3
+CAMPAIGN_LLM_MODEL_ASSISTANT=llama3
 CAMPAIGN_LLM_MODEL_EXTRACTION=llama3
-CAMPAIGN_LLM_MODEL_COMPOSITION=llama3`}
+CAMPAIGN_LLM_MODEL_GENERATION=llama3
+
+# or Ollama Cloud
+CAMPAIGN_LLM_PROVIDER=ollama_cloud
+CAMPAIGN_OLLAMA_CLOUD_API_KEY=...
+CAMPAIGN_LLM_MODEL_ASSISTANT=gpt-oss:120b
+CAMPAIGN_LLM_MODEL_EXTRACTION=gpt-oss:120b
+CAMPAIGN_LLM_MODEL_GENERATION=gpt-oss:120b`}
       </pre>
       <p>{t("assistant.onboarding.setupBody3")}</p>
     </div>

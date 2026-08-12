@@ -8,6 +8,8 @@ type LLMProvider = Literal[
     "anthropic",
     "openai",
     "ollama",
+    "ollama_cloud",
+    "openai_codex",
     # Tier 1 — dedicated LangChain packages
     "google",
     "mistral",
@@ -82,6 +84,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
     ollama_base_url: str = "http://localhost:11434"
+    ollama_cloud_api_key: str | None = None
+    ollama_cloud_base_url: str = "https://ollama.com"
+    openai_codex_base_url: str = "https://chatgpt.com/backend-api/codex"
     # Tier 1 — dedicated packages
     google_api_key: str | None = None
     mistral_api_key: str | None = None
@@ -153,6 +158,10 @@ class Settings(BaseSettings):
     @property
     def db_path(self) -> Path:
         return self.data_dir / "campaign.sqlite3"
+
+    @property
+    def openai_codex_oauth_path(self) -> Path:
+        return self.data_dir / "openai_codex_oauth.json"
 
     @property
     def attachments_dir(self) -> Path:

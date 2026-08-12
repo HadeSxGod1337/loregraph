@@ -546,7 +546,17 @@
       "setupHeading": "Set up the AI Assistant",
       "setupBody1": "The assistant runs on your own LLM API key (BYOK) — your lore never leaves this machine except for the calls you make to your chosen provider. Current provider: {{provider}}.",
       "setupBody2": "Create backend/.env with one of:",
-      "setupBody3": "Then restart the backend. The key is masked in all logs and errors."
+      "setupBody3": "Then restart the backend. The key is masked in all logs and errors.",
+      "codexHeading": "ChatGPT / Codex (experimental)",
+      "codexBody": "Sign in to ChatGPT in a separate tab. This OAuth flow uses an experimental, unsupported Codex interface.",
+      "codexSignIn": "Sign in to ChatGPT",
+      "codexEnterCode": "Enter code",
+      "codexOpenAIPage": "on the OpenAI page",
+      "codexChecking": "Checking…",
+      "codexDone": "I completed sign-in",
+      "codexPending": "Sign-in has not been confirmed yet. Complete it in the browser and try again.",
+      "codexStartError": "Could not start sign-in.",
+      "codexPollError": "Could not check sign-in."
     },
     "historyPlaceholder": "— conversation history —",
     "newConversation": "New conversation",
