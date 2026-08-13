@@ -17,6 +17,78 @@ before upgrading.
 
 ## [Unreleased]
 
+### Added
+
+- **AI settings in the app.** A new page in the left rail (`/settings`) sets the
+  provider, the API key, one model per task class (assistant / extraction /
+  generation), the agent's token budget, and the embedding provider and model —
+  without editing `.env` and without a restart. A model change applies to the
+  next request; a running generation finishes on the model it started with.
+  Each field says where its value came from (`.env` or set here) and can be
+  reset back to the file, so "I edited `.env` and nothing happened" has an
+  answer on screen.
+- **Test before you rely on it.** A "Test" button makes one tiny call with the
+  configuration currently in the form — a wrong key, a mistyped model id or an
+  Ollama that isn't running now surfaces here instead of mid-generation. The
+  embedding test also reports the model's dimensions.
+- **Model suggestions from the provider.** Where a provider publishes a model
+  list (OpenAI-compatible APIs, Anthropic, Ollama), the model fields suggest
+  what is actually available; the field stays free text either way.
+- **Automatic reindex after an embedding change.** Vectors from two different
+  models are not comparable, so switching models now rebuilds every project's
+  search data by itself — entities from SQLite, knowledge-base documents from
+  their stored files — with progress on the settings page. It used to be a
+  silent loss of retrieval until you found the per-project reindex button.
+
+- **A sidebar that is never empty.** On the project list the rail used to hold
+  a logo and three buttons; it now offers your recent projects, and inside a
+  project it shows that project's sections. The two are labelled zones —
+  *Project* above, *App* below — separated from each other.
+- **Search (Ctrl/⌘ K).** Jump to an entity in the open project, or to any
+  project by name, without walking the navigation.
+- **The assistant's state is visible from anywhere.** A line at the bottom of
+  the rail names the model that answers, warns when no API key is set, and
+  shows a reindex while it runs. Previously a missing key surfaced only when
+  you opened the assistant.
+- **Continue where you left off.** The project list leads with the world you
+  had open last, and gains a filter once you have more than a handful.
+
+- **The entity list groups itself by your relationships.** A faction that
+  `contains` its people — or whose people are `member_of` it — is now a folder
+  you can fold, with its members nested inside; a town holds the places
+  `located_in` it, however deep the nesting goes. Search still finds a member
+  inside a folded folder and opens the way to it, and an entity that belongs to
+  two factions is shown in both, marked as such rather than duplicated by
+  accident. Two other arrangements are one click away — *by type* and the old
+  *flat* list — and the choice is remembered per project. Dragging a row onto
+  another row creates the containment relationship for real (with an undo in
+  the toast), so the list is a way to edit the graph, not a second place where
+  structure lives. Which relationship types count as "inside" is yours to set:
+  *Project settings → Grouping* lists the types your world actually uses.
+
+### Changed
+
+- **No more two "Settings".** The project's own settings are now called
+  *Project settings* and stay in the project zone; the installation's are
+  simply *Settings* at the bottom of the rail.
+- **Appearance is a settings section, not a popover.** Theme, accent, language
+  and updates each got their own place — the settings page is now tabbed
+  (Models · Embeddings · Appearance · Updates · Tracing · Startup), with theme
+  previews you can see before choosing. The one control frequent enough to
+  stay in the rail is the light/dark/system switch.
+- **Collapse is a chevron on the rail's edge**, not an item in the navigation
+  list that looked like a fourth place you could go.
+- `backend/.env` is now the bootstrap path rather than the only one: it is read
+  at startup, and a value set in the UI overrides it. The first-run launcher
+  wizard says so when you skip it, and the Assistant's setup card links to the
+  settings page instead of printing `.env` snippets.
+- `GET /api/agent/config` also reports which model backs each tier.
+
+### Migration
+
+Automatic. A new `app_settings` table is created on first start; installations
+that never open the settings page keep running exactly on their `.env`.
+
 ## [0.3.1] — 2026-08-12
 
 Installing took about a gigabyte and never said so, and a quarter of that went
