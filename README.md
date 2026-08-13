@@ -93,10 +93,13 @@ are planned.
 
 ### AI Assistant setup (optional, BYOK)
 
-Create `backend/.env` with `CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...` (or
+Open **Settings** at the bottom of the left rail (`/settings`) and pick a provider,
+paste a key and choose models — it applies to the next request, no restart.
+`backend/.env` still works as a bootstrap (`CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...`,
 `CAMPAIGN_LLM_PROVIDER=openai|ollama` + matching settings, see
-`backend/src/loregraph/config.py`). Without a key the manual editor works
-fully; the Assistant tab shows setup instructions. Semantic retrieval uses a
+`backend/src/loregraph/config.py`); a value set in the UI overrides the file,
+and each field shows which of the two it came from. Without a key the manual
+editor works fully; the Assistant tab links to the settings page. Semantic retrieval uses a
 local multilingual embedding model by default (downloaded on first use); the
 lore never leaves your machine except for the LLM calls you configure.
 
@@ -279,10 +282,14 @@ MCP-сервер (`loregraph-mcp`) для внешних MCP-клиентов. �
 
 ### Настройка AI Assistant (опционально, BYOK)
 
-Создайте `backend/.env` с `CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...` (или
-`CAMPAIGN_LLM_PROVIDER=openai|ollama` и соответствующие настройки, см.
-`backend/src/loregraph/config.py`). Без ключа ручной редактор работает полностью;
-на вкладке Assistant показываются инструкции по настройке. Семантический retrieval
+Откройте **Настройки** внизу левой панели (`/settings`): выберите провайдера,
+вставьте ключ, задайте модели — применяется со следующего запроса, без
+перезапуска. `backend/.env` остаётся способом первоначальной настройки
+(`CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...`, `CAMPAIGN_LLM_PROVIDER=openai|ollama`
+и соответствующие настройки, см. `backend/src/loregraph/config.py`); значение,
+заданное в интерфейсе, перекрывает файл, и у каждого поля видно, откуда оно
+пришло. Без ключа ручной редактор работает полностью; вкладка Assistant ведёт
+на страницу настроек. Семантический retrieval
 по умолчанию использует локальную многоязычную embedding-модель (скачивается при
 первом запуске); лор не покидает вашу машину, кроме LLM-вызовов, которые вы сами
 настроите.
