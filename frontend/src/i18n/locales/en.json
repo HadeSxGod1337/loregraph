@@ -19,7 +19,10 @@
     "leaveTitle": "Leave without saving?",
     "leaveBody": "Unsaved changes will be lost.",
     "leaveButton": "Leave",
-    "close": "Close"
+    "close": "Close",
+    "undo": "Undo",
+    "on": "on",
+    "off": "off"
   },
   "sheet": {
     "sheetTitle": "Sheet",
@@ -114,8 +117,9 @@
     "graph": "Graph",
     "assistant": "AI Assistant",
     "integrations": "Integrations",
-    "settings": "Settings",
-    "help": "Help"
+    "help": "Help",
+    "appSettings": "Settings",
+    "projectSettings": "Project settings"
   },
   "theme": {
     "light": "Light",
@@ -125,12 +129,15 @@
   "sidebar": {
     "project": "Project",
     "allProjects": "All projects",
-    "collapse": "Collapse",
-    "expand": "Expand",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
     "appearance": "Appearance",
     "theme": "Theme",
     "accent": "Accent",
-    "language": "Language"
+    "language": "Language",
+    "app": "App",
+    "recent": "Recent",
+    "themeNext": "Theme: switch to {{mode}}"
   },
   "network": {
     "reachLocal": "Reachable on this computer only:",
@@ -238,7 +245,12 @@
     "entitiesCount_one": "{{count}} entity",
     "entitiesCount_other": "{{count}} entities",
     "edgesCount_one": "{{count}} relationship",
-    "edgesCount_other": "{{count}} relationships"
+    "edgesCount_other": "{{count}} relationships",
+    "continue": "Continue",
+    "openButton": "Open",
+    "filterPlaceholder": "Filter by name…",
+    "noMatches": "No project matches “{{query}}”.",
+    "summary": "{{projects}} projects · {{entities}} entities"
   },
   "entities": {
     "title": "Entities",
@@ -249,7 +261,21 @@
     "noMatches": "Nothing found — change the query or reset the filter.",
     "importSheets": "Import character sheets",
     "fieldCount_one": "{{count}} field",
-    "fieldCount_other": "{{count}} fields"
+    "fieldCount_other": "{{count}} fields",
+    "groupBy": "Grouping",
+    "group_links": "By links",
+    "group_type": "By type",
+    "group_flat": "Flat",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
+    "shownOfTotal": "{{shown}} of {{total}}",
+    "openCard": "Open card",
+    "inFolders_one": "in {{count}} folder",
+    "inFolders_other": "in {{count}} folders",
+    "inFoldersHint": "This entity belongs to several groups, so it is shown in each of them.",
+    "nested": "“{{child}}” is now inside “{{parent}}”",
+    "nestAlready": "“{{child}}” is already inside “{{parent}}”",
+    "nestCycle": "“{{parent}}” is already inside “{{child}}” — they cannot contain each other."
   },
   "entityEdit": {
     "newTitle": "New Entity",
@@ -442,6 +468,15 @@
     "reindexed_one": "Done — {{count}} entity indexed",
     "reindexed_other": "Done — {{count}} entities indexed",
     "navGeneral": "General",
+    "navGrouping": "Grouping",
+    "groupingHeading": "Folders in the entity list",
+    "groupingHint": "Pick the relationship types that mean “is inside”. The entity list nests members under them; other types stay links and are only shown in the graph.",
+    "groupingNoEdges": "This project has no relationships yet — there is nothing to group by.",
+    "groupingRole_none": "—",
+    "groupingRole_forward": "A holds B",
+    "groupingRole_inverse": "A is inside B",
+    "groupingRoleFor": "Role of the “{{type}}” type",
+    "groupingReset": "Reset to defaults",
     "navTemplates": "Templates",
     "navPlayers": "Players",
     "navKnowledge": "Knowledge base",
@@ -546,7 +581,10 @@
       "setupHeading": "Set up the AI Assistant",
       "setupBody1": "The assistant runs on your own LLM API key (BYOK) — your lore never leaves this machine except for the calls you make to your chosen provider. Current provider: {{provider}}.",
       "setupBody2": "Create backend/.env with one of:",
-      "setupBody3": "Then restart the backend. The key is masked in all logs and errors."
+      "setupBody3": "Then restart the backend. The key is masked in all logs and errors.",
+      "setupUi": "Add a key on the AI settings page — it applies right away, no restart.",
+      "setupCta": "Open AI settings",
+      "setupEnvNote": "backend/.env still works as a starting point, but it is only read when the app starts."
     },
     "historyPlaceholder": "— conversation history —",
     "newConversation": "New conversation",
@@ -763,7 +801,7 @@
       },
       "entities": {
         "title": "Entities",
-        "body": "NPCs, locations, factions, items, sessions — any piece of lore. Every entity has a type, a title, and a free-form set of fields."
+        "body": "NPCs, locations, factions, items, sessions — any piece of lore. Every entity has a type, a title, and a free-form set of fields. In the list, entities that contain others (a faction and its members, a town and its places) become folders you can fold; drag a row onto another to put it inside, and set which relationship types mean “inside” in Project settings → Grouping."
       },
       "fields": {
         "title": "Fields",
@@ -846,5 +884,124 @@
         "body": "Rebuilds the lore search vector index from the current entity state — useful after a bulk import."
       }
     }
+  },
+  "appSettings": {
+    "navModels": "Models & keys",
+    "navEmbeddings": "Embeddings",
+    "navTracing": "Tracing",
+    "navLaunch": "Set at startup",
+    "heading": "Settings",
+    "providerHeading": "Provider",
+    "providerHint": "Applies to every project. Changes take effect on the next request, without a restart.",
+    "providerLabel": "LLM provider",
+    "apiKeyLabel": "API key",
+    "apiKeyHint": "Usually starts with {{prefix}}",
+    "getKeyLink": "Get a key",
+    "baseUrlLabel": "API address",
+    "replaceKey": "Replace",
+    "clearKey": "Clear",
+    "modelsHeading": "Models",
+    "modelsHint": "One model per task class: a cheap one for chat, a stronger one for lore generation.",
+    "tier": {
+      "assistant": "Assistant (chat)",
+      "extraction": "Extraction (classification)",
+      "generation": "Generation (lore)"
+    },
+    "tierHint": {
+      "assistant": "The most frequent and cheapest calls: tool routing and short replies.",
+      "extraction": "Deterministic work such as relations and grounding checks. A small model is enough.",
+      "generation": "Creative lore batches. This is where model quality shows."
+    },
+    "useDefaults": "Provider defaults",
+    "testButton": "Test",
+    "testOk": "Works ({{ms}} ms)",
+    "testOkDimensions": "Works ({{ms}} ms, {{dimensions}} dimensions)",
+    "testFailed": "Failed: {{error}}",
+    "agentHeading": "Agent",
+    "agentHint": "Limits and optional capabilities of an agent run.",
+    "field": {
+      "agent_run_token_budget": "Token budget per run",
+      "web_search_enabled": "Web search",
+      "agent_prompt_caching": "Prompt caching",
+      "tracing_provider": "Tracing provider",
+      "langsmith_api_key": "LangSmith API key",
+      "langsmith_project": "LangSmith project",
+      "langsmith_endpoint": "LangSmith endpoint",
+      "langfuse_public_key": "Langfuse public key",
+      "langfuse_secret_key": "Langfuse secret key",
+      "langfuse_host": "Langfuse host"
+    },
+    "fieldHint": {
+      "agent_run_token_budget": "A hard ceiling so a retry loop cannot burn through your key. Exceeding it pauses the run for review; the draft is not lost.",
+      "web_search_enabled": "Lets the assistant search the web during a run.",
+      "agent_prompt_caching": "Anthropic only: reuses the stable part of a prompt across regenerations, which makes repeats cheaper."
+    },
+    "embeddingsHeading": "Embeddings",
+    "embeddingsHint": "How lore is turned into vectors for search and for grounding the assistant.",
+    "embeddingProviderLabel": "Embedding provider",
+    "embeddingModelLabel": "Embedding model",
+    "embeddingLocalNote": "Runs on this machine — campaign text never leaves it.",
+    "embeddingSwitchWarning": "Changing the model invalidates the stored vectors: a full reindex starts automatically after saving.",
+    "reindexHeading": "Reindex",
+    "reindexHint": "Rebuilds every project's search data with the current model ({{model}}).",
+    "reindexDisabledHint": "Embeddings are off — there is nothing to rebuild.",
+    "reindexButton": "Reindex now",
+    "reindexing": "Reindexing...",
+    "reindexProgress": "Rebuilding {{done}} of {{total}} — {{current}}",
+    "reindexDone": "Done. Entities: {{entities}}, documents: {{sources}}.",
+    "reindexFailed": "Reindex failed: {{error}}",
+    "tracingHeading": "Tracing",
+    "tracingHint": "Optional: send agent runs to LangSmith or Langfuse. Applies after a restart.",
+    "tracingDisabled": "Off",
+    "launchHeading": "Set at startup",
+    "launchHint": "Properties of how the app was launched. Change them in the launcher or .env, not here.",
+    "launch": {
+      "dataDir": "Data directory",
+      "port": "Port",
+      "playMode": "LAN play mode",
+      "internetMode": "Internet mode",
+      "tls": "HTTPS",
+      "logLevel": "Log level"
+    },
+    "sourceDb": "set here",
+    "sourceEnv": ".env",
+    "sourceEnvHint": "Comes from .env. A value set here overrides it.",
+    "resetToEnv": "Reset",
+    "restartRequiredHint": "Applies after a restart.",
+    "unsavedChanges": "Unsaved changes",
+    "allSaved": "All changes saved",
+    "saveButton": "Save",
+    "saving": "Saving...",
+    "saved": "Settings saved",
+    "savedReindexing": "Saved — reindexing started",
+    "savedRestartNeeded": "Saved — applies after a restart",
+    "resetDone": "Reset to the .env value",
+    "reindexSourceProgress": "Documents: {{done}} of {{total}} — {{current}}",
+    "navAppearance": "Appearance",
+    "navUpdates": "Updates",
+    "updatesHeading": "Updates",
+    "updatesHint": "Version and how new ones are handled.",
+    "subheading": "Apply to every project on this machine."
+  },
+  "sidebarStatus": {
+    "noKey": "No API key",
+    "noKeyTitle": "Assistant",
+    "reindexing": "Reindexing {{done}}/{{total}}"
+  },
+  "palette": {
+    "title": "Search",
+    "placeholder": "Entity or project name…",
+    "placeholderNoProject": "Project name…",
+    "projectHint": "project",
+    "nothing": "Nothing matches “{{query}}”.",
+    "hint": "Type to find an entity in this project, or any project by name."
+  },
+  "appearance": {
+    "themeHeading": "Theme",
+    "themeHint": "Also switchable from the sidebar; here you can see it first.",
+    "accentHeading": "Accent",
+    "accentHint": "Each preset is a whole theme, not just a button color.",
+    "languageHeading": "Language",
+    "languageHint": "Applies to the interface; your campaign text is untouched."
   }
 }

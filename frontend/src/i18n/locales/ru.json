@@ -19,7 +19,10 @@
     "leaveTitle": "Уйти без сохранения?",
     "leaveBody": "Несохранённые изменения будут потеряны.",
     "leaveButton": "Уйти",
-    "close": "Закрыть"
+    "close": "Закрыть",
+    "undo": "Отменить",
+    "on": "вкл",
+    "off": "выкл"
   },
   "sheet": {
     "sheetTitle": "Лист",
@@ -114,8 +117,9 @@
     "graph": "Граф",
     "assistant": "AI-ассистент",
     "integrations": "Интеграции",
-    "settings": "Настройки",
-    "help": "Справка"
+    "help": "Справка",
+    "appSettings": "Настройки",
+    "projectSettings": "Настройки проекта"
   },
   "theme": {
     "light": "Светлая",
@@ -125,12 +129,15 @@
   "sidebar": {
     "project": "Проект",
     "allProjects": "Все проекты",
-    "collapse": "Свернуть",
-    "expand": "Развернуть",
+    "collapse": "Свернуть панель",
+    "expand": "Развернуть панель",
     "appearance": "Оформление",
     "theme": "Тема",
     "accent": "Акцент",
-    "language": "Язык"
+    "language": "Язык",
+    "app": "Приложение",
+    "recent": "Недавние",
+    "themeNext": "Тема: переключить на «{{mode}}»"
   },
   "network": {
     "reachLocal": "Доступно только на этом компьютере:",
@@ -243,7 +250,12 @@
     "edgesCount_one": "{{count}} связь",
     "edgesCount_few": "{{count}} связи",
     "edgesCount_many": "{{count}} связей",
-    "edgesCount_other": "{{count}} связи"
+    "edgesCount_other": "{{count}} связи",
+    "continue": "Продолжить",
+    "openButton": "Открыть",
+    "filterPlaceholder": "Фильтр по названию…",
+    "noMatches": "Проект «{{query}}» не найден.",
+    "summary": "{{projects}} проектов · {{entities}} сущностей"
   },
   "entities": {
     "title": "Сущности",
@@ -256,7 +268,23 @@
     "fieldCount_one": "{{count}} поле",
     "fieldCount_few": "{{count}} поля",
     "fieldCount_many": "{{count}} полей",
-    "fieldCount_other": "{{count}} поля"
+    "fieldCount_other": "{{count}} поля",
+    "groupBy": "Группировка",
+    "group_links": "По связям",
+    "group_type": "По типу",
+    "group_flat": "Списком",
+    "expandAll": "Развернуть всё",
+    "collapseAll": "Свернуть всё",
+    "shownOfTotal": "{{shown}} из {{total}}",
+    "openCard": "Открыть карточку",
+    "inFolders_one": "в {{count}} папке",
+    "inFolders_few": "в {{count}} папках",
+    "inFolders_many": "в {{count}} папках",
+    "inFolders_other": "в {{count}} папках",
+    "inFoldersHint": "Сущность входит в несколько групп, поэтому показана в каждой из них.",
+    "nested": "«{{child}}» теперь внутри «{{parent}}»",
+    "nestAlready": "«{{child}}» уже внутри «{{parent}}»",
+    "nestCycle": "«{{parent}}» уже входит в «{{child}}» — вложить их друг в друга нельзя."
   },
   "entityEdit": {
     "newTitle": "Новая сущность",
@@ -451,6 +479,15 @@
     "reindexed_many": "Готово — проиндексировано {{count}} сущностей",
     "reindexed_other": "Готово — проиндексировано {{count}} сущности",
     "navGeneral": "Основное",
+    "navGrouping": "Группировка",
+    "groupingHeading": "Папки в списке сущностей",
+    "groupingHint": "Выбери типы связей, которые значат «внутри». Список сущностей вложит участников в такие папки; остальные типы останутся обычными связями и видны только в графе.",
+    "groupingNoEdges": "В проекте пока нет связей — группировать не по чему.",
+    "groupingRole_none": "—",
+    "groupingRole_forward": "A содержит B",
+    "groupingRole_inverse": "A внутри B",
+    "groupingRoleFor": "Роль типа «{{type}}»",
+    "groupingReset": "Вернуть по умолчанию",
     "navTemplates": "Шаблоны",
     "navPlayers": "Игроки",
     "navKnowledge": "База знаний",
@@ -567,7 +604,10 @@
       "setupHeading": "Настройка AI-ассистента",
       "setupBody1": "Ассистент работает на твоём собственном API-ключе LLM (BYOK) — лор не покидает эту машину, кроме вызовов к выбранному провайдеру. Текущий провайдер: {{provider}}.",
       "setupBody2": "Создай backend/.env с одним из вариантов:",
-      "setupBody3": "Затем перезапусти бэкенд. Ключ маскируется во всех логах и ошибках."
+      "setupBody3": "Затем перезапусти бэкенд. Ключ маскируется во всех логах и ошибках.",
+      "setupUi": "Добавьте ключ на странице настроек ИИ — он применится сразу, без перезапуска.",
+      "setupCta": "Открыть настройки ИИ",
+      "setupEnvNote": "backend/.env по-прежнему работает как стартовая настройка, но читается только при запуске приложения."
     },
     "historyPlaceholder": "— история разговоров —",
     "newConversation": "Новый разговор",
@@ -788,7 +828,7 @@
       },
       "entities": {
         "title": "Сущности",
-        "body": "NPC, локации, фракции, предметы, сессии — любая единица лора. У каждой сущности есть тип, название и произвольный набор полей."
+        "body": "NPC, локации, фракции, предметы, сессии — любая единица лора. У каждой сущности есть тип, название и произвольный набор полей. В списке сущности, которые содержат другие (фракция и её участники, город и его места), становятся сворачиваемыми папками; перетащи строку на другую, чтобы вложить её внутрь, а какие типы связей значат «внутри» — настраивается в «Настройках проекта → Группировка»."
       },
       "fields": {
         "title": "Поля",
@@ -871,5 +911,124 @@
         "body": "Пересобирает векторный индекс поиска по лору из текущего состояния сущностей — полезно после массового импорта."
       }
     }
+  },
+  "appSettings": {
+    "navModels": "Модели и ключи",
+    "navEmbeddings": "Эмбеддинги",
+    "navTracing": "Трассировка",
+    "navLaunch": "Задаётся при запуске",
+    "heading": "Настройки",
+    "providerHeading": "Провайдер",
+    "providerHint": "Действует для всех проектов. Изменения применяются со следующего запроса, без перезапуска.",
+    "providerLabel": "Провайдер LLM",
+    "apiKeyLabel": "API-ключ",
+    "apiKeyHint": "Обычно начинается с {{prefix}}",
+    "getKeyLink": "Получить ключ",
+    "baseUrlLabel": "Адрес API",
+    "replaceKey": "Заменить",
+    "clearKey": "Очистить",
+    "modelsHeading": "Модели",
+    "modelsHint": "Своя модель под класс задач: дешёвая для чата, сильная для генерации лора.",
+    "tier": {
+      "assistant": "Ассистент (чат)",
+      "extraction": "Экстракция (классификация)",
+      "generation": "Генерация (лор)"
+    },
+    "tierHint": {
+      "assistant": "Самые частые и дешёвые вызовы: маршрутизация инструментов и короткие ответы.",
+      "extraction": "Детерминированная работа: связи, проверка обоснованности. Хватает небольшой модели.",
+      "generation": "Творческие батчи лора. Именно здесь качество модели заметно."
+    },
+    "useDefaults": "Дефолты провайдера",
+    "testButton": "Проверить",
+    "testOk": "Работает ({{ms}} мс)",
+    "testOkDimensions": "Работает ({{ms}} мс, размерность {{dimensions}})",
+    "testFailed": "Не удалось: {{error}}",
+    "agentHeading": "Агент",
+    "agentHint": "Ограничения и дополнительные возможности прогона агента.",
+    "field": {
+      "agent_run_token_budget": "Бюджет токенов на прогон",
+      "web_search_enabled": "Поиск в интернете",
+      "agent_prompt_caching": "Кеширование промпта",
+      "tracing_provider": "Провайдер трассировки",
+      "langsmith_api_key": "API-ключ LangSmith",
+      "langsmith_project": "Проект LangSmith",
+      "langsmith_endpoint": "Endpoint LangSmith",
+      "langfuse_public_key": "Публичный ключ Langfuse",
+      "langfuse_secret_key": "Секретный ключ Langfuse",
+      "langfuse_host": "Хост Langfuse"
+    },
+    "fieldHint": {
+      "agent_run_token_budget": "Жёсткий потолок, чтобы цикл повторов не сжёг ваш ключ. При превышении прогон останавливается на ревью, черновик не теряется.",
+      "web_search_enabled": "Разрешает ассистенту искать в интернете во время прогона.",
+      "agent_prompt_caching": "Только Anthropic: переиспользует стабильную часть промпта при повторных генерациях, так они дешевле."
+    },
+    "embeddingsHeading": "Эмбеддинги",
+    "embeddingsHint": "Как лор превращается в векторы для поиска и для обоснования ответов ассистента.",
+    "embeddingProviderLabel": "Провайдер эмбеддингов",
+    "embeddingModelLabel": "Модель эмбеддингов",
+    "embeddingLocalNote": "Работает на этой машине — текст кампании её не покидает.",
+    "embeddingSwitchWarning": "Смена модели обесценивает сохранённые векторы: после сохранения автоматически запустится полная переиндексация.",
+    "reindexHeading": "Переиндексация",
+    "reindexHint": "Пересобирает поисковые данные всех проектов текущей моделью ({{model}}).",
+    "reindexDisabledHint": "Эмбеддинги отключены — пересобирать нечего.",
+    "reindexButton": "Переиндексировать",
+    "reindexing": "Переиндексация...",
+    "reindexProgress": "Пересобрано {{done}} из {{total}} — {{current}}",
+    "reindexDone": "Готово. Сущностей: {{entities}}, документов: {{sources}}.",
+    "reindexFailed": "Переиндексация не удалась: {{error}}",
+    "tracingHeading": "Трассировка",
+    "tracingHint": "Необязательно: отправлять прогоны агента в LangSmith или Langfuse. Применяется после перезапуска.",
+    "tracingDisabled": "Выключена",
+    "launchHeading": "Задаётся при запуске",
+    "launchHint": "Свойства запуска приложения. Меняются в лаунчере или .env, не здесь.",
+    "launch": {
+      "dataDir": "Папка данных",
+      "port": "Порт",
+      "playMode": "Игра по локальной сети",
+      "internetMode": "Режим интернета",
+      "tls": "HTTPS",
+      "logLevel": "Уровень логов"
+    },
+    "sourceDb": "задано здесь",
+    "sourceEnv": ".env",
+    "sourceEnvHint": "Значение пришло из .env. Заданное здесь его перекрывает.",
+    "resetToEnv": "Сбросить",
+    "restartRequiredHint": "Применится после перезапуска.",
+    "unsavedChanges": "Есть несохранённые изменения",
+    "allSaved": "Все изменения сохранены",
+    "saveButton": "Сохранить",
+    "saving": "Сохранение...",
+    "saved": "Настройки сохранены",
+    "savedReindexing": "Сохранено — запущена переиндексация",
+    "savedRestartNeeded": "Сохранено — применится после перезапуска",
+    "resetDone": "Сброшено к значению из .env",
+    "reindexSourceProgress": "Документы: {{done}} из {{total}} — {{current}}",
+    "navAppearance": "Оформление",
+    "navUpdates": "Обновления",
+    "updatesHeading": "Обновления",
+    "updatesHint": "Версия и как поступать с новыми.",
+    "subheading": "Действуют для всех проектов на этой машине."
+  },
+  "sidebarStatus": {
+    "noKey": "Ключ не задан",
+    "noKeyTitle": "Ассистент",
+    "reindexing": "Переиндексация {{done}}/{{total}}"
+  },
+  "palette": {
+    "title": "Поиск",
+    "placeholder": "Название сущности или проекта…",
+    "placeholderNoProject": "Название проекта…",
+    "projectHint": "проект",
+    "nothing": "Ничего не найдено по запросу «{{query}}».",
+    "hint": "Начните печатать: сущности открытого проекта и любой проект по имени."
+  },
+  "appearance": {
+    "themeHeading": "Тема",
+    "themeHint": "Переключается и из панели — здесь видно, как это выглядит.",
+    "accentHeading": "Акцент",
+    "accentHint": "Каждый пресет — целая тема, а не только цвет кнопки.",
+    "languageHeading": "Язык",
+    "languageHint": "Меняет интерфейс; текст вашей кампании не трогает."
   }
 }
