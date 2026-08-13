@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useBlocker, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
+import { HierarchyTypesPanel } from "../components/entity/HierarchyTypesPanel";
 import { KnowledgeBasePanel } from "../components/knowledge/KnowledgeBasePanel";
 import { PlayersPanel } from "../components/players/PlayersPanel";
 import { TemplatesPanel } from "../components/sheet/designer/TemplatesPanel";
@@ -21,6 +22,7 @@ import { translateApiError } from "../i18n/eventText";
 // (pages/IntegrationsPage.tsx), being something you use rather than set up.
 type SettingsSection =
   | "general"
+  | "grouping"
   | "templates"
   | "players"
   | "knowledge"
@@ -29,6 +31,7 @@ type SettingsSection =
 
 const NAV_SECTIONS: { id: SettingsSection; icon: IconName; labelKey: string }[] = [
   { id: "general", icon: "settings", labelKey: "projectSettings.navGeneral" },
+  { id: "grouping", icon: "network", labelKey: "projectSettings.navGrouping" },
   { id: "templates", icon: "layers", labelKey: "projectSettings.navTemplates" },
   { id: "players", icon: "users", labelKey: "projectSettings.navPlayers" },
   { id: "knowledge", icon: "folder", labelKey: "projectSettings.navKnowledge" },
@@ -226,6 +229,8 @@ export function ProjectSettingsPage() {
               </div>
             </section>
           )}
+
+          {section === "grouping" && <HierarchyTypesPanel projectId={projectId!} />}
 
           {section === "templates" && <TemplatesPanel projectId={projectId!} />}
 

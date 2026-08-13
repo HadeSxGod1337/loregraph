@@ -25,6 +25,15 @@ export function useEdgesForEntity(projectId: string, entityId: string | undefine
   });
 }
 
+/** All edges of the project. Its key is a prefix of the per-entity key, so
+ * invalidateEdgeCaches above refreshes this too. */
+export function useAllEdges(projectId: string) {
+  return useQuery({
+    queryKey: ["edges", projectId],
+    queryFn: () => edgesApi.listAll(projectId),
+  });
+}
+
 export function useCreateEdge(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
