@@ -11,10 +11,11 @@ const MODE_LABEL: Record<UpdateMode, string> = {
   never: "updates.modeNever",
 };
 
-/** Update controls inside the preferences popover. Global on purpose: the
- * launcher checks the remote for the whole app, not one project. The backend
- * only reads what the launcher wrote, so there's no "check now" — the mode
- * and the skip list are what the user actually controls here. */
+/** Update controls, shown as a settings section (they used to be buried in
+ * the appearance popover, which is not where anyone looks for a version).
+ * Global on purpose: the launcher checks the remote for the whole app, not
+ * one project. The backend only reads what the launcher wrote, so there's no
+ * "check now" — the mode and the skip list are what the user controls. */
 export function UpdatesSection() {
   const { t } = useTranslation();
   const { data: status } = useUpdateStatus();
@@ -39,9 +40,7 @@ export function UpdatesSection() {
     latest !== null && preferences.skipped_versions.includes(latest);
 
   return (
-    <div className="sidebar-pref-section">
-      <h3>{t("updates.title")}</h3>
-
+    <div className="updates-section">
       <p className="updates-version">
         {t("updates.currentVersion", { version: status.current_version })}
       </p>
@@ -94,8 +93,8 @@ export function UpdatesSection() {
         </p>
       )}
 
-      <div className="sidebar-pref-row">
-        <span className="sidebar-pref-label">{t("updates.mode")}</span>
+      <div className="settings-inline-row">
+        <span className="settings-inline-label">{t("updates.mode")}</span>
         <div className="theme-mode-toggle">
           {MODES.map((mode) => (
             <button

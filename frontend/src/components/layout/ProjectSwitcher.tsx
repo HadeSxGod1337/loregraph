@@ -39,9 +39,10 @@ export function ProjectSwitcher({ projectId, collapsed }: ProjectSwitcherProps) 
         onClick={() => setOpen((v) => !v)}
       >
         <Icon name="folder" size={16} className="sidebar-switcher-icon" />
+        {/* No "Project" eyebrow: the group label directly below says it, and
+            two identical uppercase words 40 px apart is noise, not structure. */}
         {!collapsed && (
           <span className="sidebar-switcher-label">
-            <span className="sidebar-switcher-eyebrow">{t("sidebar.project")}</span>
             <span className="sidebar-switcher-name">{current?.name ?? "…"}</span>
           </span>
         )}

@@ -7,6 +7,8 @@ export type IconName =
   | "bar-chart"
   | "check"
   | "chevron-down"
+  | "chevron-left"
+  | "chevron-right"
   | "chevron-up"
   | "download"
   | "expand"
@@ -18,8 +20,11 @@ export type IconName =
   | "grip"
   | "help"
   | "layers"
+  | "monitor"
+  | "moon"
   | "more"
   | "network"
+  | "panel-left"
   | "paperclip"
   | "plug"
   | "plus"
@@ -29,6 +34,7 @@ export type IconName =
   | "search"
   | "settings"
   | "sparkles"
+  | "sun"
   | "swap"
   | "target"
   | "trash"
@@ -61,6 +67,8 @@ const PATHS: Record<IconName, ReactNode> = {
   "bar-chart": <path d="M4 20V10M12 20V4M20 20v-7" />,
   check: <path d="M20 6 9 17l-5-5" />,
   "chevron-down": <path d="m6 9 6 6 6-6" />,
+  "chevron-left": <path d="m14 6-6 6 6 6" />,
+  "chevron-right": <path d="m10 6 6 6-6 6" />,
   "chevron-up": <path d="m18 15-6-6-6 6" />,
   download: (
     <>
@@ -117,6 +125,13 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="m3 15 9 5 9-5" />
     </>
   ),
+  monitor: (
+    <>
+      <rect x="3" y="4" width="18" height="13" rx="2" />
+      <path d="M9 21h6M12 17v4" />
+    </>
+  ),
+  moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />,
   more: (
     <>
       <circle cx="12" cy="12" r="1" />
@@ -130,6 +145,15 @@ const PATHS: Record<IconName, ReactNode> = {
       <circle cx="5" cy="18" r="2.2" />
       <circle cx="19" cy="18" r="2.2" />
       <path d="M12 7.2 6.6 16.3M12 7.2l5.4 9.1M7.2 18h9.6" />
+    </>
+  ),
+  // The sidebar itself, drawn small: a panel with its rail marked. Reads as
+  // "the rail" in both states, so the control doesn't have to change shape
+  // (or place) between them the way a left/right chevron pair does.
+  "panel-left": (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 3v18" />
     </>
   ),
   paperclip: (
@@ -185,6 +209,12 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
   sparkles: (
     <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+  ),
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" />
+    </>
   ),
   swap: (
     <>

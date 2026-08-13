@@ -303,131 +303,6 @@
   flex: none;
 }
 
-.sidebar-prefs-wrap {
-  position: relative;
-}
-
-.sidebar-prefs-btn,
-.sidebar-collapse-btn {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 11px;
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: var(--radius-control);
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.sidebar-prefs-btn:hover,
-.sidebar-collapse-btn:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
-}
-
-.sidebar-prefs-btn[aria-expanded="true"] {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-/* A small dot the moment an update is available, so the collapsed sidebar
-   still surfaces it without opening the popover. */
-.sidebar-prefs-badge {
-  width: 7px;
-  height: 7px;
-  margin-left: auto;
-  border-radius: 50%;
-  background: var(--accent);
-  flex-shrink: 0;
-}
-
-.sidebar.collapsed .sidebar-prefs-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  margin-left: 0;
-}
-
-.sidebar-collapse-btn {
-  margin-top: 2px;
-}
-
-.sidebar-collapse-icon {
-  transition: transform 0.16s ease;
-  transform: rotate(90deg);
-}
-
-.sidebar.collapsed .sidebar-collapse-icon {
-  transform: rotate(-90deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sidebar-collapse-icon {
-    transition: none;
-  }
-}
-
-.sidebar.collapsed .sidebar-prefs-btn,
-.sidebar.collapsed .sidebar-collapse-btn {
-  justify-content: center;
-  padding: 8px;
-}
-
-.sidebar-prefs-popover {
-  position: absolute;
-  bottom: 0;
-  left: calc(100% + 8px);
-  width: max-content;
-  min-width: 220px;
-  max-width: min(320px, calc(100vw - 32px));
-  z-index: 30;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow);
-  padding: 14px;
-}
-
-.sidebar-prefs-popover h3 {
-  margin: 0 0 12px;
-  font-size: 13px;
-}
-
-.sidebar-pref-row {
-  margin-bottom: 12px;
-}
-
-.sidebar-pref-row:last-child {
-  margin-bottom: 0;
-}
-
-.sidebar-pref-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 7px;
-}
-
-/* Updates block sits below the appearance controls, divided from them. */
-.sidebar-pref-section {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-}
-
-.sidebar-pref-section h3 {
-  margin: 0 0 10px;
-  font-size: 13px;
-}
-
 .updates-version {
   margin: 0 0 8px;
   font-size: 12px;
@@ -504,55 +379,7 @@
 .theme-mode-toggle button.active {
   background: var(--accent-soft);
   color: var(--accent);
-}
-
-.sidebar-swatches {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.sidebar-swatch {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid var(--border-strong);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  padding: 0;
-}
-
-.sidebar-swatch.active::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 2px solid var(--accent);
-}
-
-/* Each swatch shows its own preset's brand color, independent of whichever
-   preset is currently active — same hex values as the preset tables in
-   index.css, keyed by data-preset and the active light/dark mode. */
-.sidebar-swatch[data-preset="teal"] { background: #0f6b63; }
-.sidebar-swatch[data-preset="blue"] { background: #2159b8; }
-.sidebar-swatch[data-preset="green"] { background: #2f7d3a; }
-.sidebar-swatch[data-preset="violet"] { background: #7645b8; }
-.sidebar-swatch[data-preset="amber"] { background: #a8660f; }
-.sidebar-swatch[data-preset="slate"] { background: #46505f; }
-.sidebar-swatch[data-preset="noir"] { background: #000000; color: #fff; }
-
-:root[data-theme="dark"] .sidebar-swatch[data-preset="teal"] { background: #35d6b8; color: #06120f; }
-:root[data-theme="dark"] .sidebar-swatch[data-preset="blue"] { background: #6ea3f5; color: #06101f; }
-:root[data-theme="dark"] .sidebar-swatch[data-preset="green"] { background: #66d178; color: #07130a; }
-:root[data-theme="dark"] .sidebar-swatch[data-preset="violet"] { background: #c199f0; color: #0d0816; }
-:root[data-theme="dark"] .sidebar-swatch[data-preset="amber"] { background: #f0ac52; color: #140d04; }
-:root[data-theme="dark"] .sidebar-swatch[data-preset="slate"] { background: #a7b0c2; color: #101114; }
-:root[data-theme="dark"] .sidebar-swatch[data-preset="noir"] { background: #ffffff; color: #000; }
-
-/* ---------- Main column: top bar + page content ---------- */
+}/* ---------- Main column: top bar + page content ---------- */
 
 .app-main {
   flex: 1;
@@ -601,12 +428,23 @@
 /* "document" pages (list/edit) get a centered reading column; the graph
    page opts out of this and goes full-bleed instead, see below. */
 .entity-list-page,
-.entity-edit-page,
-.project-list-page {
+.entity-edit-page {
   max-width: 900px;
   width: 100%;
   margin: 0 auto;
   padding: 24px;
+}
+
+/* Wider than the reading pages: this one holds a card grid, and 900 px of it
+   on a 1800 px screen reads as one thin column with a void beside it. */
+.project-list-page {
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 /* entity list */
@@ -706,50 +544,71 @@
 .project-list-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 0;
   position: sticky;
   top: 0;
   z-index: 5;
   background: var(--bg);
-  padding: 4px 0;
+  padding: 8px 0;
 }
 
 .project-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .project-card {
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-card);
+  background: var(--surface);
   padding: 14px 16px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.project-card:hover {
+  border-color: var(--border-strong);
 }
 
 .project-card-link {
   text-decoration: none;
   color: var(--text);
   min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .project-card-link h3 {
-  margin: 0 0 4px;
+  margin: 0;
+  font-size: 14.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .project-card-link p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 12.5px;
+  /* Two lines, so cards in a row keep the same height whatever the blurb. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .project-card-link .project-card-stats {
-  margin-top: 4px;
+  margin-top: auto;
+  padding-top: 2px;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -826,8 +685,22 @@
   gap: 20px;
 }
 
-.project-settings-page > h1 {
+.project-settings-page > h1,
+.settings-page-head h1 {
   flex: none;
+  margin: 0;
+}
+
+/* Title plus one line of scope, so "Settings" says whose settings these are
+   without a second heading level inside every tab. */
+.settings-page-head {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.settings-page-head .field-hint {
   margin: 0;
 }
 
@@ -1310,7 +1183,6 @@
   border: 0;
   background: #20222c; /* LSS sheet theme color — avoids a white flash */
 }
-
 
 .icon-picker {
   display: flex;
@@ -4624,6 +4496,25 @@
   color: #ffffff;
 }
 
+/* Undo lives inside the toast that reported the change — text-only, so it
+   reads as the tail of the sentence rather than a second notification. */
+.toast-action {
+  margin-left: auto;
+  border: none;
+  background: none;
+  padding: 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.toast-action:hover:not(:disabled) {
+  background: none;
+  border: none;
+  text-decoration: underline;
+}
+
 /* ---------- Skeletons ---------- */
 
 .skeleton {
@@ -4750,6 +4641,228 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ---------- Entity tree (folders built from containment edges) ---------- */
+
+/* A folder is still an entity: same row, plus a chevron, a member count and
+   its own ↗ to the card — because clicking the row itself now folds. */
+.entity-tree-node {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.entity-tree-node:focus-visible {
+  outline: none;
+}
+
+/* The focus ring belongs to the row, not to the li that carries the focus —
+   the drag wrapper sits between them, hence the explicit path. */
+.entity-tree-node:focus-visible > .entity-tree-drag > .entity-tree-item {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.entity-tree-group {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* The guide line starts under the parent's avatar, so a branch reads as
+     hanging off the row above it rather than as a new list. */
+  margin: 8px 0 0 27px;
+  padding: 0 0 0 17px;
+  border-left: 1px solid var(--border);
+}
+
+/* Only the folder's left edge is tinted by its type (the color comes from the
+   row's inline style, as on the graph cards) — a fully colored row would
+   out-shout the entity rows inside it. */
+.entity-tree-item.is-folder {
+  cursor: pointer;
+  background: var(--bg-subtle);
+  border-left-width: 2px;
+}
+
+/* A row kept on screen only because a member matched the search: present as
+   context, not as a result. */
+.entity-tree-item.is-context {
+  opacity: 0.6;
+}
+
+.entity-tree-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transform: rotate(-90deg);
+  transition: transform 0.12s;
+}
+
+.entity-tree-chevron.is-open {
+  transform: rotate(0deg);
+}
+
+.entity-tree-dots {
+  display: inline-flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.entity-tree-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.entity-tree-count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+  flex-shrink: 0;
+}
+
+/* The way to the folder's own card — the row click itself now folds, so this
+   must stay visible (dimmed, not hidden: an invisible control is one nobody
+   finds, and opacity:0 drops it out of some accessibility trees). */
+.entity-tree-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  opacity: 0.45;
+  transition: opacity 0.12s, color 0.12s, background-color 0.12s;
+}
+
+.entity-tree-item:hover .entity-tree-open,
+.entity-tree-open:focus-visible {
+  opacity: 1;
+}
+
+.entity-tree-open:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Same entity, several folders — say so instead of letting it read as a
+   duplicate row. */
+.entity-tree-parents {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Drag wrapper around a row: dropping onto another row is what creates the
+   containment edge. `touch-action: manipulation` keeps the list scrollable on
+   a touchscreen — there a drag only starts after a short hold. */
+.entity-tree-drag {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  touch-action: manipulation;
+}
+
+.entity-tree-drag.is-dragging {
+  opacity: 0.4;
+}
+
+.entity-tree-drag.is-drop-target > .entity-tree-item {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Already there, or would nest a folder inside its own member. */
+.entity-tree-drag.is-drop-blocked > .entity-tree-item {
+  border-color: var(--danger);
+}
+
+/* What follows the cursor while dragging — the title alone, because the full
+   row under the pointer would cover the drop target it is aiming at. */
+.entity-tree-drag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  cursor: grabbing;
+}
+
+/* Project settings → Grouping: one row per relationship type the project
+   actually uses, each saying what that type means for the list. */
+.hierarchy-type-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hierarchy-type-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hierarchy-type-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+/* ---------- Entity list: grouping controls and type sections ---------- */
+
+.entity-list-modes {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.entity-list-count {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.entity-type-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.entity-type-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 /* ---------- Empty states ---------- */
@@ -7611,4 +7724,809 @@ button.sheet-dot:focus-visible {
   font-size: 0.8rem;
   color: var(--accent);
   white-space: nowrap;
+}
+
+/* --- App-level AI settings (pages/AppSettingsPage.tsx) -------------------- */
+
+.setting-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+}
+
+.setting-row + .setting-row {
+  border-top: 1px solid var(--border);
+}
+
+.setting-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.setting-row-head label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.setting-row .field-hint {
+  margin: 0;
+}
+
+/* Where a value came from. The badge is the answer to "I edited .env and
+   nothing changed": a value set in the UI overrides the file. */
+.setting-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.setting-source-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.setting-source-badge.db {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+}
+
+.setting-secret-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.setting-secret-row input {
+  flex: 1;
+  font-family: var(--font-mono, monospace);
+}
+
+.probe-ok {
+  color: var(--success);
+  font-size: 12px;
+}
+
+.warning-hint {
+  color: var(--warning);
+}
+
+.launch-only-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 18px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.launch-only-list dt {
+  color: var(--text-muted);
+}
+
+.launch-only-list dd {
+  margin: 0;
+  color: var(--text);
+  word-break: break-all;
+}
+
+/* --- Sidebar: two zones, a search, and a live status -------------------- */
+
+.sidebar-brand-row {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-brand-row .sidebar-brand {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+/* Width is a layout control, so it sits on the rail's edge rather than in
+   the list of destinations, where it used to read as a fourth nav item. */
+.sidebar-collapse-btn {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+/* Collapsed there is no brand link to give the row its height, so state it —
+   otherwise the rail's first row would shrink to the button and every icon
+   below would sit higher than in the expanded state. */
+.sidebar.collapsed .sidebar-brand-row {
+  height: 52px;
+  padding-right: 0;
+  justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-collapse-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.sidebar-search {
+  margin: 10px 10px 2px;
+  width: calc(100% - 20px);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.sidebar-search:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.sidebar.collapsed .sidebar-search {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebar-group-label {
+  font: 600 9.5px/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 12px 16px 6px;
+}
+
+.sidebar-zone-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 12px 0;
+}
+
+.sidebar-recent-mark {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font: 700 9.5px/17px var(--font-ui);
+  text-align: center;
+}
+
+.sidebar-nav-item.active .sidebar-recent-mark {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* Status: which model answers, whether a key is set, whether a rebuild is
+   running. None of this used to be visible outside the pages that own it,
+   so a missing key only surfaced when you tried to generate. */
+.sidebar-status {
+  margin: 0 10px 6px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.sidebar-status:hover {
+  border-color: var(--border-strong);
+}
+
+.sidebar-status-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 20%, transparent);
+}
+
+.sidebar-status.tone-warn .sidebar-status-dot {
+  background: var(--warning);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning) 20%, transparent);
+}
+
+.sidebar-status.tone-busy .sidebar-status-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+  animation: sidebar-status-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes sidebar-status-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-status.tone-busy .sidebar-status-dot {
+    animation: none;
+  }
+}
+
+.sidebar-status-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+
+.sidebar-status-title {
+  font: 500 9.5px/1.3 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sidebar-status-value {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar.collapsed .sidebar-status {
+  justify-content: center;
+  padding: 8px;
+}
+
+/* Theme is the one preference frequent enough to stay in the rail. */
+.sidebar-theme-toggle {
+  display: flex;
+  gap: 2px;
+  margin: 8px 8px 2px;
+  padding: 2px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+
+.sidebar-theme-toggle button {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  border-radius: var(--radius-pill);
+  padding: 5px 0;
+  cursor: pointer;
+}
+
+.sidebar-theme-toggle button:hover {
+  color: var(--text);
+}
+
+.sidebar-theme-toggle button.active {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.sidebar-theme-cycle {
+  margin: 6px auto 2px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.sidebar-theme-cycle:hover {
+  color: var(--text);
+}
+
+/* --- Command palette ---------------------------------------------------- */
+
+.palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: color-mix(in srgb, var(--text) 28%, transparent);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+
+.palette {
+  width: min(560px, calc(100vw - 32px));
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.palette-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.palette-input-row input {
+  flex: 1;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+  padding: 0;
+}
+
+.palette-close {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.palette-close:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.palette-results {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.palette-results button {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.palette-results button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.palette-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+}
+
+.palette-hint {
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--text-muted);
+  text-transform: lowercase;
+}
+
+.palette-results button.active .palette-hint {
+  color: var(--accent);
+}
+
+.palette-empty {
+  margin: 0;
+  padding: 14px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* --- Settings: tabs instead of a second rail ---------------------------- */
+
+.settings-tabbed {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.settings-tab {
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.settings-tab:hover {
+  color: var(--text);
+}
+
+.settings-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.settings-inline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+}
+
+.settings-inline-label {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.updates-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* --- Appearance section ------------------------------------------------- */
+
+.appearance-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding-bottom: 4px;
+}
+
+@media (max-width: 640px) {
+  .appearance-modes {
+    grid-template-columns: 1fr;
+  }
+}
+
+.appearance-mode {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-subtle);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  /* Both explicit: the shared button rule centres its children, which in a
+     column layout sizes them to their content — and a colour swatch has
+     none, so it collapsed to a hairline. */
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 9px;
+  cursor: pointer;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.appearance-mode.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.appearance-mode-preview {
+  /* A span is inline by default, which ignores height — that is what made
+     these previews render as a hairline instead of a swatch. */
+  display: block;
+  height: 52px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.appearance-mode-preview.mode-light {
+  background: linear-gradient(120deg, #f6faf9 0%, #f6faf9 62%, #ffffff 62%);
+}
+
+.appearance-mode-preview.mode-dark {
+  background: linear-gradient(120deg, #0c1513 0%, #0c1513 62%, #101b18 62%);
+}
+
+.appearance-mode-preview.mode-system {
+  background: linear-gradient(120deg, #f6faf9 0%, #f6faf9 50%, #0c1513 50%);
+}
+
+.appearance-mode-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.appearance-presets {
+  display: grid;
+  /* Seven presets: four then three reads as a deliberate block, where
+     auto-fill left a ragged tail that changed shape on every resize. */
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding-bottom: 4px;
+}
+
+@media (max-width: 700px) {
+  .appearance-presets {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.appearance-preset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-subtle);
+  padding: 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.appearance-preset.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* --sw-* are set per preset in index.css: a tile previews a palette the app
+   is not currently in, so it cannot read the live tokens. */
+.appearance-preset-bar {
+  display: flex;
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.appearance-preset-bar i {
+  display: block;
+  height: 100%;
+}
+
+.appearance-preset-bar .tone-bg {
+  flex: 2;
+  background: var(--sw-bg);
+}
+
+.appearance-preset-bar .tone-surface {
+  flex: 1;
+  background: var(--sw-mid);
+}
+
+.appearance-preset-bar .tone-accent {
+  flex: 1;
+  background: var(--sw-accent);
+}
+
+.appearance-preset-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.appearance-langs {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+.appearance-langs button {
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  border-radius: var(--radius-control);
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.appearance-langs button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* --- Start page: continue, filter, metric chips ------------------------- */
+
+.project-list-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.project-list-title .field-hint {
+  margin: 0;
+}
+
+.project-continue {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  text-decoration: none;
+  color: var(--text);
+}
+
+.project-continue:hover {
+  border-color: var(--accent);
+}
+
+.project-continue-mark {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-card);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 800 17px/46px var(--font-ui);
+  text-align: center;
+}
+
+.project-continue-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.project-continue-eyebrow {
+  font: 500 9.5px/1.4 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.project-continue-name {
+  font-size: 15.5px;
+  font-weight: 600;
+}
+
+.project-continue-stats {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.project-continue-open {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.project-list-filter {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text-muted);
+  max-width: 320px;
+}
+
+.project-list-filter input {
+  flex: 1;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  padding: 0;
+}
+
+.project-card-stats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.project-chip {
+  font: 500 10.5px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px 8px;
+}
+
+/* An update is waiting: the dot the appearance popover used to carry, now on
+   the section that actually owns updates. */
+.sidebar-nav-badge {
+  margin-left: auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+
+.sidebar.collapsed .sidebar-nav-badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  margin-left: 0;
+}
+
+.sidebar.collapsed .sidebar-nav-item {
+  position: relative;
 }

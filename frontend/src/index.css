@@ -513,3 +513,23 @@ a {
 .error-text {
   color: var(--danger);
 }
+
+/* --- Appearance picker previews (components/settings/AppearanceSection.tsx) ---
+   Each tile paints the palette of the preset it offers, not the one currently
+   applied, so the values are literals mirroring the blocks above. Light and
+   dark are separate because a tile should preview the theme you are in. */
+.appearance-preset[data-preset="teal"] { --sw-bg: #f6faf9; --sw-mid: #dcefe9; --sw-accent: #0f6b63; }
+.appearance-preset[data-preset="blue"] { --sw-bg: #f5f8fc; --sw-mid: #dde8f9; --sw-accent: #2159b8; }
+.appearance-preset[data-preset="green"] { --sw-bg: #f6faf5; --sw-mid: #dff0da; --sw-accent: #2f7d3a; }
+.appearance-preset[data-preset="violet"] { --sw-bg: #f9f7fc; --sw-mid: #ece1f8; --sw-accent: #7645b8; }
+.appearance-preset[data-preset="amber"] { --sw-bg: #fcf9f3; --sw-mid: #f6e6c8; --sw-accent: #a8660f; }
+.appearance-preset[data-preset="slate"] { --sw-bg: #f6f6f8; --sw-mid: #e7e9ed; --sw-accent: #46505f; }
+.appearance-preset[data-preset="noir"] { --sw-bg: #ffffff; --sw-mid: #ececec; --sw-accent: #000000; }
+
+:root[data-theme="dark"] .appearance-preset[data-preset="teal"] { --sw-bg: #0c1513; --sw-mid: #143a32; --sw-accent: #35d6b8; }
+:root[data-theme="dark"] .appearance-preset[data-preset="blue"] { --sw-bg: #0a0f1a; --sw-mid: #16233f; --sw-accent: #6ea3f5; }
+:root[data-theme="dark"] .appearance-preset[data-preset="green"] { --sw-bg: #0b1409; --sw-mid: #163a1e; --sw-accent: #66d178; }
+:root[data-theme="dark"] .appearance-preset[data-preset="violet"] { --sw-bg: #120c1a; --sw-mid: #2a1e42; --sw-accent: #c199f0; }
+:root[data-theme="dark"] .appearance-preset[data-preset="amber"] { --sw-bg: #170f07; --sw-mid: #3a2810; --sw-accent: #f0ac52; }
+:root[data-theme="dark"] .appearance-preset[data-preset="slate"] { --sw-bg: #111115; --sw-mid: #262a33; --sw-accent: #a7b0c2; }
+:root[data-theme="dark"] .appearance-preset[data-preset="noir"] { --sw-bg: #000000; --sw-mid: #1a1a1a; --sw-accent: #ffffff; }

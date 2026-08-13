@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -15,6 +15,7 @@ import {
   useImportProject,
   useProjects,
 } from "../hooks/useProjects";
+import { useLastProject } from "../hooks/useLastProject";
 import { translateApiError } from "../i18n/eventText";
 
 export function ProjectListPage() {
@@ -24,6 +25,7 @@ export function ProjectListPage() {
   const createProject = useCreateProject();
   const importProject = useImportProject();
   const [creating, setCreating] = useState(false);
+  const [query, setQuery] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -66,6 +68,19 @@ export function ProjectListPage() {
       onSuccess: () => toast(t("projects.importedToast")),
     });
   }
+
+  const lastProjectId = useLastProject();
+  // The world you were in last is the one you almost always want again; it
+  // gets its own card instead of being one row among eleven identical ones.
+  const continueProject = projects?.find((p) => p.id === lastProjectId);
+  const rest = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return (projects ?? []).filter(
+      (p) =>
+        p.id !== continueProject?.id &&
+        (needle === "" || p.name.toLowerCase().includes(needle)),
+    );
+  }, [projects, continueProject, query]);
 
   const isEmpty = projects?.length === 0;
 
@@ -110,7 +125,17 @@ export function ProjectListPage() {
   return (
     <div className="project-list-page">
       <div className="project-list-header">
-        <h1>{t("projects.title")}</h1>
+        <div className="project-list-title">
+          <h1>{t("projects.title")}</h1>
+          {projects && projects.length > 0 && (
+            <p className="field-hint">
+              {t("projects.summary", {
+                projects: projects.length,
+                entities: projects.reduce((sum, p) => sum + p.entity_count, 0),
+              })}
+            </p>
+          )}
+        </div>
         <div className="page-header-actions">
           <button type="button" onClick={() => fileInputRef.current?.click()}>
             <Icon name="download" />
@@ -143,8 +168,43 @@ export function ProjectListPage() {
 
       {isLoading && <SkeletonList rows={3} />}
 
+      {continueProject && (
+        <Link
+          to={`/projects/${continueProject.id}/entities`}
+          className="project-continue"
+        >
+          <span className="project-continue-mark" aria-hidden="true">
+            {continueProject.name.slice(0, 1).toUpperCase()}
+          </span>
+          <span className="project-continue-body">
+            <span className="project-continue-eyebrow">{t("projects.continue")}</span>
+            <span className="project-continue-name">{continueProject.name}</span>
+            <span className="project-continue-stats">
+              {t("projects.entitiesCount", { count: continueProject.entity_count })}
+              {" · "}
+              {t("projects.edgesCount", { count: continueProject.edge_count })}
+            </span>
+          </span>
+          <span className="project-continue-open">
+            {t("projects.openButton")}
+            <Icon name="chevron-right" size={15} />
+          </span>
+        </Link>
+      )}
+
+      {projects && projects.length > 4 && (
+        <div className="project-list-filter">
+          <Icon name="search" size={15} />
+          <input
+            value={query}
+            placeholder={t("projects.filterPlaceholder")}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      )}
+
       <div className="project-list">
-        {projects?.map((project) => (
+        {rest.map((project) => (
           <ProjectCard
             key={project.id}
             project={project}
@@ -152,6 +212,10 @@ export function ProjectListPage() {
           />
         ))}
       </div>
+
+      {projects && rest.length === 0 && query.trim() !== "" && (
+        <p className="field-hint">{t("projects.noMatches", { query: query.trim() })}</p>
+      )}
 
       {isEmpty && !creating && (
         <div className="empty-state">
@@ -202,9 +266,12 @@ function ProjectCard({
         <h3>{project.name}</h3>
         {project.description && <p>{project.description}</p>}
         <p className="project-card-stats">
-          {t("projects.entitiesCount", { count: project.entity_count })}
-          {" · "}
-          {t("projects.edgesCount", { count: project.edge_count })}
+          <span className="project-chip">
+            {t("projects.entitiesCount", { count: project.entity_count })}
+          </span>
+          <span className="project-chip">
+            {t("projects.edgesCount", { count: project.edge_count })}
+          </span>
         </p>
       </Link>
       <div className="project-card-actions">
