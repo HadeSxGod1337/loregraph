@@ -17,6 +17,15 @@ before upgrading.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-08-13
+
+Everything about running the assistant used to mean editing `backend/.env` and
+restarting: the provider, the key, which model does what, and — if you ever
+changed the embedding model — the search index went stale until you found the
+per-project reindex button yourself. This release moves all of that into the
+app, and gives the sidebar and the entity list an overhaul that had been
+overdue since projects stopped being the only thing in the rail.
+
 ### Added
 
 - **AI settings in the app.** A new page in the left rail (`/settings`) sets the
@@ -398,7 +407,8 @@ First tagged release. Everything below is the state of the app as of this tag.
 None — this is the first release.
 
 [#1]: https://github.com/HadeSxGod1337/loregraph/issues/1
-[Unreleased]: https://github.com/HadeSxGod1337/loregraph/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/HadeSxGod1337/loregraph/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.4.0
 [0.3.1]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.3.1
 [0.3.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.3.0
 [0.2.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.2.0
