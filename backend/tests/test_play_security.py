@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -60,12 +62,13 @@ def test_websocket_rejects_non_loopback(app: FastAPI) -> None:
     assert excinfo.value.code == 1008
 
 
-def test_docs_disabled_in_play_mode() -> None:
+def test_docs_disabled_in_play_mode(tmp_path: Path) -> None:
     from loregraph.config import Settings
     from loregraph.main import create_app
 
     settings = Settings(
         _env_file=None,  # type: ignore[call-arg]
+        data_dir=tmp_path,
         embedding_provider="disabled",
         play_mode_enabled=True,
     )
