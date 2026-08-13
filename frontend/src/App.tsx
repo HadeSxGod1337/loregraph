@@ -9,6 +9,7 @@ import { privateRoutes } from "@loregraph/private-ui";
 import "./App.css";
 import { DemoBanner } from "./components/DemoBanner";
 import { Layout } from "./components/layout/Layout";
+import { AppSettingsPage } from "./pages/AppSettingsPage";
 import { AssistantPage } from "./pages/AssistantPage";
 import { EntityEditPage } from "./pages/EntityEditPage";
 import { EntityListPage } from "./pages/EntityListPage";
@@ -52,6 +53,9 @@ const router = createRouter([
     ),
     children: [
       { path: "/", element: <ProjectListPage /> },
+      // App-level, not project-level: which model answers and which embedder
+      // indexes are properties of the installation (see AppSettingsPage).
+      { path: "/settings", element: <AppSettingsPage /> },
       { path: "/projects/:projectId/entities", element: <EntityListPage /> },
       { path: "/projects/:projectId/entities/new", element: <EntityEditPage /> },
       { path: "/projects/:projectId/entities/:id", element: <EntityEditPage /> },

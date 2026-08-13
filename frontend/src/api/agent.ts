@@ -118,6 +118,11 @@ export interface AgentConfig {
   llm_configured: boolean;
   llm_provider: string;
   vector_enabled: boolean;
+  /** Which model actually answers, per task class — configurable at runtime
+   * from the settings page, so the UI reads it rather than assuming. */
+  model_assistant: string;
+  model_generation: string;
+  model_extraction: string;
 }
 
 export type AgentEvent =

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import type { AgentReviewPayload, DraftEntity, LoreDraft } from "../../api/agent";
 import { ApiError, apiClient } from "../../api/client";
@@ -339,26 +340,15 @@ function OnboardingCard({ provider }: { provider: string }) {
     <div className="assistant-onboarding">
       <h2>{t("assistant.onboarding.setupHeading")}</h2>
       <p>
-        {t("assistant.onboarding.setupBody1", { provider })}{" "}
-        <code>{provider}</code>
+        {t("assistant.onboarding.setupBody1", { provider })} <code>{provider}</code>
       </p>
-      <p>{t("assistant.onboarding.setupBody2")}</p>
-      <pre>
-        {`# Anthropic (default)
-CAMPAIGN_ANTHROPIC_API_KEY=sk-ant-...
-
-# or OpenAI
-CAMPAIGN_LLM_PROVIDER=openai
-CAMPAIGN_OPENAI_API_KEY=sk-...
-CAMPAIGN_LLM_MODEL_GENERATION=gpt-...
-
-# or fully local via Ollama (no key, lower quality)
-CAMPAIGN_LLM_PROVIDER=ollama
-CAMPAIGN_LLM_MODEL_GENERATION=llama3
-CAMPAIGN_LLM_MODEL_EXTRACTION=llama3
-CAMPAIGN_LLM_MODEL_COMPOSITION=llama3`}
-      </pre>
-      <p>{t("assistant.onboarding.setupBody3")}</p>
+      {/* The settings page is the path now: a key typed there applies
+          immediately, while .env only takes effect on the next start. */}
+      <p>{t("assistant.onboarding.setupUi")}</p>
+      <Link className="button-primary" to="/settings">
+        {t("assistant.onboarding.setupCta")}
+      </Link>
+      <p className="field-hint">{t("assistant.onboarding.setupEnvNote")}</p>
     </div>
   );
 }

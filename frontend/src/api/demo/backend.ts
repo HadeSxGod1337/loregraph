@@ -12,6 +12,13 @@ import type {
   AgentSessionDetail,
   LoreDraft,
 } from "../agent";
+import type {
+  AppSettings,
+  ReindexStatus,
+  SettingField,
+  SettingsCatalog,
+} from "../appSettings";
+import { SECRET_MASK_PREFIX } from "../appSettings";
 import type { PositionEntry } from "../entities";
 import type {
   Connection,
@@ -330,6 +337,9 @@ const routes: Route[] = [
       llm_configured: true,
       llm_provider: "anthropic (demo)",
       vector_enabled: true,
+      model_assistant: "claude-haiku-4-5-20251001",
+      model_generation: "claude-sonnet-5",
+      model_extraction: "claude-haiku-4-5-20251001",
     }),
   },
   {
@@ -359,6 +369,15 @@ const routes: Route[] = [
   { method: "POST", pattern: "/api/projects/:id/connections/:cid/export/preview", handler: () => ({ items: [] }) },
   { method: "POST", pattern: "/api/projects/:id/connections/:cid/export", handler: () => ({ created: 0, updated: 0, skipped: 0, errors: [] }) },
   { method: "POST", pattern: "/api/projects/:id/connections/:cid/import", handler: () => ({ created: 0, updated: 0, skipped: 0, errors: [], items: [] }) },
+  // --- app settings (read-only in the demo: there is no server to configure) ---
+  { method: "GET", pattern: "/api/settings", handler: () => demoAppSettings() },
+  { method: "GET", pattern: "/api/settings/catalog", handler: () => demoSettingsCatalog() },
+  { method: "GET", pattern: "/api/settings/models", handler: () => ({ models: [], error: null }) },
+  { method: "GET", pattern: "/api/settings/reindex", handler: () => demoReindexStatus() },
+  { method: "PUT", pattern: "/api/settings", handler: () => demoReadOnly() },
+  { method: "DELETE", pattern: "/api/settings/:field", handler: () => demoReadOnly() },
+  { method: "POST", pattern: "/api/settings/probe", handler: () => demoReadOnly() },
+  { method: "POST", pattern: "/api/settings/reindex", handler: () => demoReadOnly() },
   { method: "GET", pattern: "/api/projects/:id/knowledge", handler: () => [] },
   { method: "GET", pattern: "/api/projects/:id/import-jobs", handler: () => [] },
   { method: "GET", pattern: "/api/entities/:eid/attachments", handler: () => [] },
@@ -381,6 +400,126 @@ export async function demoRequest(
     if (m) return route.handler(m, body, query);
   }
   notFound(method, path);
+}
+
+// --- app settings handlers -------------------------------------------------
+
+/** The demo has no server whose configuration could be changed; the page is
+ * still worth showing, so it renders from a fixed snapshot and every write
+ * says why it can't happen. */
+function demoReadOnly(): never {
+  throw new ApiError(
+    403,
+    "Settings cannot be changed in the demo.",
+    "demo_read_only",
+  );
+}
+
+function demoField(
+  name: string,
+  value: unknown,
+  extra: Partial<SettingField> = {},
+): SettingField {
+  return {
+    name,
+    value,
+    source: "default",
+    secret: false,
+    is_set: value !== null && value !== "",
+    restart_required: false,
+    ...extra,
+  };
+}
+
+function demoAppSettings(): AppSettings {
+  const fields: Record<string, SettingField> = {
+    llm_provider: demoField("llm_provider", "anthropic"),
+    anthropic_api_key: demoField("anthropic_api_key", null, {
+      secret: true,
+      is_set: true,
+      value: `${SECRET_MASK_PREFIX}demo`,
+    }),
+    llm_model_assistant: demoField("llm_model_assistant", "claude-haiku-4-5-20251001"),
+    llm_model_extraction: demoField("llm_model_extraction", "claude-haiku-4-5-20251001"),
+    llm_model_generation: demoField("llm_model_generation", "claude-sonnet-5"),
+    agent_run_token_budget: demoField("agent_run_token_budget", 200000),
+    web_search_enabled: demoField("web_search_enabled", false),
+    agent_prompt_caching: demoField("agent_prompt_caching", true),
+    embedding_provider: demoField("embedding_provider", "local"),
+    embedding_model: demoField(
+      "embedding_model",
+      "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    ),
+    tracing_provider: demoField("tracing_provider", "disabled"),
+  };
+  return {
+    fields,
+    llm_configured: true,
+    embeddings_enabled: true,
+    embedding_model_id: "demo-embeddings",
+    reindex: demoReindexStatus(),
+    launch_only: {
+      data_dir: "./data",
+      frontend_port: 8000,
+      play_mode_enabled: false,
+      internet_mode_enabled: false,
+      tls_enabled: false,
+      trust_loopback: true,
+      log_level: "INFO",
+    },
+  };
+}
+
+function demoSettingsCatalog(): SettingsCatalog {
+  return {
+    providers: [
+      {
+        id: "anthropic",
+        label: "Anthropic (Claude)",
+        api_key_field: "anthropic_api_key",
+        base_url_field: null,
+        console_url: "https://console.anthropic.com/settings/keys",
+        key_prefix_hint: "sk-ant-",
+        default_models: {
+          assistant: "claude-haiku-4-5-20251001",
+          extraction: "claude-haiku-4-5-20251001",
+          generation: "claude-sonnet-5",
+        },
+        suggested_models: ["claude-sonnet-5", "claude-haiku-4-5-20251001"],
+        supports_model_listing: false,
+      },
+    ],
+    embedding_providers: [
+      {
+        id: "local",
+        label: "Local model (fastembed)",
+        model_field: "embedding_model",
+        api_key_field: null,
+        base_url_field: null,
+        local: true,
+        suggested_models: [
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        ],
+      },
+    ],
+    model_tiers: ["assistant", "extraction", "generation"],
+    editable_fields: [],
+  };
+}
+
+function demoReindexStatus(): ReindexStatus {
+  return {
+    state: "idle",
+    total_projects: 0,
+    done_projects: 0,
+    current_project: null,
+    current_source: null,
+    total_sources: 0,
+    entities_indexed: 0,
+    sources_indexed: 0,
+    error: null,
+    model_id: "demo-embeddings",
+  };
 }
 
 // --- project handlers -----------------------------------------------------
