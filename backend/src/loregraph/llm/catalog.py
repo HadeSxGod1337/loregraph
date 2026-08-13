@@ -94,6 +94,20 @@ PROVIDERS: tuple[ProviderDescriptor, ...] = (
         models_style="ollama",
     ),
     ProviderDescriptor(
+        id="ollama_cloud",
+        label="Ollama Cloud",
+        api_key_field="ollama_cloud_api_key",
+        base_url_field="ollama_cloud_base_url",
+        console_url="https://ollama.com/settings/keys",
+        default_models={
+            "assistant": "gpt-oss:20b-cloud",
+            "extraction": "gpt-oss:20b-cloud",
+            "generation": "gpt-oss:120b-cloud",
+        },
+        api_base="https://ollama.com",
+        models_style="ollama",
+    ),
+    ProviderDescriptor(
         id="google",
         label="Google Gemini",
         api_key_field="google_api_key",

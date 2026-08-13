@@ -148,6 +148,8 @@ def test_catalog_describes_providers_generically(client: TestClient) -> None:
     by_id = {provider["id"]: provider for provider in catalog["providers"]}
     assert by_id["anthropic"]["api_key_field"] == "anthropic_api_key"
     assert by_id["ollama"]["api_key_field"] is None
+    assert by_id["ollama_cloud"]["api_key_field"] == "ollama_cloud_api_key"
+    assert by_id["ollama_cloud"]["supports_model_listing"] is True
     assert by_id["anthropic"]["default_models"]["generation"]
     assert catalog["model_tiers"] == ["assistant", "extraction", "generation"]
     embedding_ids = {p["id"] for p in catalog["embedding_providers"]}

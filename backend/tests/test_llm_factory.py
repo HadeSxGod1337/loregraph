@@ -48,12 +48,27 @@ def test_ollama_provider_needs_no_key(tmp_path: Path) -> None:
     assert model.base_url == settings.ollama_base_url
 
 
-@pytest.mark.parametrize("provider", ["anthropic", "openai"])
+def test_ollama_cloud_provider_uses_bearer_api_key(tmp_path: Path) -> None:
+    settings = make_settings(
+        tmp_path,
+        llm_provider="ollama_cloud",
+        ollama_cloud_api_key="ollama-test-key",
+        llm_model_generation="gpt-oss:120b",
+    )
+    model = get_chat_model(settings, tier="generation")
+    assert isinstance(model, ChatOllama)
+    assert model.model == "gpt-oss:120b"
+    assert model.base_url == settings.ollama_cloud_base_url
+    assert model._client._client.headers["authorization"] == "Bearer ollama-test-key"
+
+
+@pytest.mark.parametrize("provider", ["anthropic", "openai", "ollama_cloud"])
 def test_missing_api_key_raises_configuration_error(
     tmp_path: Path, provider: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("CAMPAIGN_ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("CAMPAIGN_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("CAMPAIGN_OLLAMA_CLOUD_API_KEY", raising=False)
     settings = make_settings(tmp_path, llm_provider=provider)
     with pytest.raises(ConfigurationError):
         get_chat_model(settings, tier="generation")

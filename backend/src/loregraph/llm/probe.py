@@ -132,7 +132,12 @@ async def list_provider_models(settings: Settings) -> ModelListing:
         async with httpx.AsyncClient(timeout=MODEL_LIST_TIMEOUT_SECONDS) as client:
             match descriptor.models_style:
                 case "ollama":
-                    response = await client.get(f"{base_url}/api/tags")
+                    headers = (
+                        {"Authorization": f"Bearer {api_key}"} if api_key else None
+                    )
+                    response = await client.get(
+                        f"{base_url}/api/tags", headers=headers
+                    )
                     response.raise_for_status()
                     payload = response.json()
                     names = [
