@@ -15,9 +15,10 @@ from loregraph.api.security import (
     MasterAuthenticator,
 )
 from loregraph.config import Settings
-from loregraph.llm.embeddings import EmbeddingProvider
+from loregraph.llm.embeddings import EmbeddingProvider, get_embedding_provider
 from loregraph.storage.composition import StoreFactories
 from loregraph.storage.sqlite.agent_session_store import SqliteAgentSessionStore
+from loregraph.storage.sqlite.app_settings_store import SqliteAppSettingsStore
 from loregraph.storage.sqlite.attachment_store import SqliteAttachmentStore
 from loregraph.storage.sqlite.connection_store import (
     SqliteConnectionEntityLinkStore,
@@ -62,6 +63,7 @@ def default_store_factories(settings: Settings) -> StoreFactories:
         connection_entity_link=SqliteConnectionEntityLinkStore,
         player=SqlitePlayerStore,
         player_note=SqlitePlayerNoteStore,
+        app_settings=SqliteAppSettingsStore,
     )
 
 
@@ -71,6 +73,11 @@ def default_vector_store(
     if embedder is None:
         return None
     return ChromaVectorStore(settings.chroma_dir, embedder)
+
+
+def default_embedding_provider(settings: Settings) -> EmbeddingProvider | None:
+    """Which embedder backs the vector layer — None when embeddings are off."""
+    return get_embedding_provider(settings)
 
 
 def default_master_authenticator(settings: Settings) -> MasterAuthenticator:
@@ -91,6 +98,9 @@ class AppComposition:
     build_vector_store: Callable[
         [Settings, EmbeddingProvider | None], VectorStore | None
     ] = default_vector_store
+    build_embedding_provider: Callable[[Settings], EmbeddingProvider | None] = (
+        default_embedding_provider
+    )
     build_master_authenticator: Callable[[Settings], MasterAuthenticator] = (
         default_master_authenticator
     )

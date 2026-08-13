@@ -33,6 +33,9 @@ from loregraph.api.routers import (
 from loregraph.api.routers import (
     network as network_router,
 )
+from loregraph.api.routers import (
+    settings as settings_router,
+)
 from loregraph.api.security import require_master
 from loregraph.api.spa import mount_frontend
 from loregraph.composition import AppComposition
@@ -67,6 +70,9 @@ from loregraph.exceptions import (
     PlayerNoteNotFoundError,
     PlayerNotFoundError,
     ProjectNotFoundError,
+    ReindexInProgressError,
+    SettingsFieldInvalidError,
+    SettingsFieldUnknownError,
     SheetPresetNotFoundError,
     SkillInputInvalidError,
     UnknownConnectorTypeError,
@@ -76,15 +82,15 @@ from loregraph.exceptions import (
     UnsupportedExportFormatError,
     error_code,
 )
-from loregraph.llm.embeddings import EmbeddingProvider, get_embedding_provider
 from loregraph.observability import create_tracing
 from loregraph.schemas.project_transfer import ProjectExport
+from loregraph.services.embedding_stack import EmbeddingStack
 from loregraph.services.event_bus import EventBus
-from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.network import NetworkService
 from loregraph.services.project_transfer import import_project
+from loregraph.services.reindex_job import ReindexService
+from loregraph.services.settings_service import SettingsProvider, sanitize_stored
 from loregraph.services.update_status import app_version
-from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.composition import StoreFactories
 from loregraph.storage.sqlite.db import init_db, make_session_factory
 
@@ -93,24 +99,18 @@ SEED_DEMO_PROJECT_PATH = Path(__file__).parent / "seed" / "demo_project.json"
 logger = logging.getLogger(__name__)
 
 
-async def _warmup_embedding_provider(embedder: EmbeddingProvider) -> None:
-    """Load (and on first run download) the embedding model in the background
-    at startup, so the first agent request doesn't stall on it."""
-    try:
-        logger.info(
-            "Warming up embedding model %s (first run downloads it once)…",
-            embedder.model_id,
-        )
-        await embedder.embed(["warmup"])
-        logger.info("Embedding model %s is ready", embedder.model_id)
-    except asyncio.CancelledError:
-        raise
-    except Exception:
-        logger.warning(
-            "Embedding model warmup failed — it will be retried lazily on "
-            "first use (vector indexing degrades to a logged warning).",
-            exc_info=True,
-        )
+async def _load_settings_overrides(
+    session_factory: async_sessionmaker[AsyncSession],
+    store_factories: StoreFactories,
+) -> dict[str, object]:
+    """UI-set settings from the database, sanitized against the whitelist.
+
+    A stored value that is no longer valid (a removed field, a hand-edited
+    row) is dropped with a warning rather than taken as fatal: a bad row must
+    not be able to stop the app from starting at all."""
+    async with session_factory() as session:
+        stored = await store_factories.app_settings(session).load()
+    return sanitize_stored(stored)
 
 
 async def _seed_demo_project_if_empty(
@@ -149,7 +149,6 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = composition.build_engine(settings)
         await init_db(engine)
-        app.state.settings = settings
         app.state.engine = engine
         app.state.session_factory = make_session_factory(engine)
         # Realtime pub/sub for the whole app lifetime — in-process, one
@@ -165,6 +164,19 @@ def create_app(
         # that needs a different backend passes its own AppComposition here
         # instead of forking this function.
         app.state.store_factories = composition.build_store_factories(settings)
+        # Settings the user changed in the UI take precedence over .env, which
+        # stays the bootstrap path (launcher wizard, Docker). Everything from
+        # here on must read `settings_provider.current` rather than the
+        # startup `settings` object, or a UI change would apply to some parts
+        # of the app and not others.
+        settings_provider = SettingsProvider(
+            settings,
+            await _load_settings_overrides(
+                app.state.session_factory, app.state.store_factories
+            ),
+        )
+        app.state.settings_provider = settings_provider
+        effective = settings_provider.current
         # Access layer: who counts as the DM. The public default trusts
         # loopback (see api/security.py); a private build swaps in real auth
         # through this same seam, exactly like the storage/vector ones above.
@@ -187,21 +199,22 @@ def create_app(
         # knowledge_index reuses the SAME vector store instance as
         # vector_index (different collection namespace, see
         # services/knowledge_index.py) — not a second client.
-        embedder = get_embedding_provider(settings)
-        chroma_store = composition.build_vector_store(settings, embedder)
-        app.state.vector_index = (
-            VectorIndex(chroma_store) if chroma_store is not None else None
+        embedding_stack = EmbeddingStack(
+            effective,
+            composition.build_vector_store,
+            composition.build_embedding_provider,
         )
-        app.state.knowledge_index = (
-            KnowledgeIndex(chroma_store) if chroma_store is not None else None
+        app.state.embedding_stack = embedding_stack
+        # Changing the embedding model invalidates every stored vector, so the
+        # rebuild is a first-class background job with progress the settings
+        # page can watch — not something the user is expected to remember.
+        reindex_service = ReindexService(
+            app.state.session_factory, app.state.store_factories, embedding_stack
         )
+        app.state.reindex_service = reindex_service
         # Off the critical path: startup stays instant, but by the time the
         # user first hits "Generate lore" the model is (usually) loaded.
-        warmup_task = (
-            asyncio.create_task(_warmup_embedding_provider(embedder))
-            if embedder is not None
-            else None
-        )
+        warmup_task = asyncio.create_task(embedding_stack.warmup())
         # LangGraph checkpointer: interrupted agent runs must survive process
         # restarts, so the saver lives on disk for the app's whole lifetime.
         async with AsyncExitStack() as stack:
@@ -224,7 +237,10 @@ def create_app(
                 app.state.store_factories,
                 settings.attachments_dir,
             )
-            tracing = create_tracing(settings)
+            # From the effective settings, so a tracing provider configured in
+            # the UI is picked up here — that is exactly why those fields are
+            # reported as "applies after restart" rather than applied live.
+            tracing = create_tracing(effective)
             if tracing is not None:
                 config, lifecycle = tracing
                 lifecycle.start()
@@ -235,9 +251,12 @@ def create_app(
             # leave the router forwarding a port to this machine.
             await network.stop()
             await app.state.connector_runtime.aclose()
+            # A reindex holds sessions on the engine we are about to dispose,
+            # so it is stopped before, not after.
+            await reindex_service.stop()
             if hasattr(app.state, "tracing_lifecycle"):
                 app.state.tracing_lifecycle.stop()
-            if warmup_task is not None and not warmup_task.done():
+            if not warmup_task.done():
                 warmup_task.cancel()
                 with suppress(asyncio.CancelledError):
                     await warmup_task
@@ -285,6 +304,7 @@ def create_app(
     app.include_router(import_jobs.router, prefix=_API_PREFIX, dependencies=_master)
     app.include_router(knowledge.router, prefix=_API_PREFIX, dependencies=_master)
     app.include_router(usage.router, prefix=_API_PREFIX, dependencies=_master)
+    app.include_router(settings_router.router, prefix=_API_PREFIX, dependencies=_master)
     app.include_router(
         connections.types_router, prefix=_API_PREFIX, dependencies=_master
     )
@@ -368,6 +388,8 @@ def _register_exception_handlers(app: FastAPI) -> None:
         UnsupportedConnectorCapabilityError,
         ExternalDataParseError,
         SkillInputInvalidError,
+        SettingsFieldUnknownError,
+        SettingsFieldInvalidError,
     )
     for unprocessable_type in _unprocessable:
         app.add_exception_handler(
@@ -384,6 +406,9 @@ def _register_exception_handlers(app: FastAPI) -> None:
     )
     app.add_exception_handler(
         ImportJobNotIdleError, lambda _r, e: _error_response(409, e)
+    )
+    app.add_exception_handler(
+        ReindexInProgressError, lambda _r, e: _error_response(409, e)
     )
     app.add_exception_handler(
         KnowledgeSourceNotReadyError, lambda _r, e: _error_response(409, e)

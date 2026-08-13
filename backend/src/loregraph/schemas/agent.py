@@ -266,3 +266,8 @@ class AgentConfigOut(BaseModel):
     llm_configured: bool
     llm_provider: str
     vector_enabled: bool
+    # Which model actually answers, per tier — configurable at runtime now, so
+    # the chat header can name it instead of the user having to guess.
+    model_assistant: str
+    model_generation: str
+    model_extraction: str

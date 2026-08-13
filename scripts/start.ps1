@@ -427,7 +427,7 @@ if (-not (Test-Path $EnvFile)) {
     Write-Host "      13 - Perplexity"
     Write-Host "      14 - Nebius"
     Write-Host "      15 - Ollama (локальные модели, без ключа)"
-    Write-Host "      Enter - пропустить, настроить позже"
+    Write-Host "      Enter - пропустить: провайдер, ключ и модели настраиваются в самом приложении (Настройки ИИ)"
     Write-Host ""
     $choice = (Read-Host "    Выберите провайдера (номер или Enter)").Trim()
 

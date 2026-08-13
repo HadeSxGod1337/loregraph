@@ -43,18 +43,22 @@ from loregraph.llm.structured import LangChainStructuredGenerator
 from loregraph.schemas.connection import ConnectionOut
 from loregraph.services.connector_push import ConnectorPushService
 from loregraph.services.edge_service import EdgeService
+from loregraph.services.embedding_stack import EmbeddingStack
 from loregraph.services.entity_service import EntityService
 from loregraph.services.entity_template_service import EntityTemplateService
 from loregraph.services.event_bus import EventBus
 from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.network import NetworkStatus
 from loregraph.services.player_view import PlayerViewService
+from loregraph.services.reindex_job import ReindexService
+from loregraph.services.settings_service import SettingsProvider
 from loregraph.services.sheet_preset_service import SheetPresetService
 from loregraph.services.update_status import UpdateService, app_version
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.composition import StoreFactories
 from loregraph.storage.protocols import (
     AgentSessionStore,
+    AppSettingsStore,
     AttachmentStore,
     ConnectionEntityLinkStore,
     ConnectionStore,
@@ -84,10 +88,24 @@ async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
+def get_settings_provider(request: Request) -> SettingsProvider:
+    """The mutable holder, for the settings router alone — everything else
+    wants a snapshot (`SettingsDep`), not the ability to change one."""
+    return cast(SettingsProvider, request.app.state.settings_provider)
+
+
 def get_settings(request: Request) -> Settings:
-    return cast(Settings, request.app.state.settings)
+    """The effective settings as of right now.
+
+    Read per request, not captured once: a model or key changed from the
+    settings page must apply to the next call without a restart. The returned
+    object is immutable, so a request that has one keeps a consistent view
+    even if a save lands mid-request.
+    """
+    return get_settings_provider(request).current
 
 
+SettingsProviderDep = Annotated[SettingsProvider, Depends(get_settings_provider)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
@@ -137,6 +155,12 @@ async def get_usage_store(request: Request, session: SessionDep) -> UsageStore:
     return _factories(request).usage(session)
 
 
+async def get_app_settings_store(
+    request: Request, session: SessionDep
+) -> AppSettingsStore:
+    return _factories(request).app_settings(session)
+
+
 ProjectStoreDep = Annotated[ProjectStore, Depends(get_project_store)]
 EntityStoreDep = Annotated[EntityStore, Depends(get_entity_store)]
 EntityTemplateStoreDep = Annotated[
@@ -149,12 +173,29 @@ KnowledgeSourceStoreDep = Annotated[
     KnowledgeSourceStore, Depends(get_knowledge_source_store)
 ]
 UsageStoreDep = Annotated[UsageStore, Depends(get_usage_store)]
+AppSettingsStoreDep = Annotated[AppSettingsStore, Depends(get_app_settings_store)]
+
+
+def get_embedding_stack(request: Request) -> EmbeddingStack:
+    return cast(EmbeddingStack, request.app.state.embedding_stack)
+
+
+EmbeddingStackDep = Annotated[EmbeddingStack, Depends(get_embedding_stack)]
+
+
+def get_reindex_service(request: Request) -> ReindexService:
+    return cast(ReindexService, request.app.state.reindex_service)
+
+
+ReindexServiceDep = Annotated[ReindexService, Depends(get_reindex_service)]
 
 
 def get_vector_index(request: Request) -> VectorIndex | None:
-    # None whenever embeddings are disabled — every consumer must degrade
-    # gracefully (the manual editor never depends on the vector layer).
-    return cast(VectorIndex | None, request.app.state.vector_index)
+    # Through the stack, not a captured attribute: switching embedding
+    # provider rebuilds it at runtime. None whenever embeddings are disabled —
+    # every consumer must degrade gracefully (the manual editor never depends
+    # on the vector layer).
+    return get_embedding_stack(request).vector_index
 
 
 VectorIndexDep = Annotated[VectorIndex | None, Depends(get_vector_index)]
@@ -195,7 +236,7 @@ UpdateServiceDep = Annotated[UpdateService, Depends(get_update_service)]
 def get_knowledge_index(request: Request) -> KnowledgeIndex | None:
     # Same optionality contract as get_vector_index: None when embeddings are
     # disabled, every consumer degrades (see services/knowledge_ingest.py).
-    return cast(KnowledgeIndex | None, request.app.state.knowledge_index)
+    return get_embedding_stack(request).knowledge_index
 
 
 KnowledgeIndexDep = Annotated[KnowledgeIndex | None, Depends(get_knowledge_index)]

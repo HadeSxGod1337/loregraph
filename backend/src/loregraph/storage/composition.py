@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from loregraph.storage.protocols import (
     AgentSessionStore,
+    AppSettingsStore,
     AttachmentStore,
     ConnectionEntityLinkStore,
     ConnectionStore,
@@ -41,3 +42,4 @@ class StoreFactories:
     connection_entity_link: Callable[[AsyncSession], ConnectionEntityLinkStore]
     player: Callable[[AsyncSession], PlayerStore]
     player_note: Callable[[AsyncSession], PlayerNoteStore]
+    app_settings: Callable[[AsyncSession], AppSettingsStore]

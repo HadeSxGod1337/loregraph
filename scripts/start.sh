@@ -332,7 +332,7 @@ if [ ! -f "$ENV_FILE" ]; then
     printf '      13 - Perplexity\n'
     printf '      14 - Nebius\n'
     printf '      15 - Ollama (локальные модели, без ключа)\n'
-    printf '      Enter - пропустить, настроить позже\n\n'
+    printf '      Enter - пропустить: провайдер, ключ и модели настраиваются в самом приложении (Настройки ИИ)\n\n'
     read -r -p "    Выберите провайдера (номер или Enter): " choice || choice=""
 
     ENV_LINES=()

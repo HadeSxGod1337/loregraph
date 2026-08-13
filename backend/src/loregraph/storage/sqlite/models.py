@@ -305,6 +305,27 @@ class PlayerNoteRow(Base):
     updated_at: Mapped[datetime]
 
 
+class AppSettingRow(Base):
+    """One UI-set override of a `Settings` field (see services/settings_service.py).
+
+    Key/value rather than a column per setting: the set of configurable fields
+    changes with every new provider, and a schema migration per checkbox is a
+    cost with no benefit here — the whitelist in config.py, not the table
+    shape, is what bounds which fields may be written.
+
+    Values are stored as JSON so a bool stays a bool and an int stays an int.
+    API keys live here in plaintext for the same reason ConnectionRow's config
+    does: a localhost single-user app whose database already holds the entire
+    campaign. The API masks them on the way out and never logs them.
+    """
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(primary_key=True)
+    value_json: Mapped[str]
+    updated_at: Mapped[datetime]
+
+
 class KnowledgeSourceRow(Base):
     """A reference document (rulebook, setting bible) uploaded to a project's
     knowledge base — grounding material for the agent, kept out of the

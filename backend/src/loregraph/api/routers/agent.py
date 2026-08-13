@@ -177,6 +177,9 @@ async def agent_config(
         llm_configured=is_llm_configured(settings),
         llm_provider=settings.llm_provider,
         vector_enabled=vector_index is not None,
+        model_assistant=settings.llm_model_assistant,
+        model_generation=settings.llm_model_generation,
+        model_extraction=settings.llm_model_extraction,
     )
 
 

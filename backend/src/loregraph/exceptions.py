@@ -70,6 +70,34 @@ class ConfigurationError(CampaignError):
     Deliberately never includes secret values in the message."""
 
 
+class SettingsFieldUnknownError(CampaignError):
+    """A settings write named a field that is not UI-editable (see
+    config.UI_EDITABLE_FIELDS). Launch and security properties — data_dir,
+    trust_loopback, ssl_*, play_* — are deliberately outside that set."""
+
+    def __init__(self, field_name: str) -> None:
+        super().__init__(f"Setting is not editable from the UI: {field_name}")
+        self.field_name = field_name
+
+
+class SettingsFieldInvalidError(CampaignError):
+    """A settings value failed validation. Carries the field name and the
+    reason, never the value — it may be an API key."""
+
+    def __init__(self, field_name: str, reason: str) -> None:
+        super().__init__(f"Invalid value for {field_name}: {reason}")
+        self.field_name = field_name
+        self.reason = reason
+
+
+class ReindexInProgressError(CampaignError):
+    """A second reindex was requested while one is still running. Reindexing
+    rewrites every collection; two at once would race each other."""
+
+    def __init__(self) -> None:
+        super().__init__("A reindex is already running")
+
+
 class RetrievalError(CampaignError):
     """Vector or graph retrieval failed; generation must not proceed ungrounded."""
 

@@ -1,5 +1,5 @@
-from collections.abc import Sequence
-from typing import Protocol, runtime_checkable
+from collections.abc import Mapping, Sequence
+from typing import Any, Protocol, runtime_checkable
 
 from loregraph.schemas.agent import (
     AgentReviewPayload,
@@ -166,6 +166,18 @@ class UsageStore(Protocol):
 
     async def record(self, event: UsageEvent) -> None: ...
     async def project_rollup(self, project_id: str) -> list[UsageRollupRow]: ...
+
+
+@runtime_checkable
+class AppSettingsStore(Protocol):
+    """Overrides of `Settings` fields set from the UI, keyed by field name.
+
+    Not project-scoped: which model answers and which embedder indexes are
+    properties of the installation, not of one campaign."""
+
+    async def load(self) -> dict[str, Any]: ...
+    async def set_many(self, values: Mapping[str, Any]) -> None: ...
+    async def delete_keys(self, keys: Sequence[str]) -> None: ...
 
 
 @runtime_checkable

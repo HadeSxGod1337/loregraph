@@ -199,3 +199,101 @@ class Settings(BaseSettings):
         # thread_id namespace — isolating the two files means a lock/
         # corruption issue in one never affects the other.
         return self.data_dir / "import_checkpoints.sqlite3"
+
+
+# --- What the UI may change at runtime -----------------------------------
+# Everything below describes Settings fields as *data*, so the settings API,
+# the validator and the frontend form all read the same list instead of each
+# keeping its own copy.
+
+# Fields the settings API accepts. Deliberately a whitelist, not a blacklist:
+# a stored override must never be able to reach data_dir, trust_loopback,
+# ssl_*, play_* or cors_origins — those are launch/security properties, and a
+# write to the app_settings table would otherwise be a privilege escalation.
+LLM_SETTINGS_FIELDS: frozenset[str] = frozenset(
+    {
+        "llm_provider",
+        "llm_model_assistant",
+        "llm_model_extraction",
+        "llm_model_generation",
+        "agent_run_token_budget",
+        "web_search_enabled",
+        "agent_prompt_caching",
+        "ollama_base_url",
+        "perplexity_base_url",
+        "nebius_base_url",
+    }
+)
+
+# One key field per provider; also the fields that must be masked on the way
+# out of the API and never logged.
+API_KEY_SETTINGS_FIELDS: frozenset[str] = frozenset(
+    {
+        "anthropic_api_key",
+        "openai_api_key",
+        "google_api_key",
+        "mistral_api_key",
+        "deepseek_api_key",
+        "groq_api_key",
+        "xai_api_key",
+        "openrouter_api_key",
+        "cohere_api_key",
+        "together_api_key",
+        "fireworks_api_key",
+        "cerebras_api_key",
+        "perplexity_api_key",
+        "nebius_api_key",
+    }
+)
+
+EMBEDDING_SETTINGS_FIELDS: frozenset[str] = frozenset(
+    {
+        "embedding_provider",
+        "embedding_model",
+        "openai_embedding_model",
+        "google_embedding_model",
+        "mistral_embedding_model",
+        "cohere_embedding_model",
+        "together_embedding_model",
+        "fireworks_embedding_model",
+        "ollama_embedding_model",
+    }
+)
+
+# Tracing is wired once at startup (see observability/), so a change here is
+# stored and reported as pending rather than applied live.
+TRACING_SETTINGS_FIELDS: frozenset[str] = frozenset(
+    {
+        "tracing_provider",
+        "langsmith_api_key",
+        "langsmith_project",
+        "langsmith_endpoint",
+        "langfuse_public_key",
+        "langfuse_secret_key",
+        "langfuse_host",
+    }
+)
+
+SECRET_SETTINGS_FIELDS: frozenset[str] = API_KEY_SETTINGS_FIELDS | {
+    "langsmith_api_key",
+    "langfuse_public_key",
+    "langfuse_secret_key",
+}
+
+UI_EDITABLE_FIELDS: frozenset[str] = (
+    LLM_SETTINGS_FIELDS
+    | API_KEY_SETTINGS_FIELDS
+    | EMBEDDING_SETTINGS_FIELDS
+    | TRACING_SETTINGS_FIELDS
+)
+
+# Changing any of these can change what embeddings come out, so the embedding
+# stack is rebuilt (and, if the resulting model id differs, a reindex is
+# required — embeddings from two models are not comparable). API keys and the
+# Ollama URL are in here because an embedding provider can be built from them.
+EMBEDDING_SENSITIVE_FIELDS: frozenset[str] = (
+    EMBEDDING_SETTINGS_FIELDS | API_KEY_SETTINGS_FIELDS | {"ollama_base_url"}
+)
+
+# Stored, but only picked up by the next process start.
+RESTART_REQUIRED_FIELDS: frozenset[str] = TRACING_SETTINGS_FIELDS
