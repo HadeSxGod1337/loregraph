@@ -336,6 +336,7 @@ const routes: Route[] = [
     handler: (): AgentConfig => ({
       llm_configured: true,
       llm_provider: "anthropic (demo)",
+      experimental_providers_enabled: false,
       vector_enabled: true,
       model_assistant: "claude-haiku-4-5-20251001",
       model_generation: "claude-sonnet-5",

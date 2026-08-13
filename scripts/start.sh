@@ -7,6 +7,8 @@
 set -u
 
 SKIP_UPDATE=0
+CONFIGURE_AI=0
+EXPERIMENTAL_PROVIDERS=0
 LAN=0
 INTERNET=0
 LAN_HOST=""
@@ -17,6 +19,10 @@ for arg in "$@"; do
     esac
     case "$arg" in
         --skip-update) SKIP_UPDATE=1 ;;
+        # Re-run the AI provider wizard without deleting the current .env.
+        --configure-ai) CONFIGURE_AI=1 ;;
+        # Reveal unsupported providers. Hidden during normal setup.
+        --experimental-providers) EXPERIMENTAL_PROVIDERS=1 ;;
         # LAN play mode: bind to all interfaces so players on the same network
         # can connect. Off by default — the app stays on localhost.
         --lan)         LAN=1 ;;
@@ -52,6 +58,143 @@ step()   { printf '\n\033[36m==> %s\033[0m\n' "$1"; }
 ok()     { printf '\033[32m    %s\033[0m\n' "$1"; }
 warn()   { printf '\033[33m    %s\033[0m\n' "$1"; }
 die()    { printf '\033[31m    %s\033[0m\n' "$1"; exit 1; }
+
+json_value() {
+    # $1 = dotted path; JSON is read from stdin. Node is guaranteed below
+    # before any provider wizard runs, unlike jq or a system Python.
+    node -e '
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", chunk => input += chunk);
+process.stdin.on("end", () => {
+  try {
+    let value = JSON.parse(input);
+    for (const part of process.argv[1].split(".")) value = value?.[part];
+    if (value !== undefined && value !== null) process.stdout.write(String(value));
+  } catch (_) { process.exitCode = 1; }
+});' "$1"
+}
+
+open_external_url() {
+    if command -v open >/dev/null 2>&1; then
+        open "$1" >/dev/null 2>&1 || true
+    elif command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$1" >/dev/null 2>&1 || true
+    fi
+}
+
+select_live_model() {
+    # $1 = newline-delimited model ids, $2 = purpose. Result: SELECTED_MODEL.
+    local payload="$1" purpose="$2" line answer index
+    local models=()
+    while IFS= read -r line; do
+        [ -n "$line" ] && models+=("$line")
+    done <<< "$payload"
+    [ "${#models[@]}" -gt 0 ] || die "Провайдер не вернул ни одной доступной модели."
+
+    printf '\n\033[36m    Доступные модели для %s:\033[0m\n' "$purpose"
+    index=0
+    for line in "${models[@]}"; do
+        index=$((index + 1))
+        printf '      %2d - %s\n' "$index" "$line"
+    done
+    while :; do
+        read -r -p "    Выберите номер (Enter = 1): " answer || answer=""
+        [ -n "$answer" ] || answer=1
+        if [[ "$answer" =~ ^[0-9]+$ ]] &&
+           [ "$answer" -ge 1 ] && [ "$answer" -le "${#models[@]}" ]; then
+            SELECTED_MODEL="${models[$((answer - 1))]}"
+            return 0
+        fi
+        warn "Введите номер от 1 до ${#models[@]}."
+    done
+}
+
+connect_openai_codex() {
+    # $1 = OAuth state path. Result: LIVE_MODELS (newline-delimited).
+    local oauth_path="$1" issuer="https://auth.openai.com"
+    local client_id="app_EMoamEEZ73f0CkXaXp7hrann"
+    local request_body device user_code device_auth_id verification_url
+    local authorization code verifier tokens access_token account_id catalog deadline
+
+    warn "Экспериментальный режим: OpenAI официально не публикует этот Codex OAuth API."
+    request_body="$(node -e 'process.stdout.write(JSON.stringify({client_id:process.argv[1]}))' "$client_id")"
+    device="$(curl -fsS -X POST "$issuer/api/accounts/deviceauth/usercode" \
+        -H 'Content-Type: application/json' --data "$request_body")" ||
+        die "Не удалось получить код авторизации OpenAI."
+    user_code="$(printf '%s' "$device" | json_value user_code)"
+    device_auth_id="$(printf '%s' "$device" | json_value device_auth_id)"
+    [ -n "$user_code" ] && [ -n "$device_auth_id" ] ||
+        die "OpenAI вернул неполный код авторизации."
+
+    verification_url="$issuer/codex/device"
+    printf '\033[32m    Откроется страница OpenAI. Введите код: %s\033[0m\n' "$user_code"
+    open_external_url "$verification_url"
+    request_body="$(node -e 'process.stdout.write(JSON.stringify({device_auth_id:process.argv[1],user_code:process.argv[2]}))' "$device_auth_id" "$user_code")"
+    authorization=""
+    deadline=$(($(date +%s) + 900))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        if authorization="$(curl -fsS -X POST "$issuer/api/accounts/deviceauth/token" \
+            -H 'Content-Type: application/json' --data "$request_body" 2>/dev/null)"; then
+            break
+        fi
+        sleep 5
+    done
+    [ -n "$authorization" ] || die "Время ожидания входа в ChatGPT истекло."
+    code="$(printf '%s' "$authorization" | json_value authorization_code)"
+    verifier="$(printf '%s' "$authorization" | json_value code_verifier)"
+    [ -n "$code" ] && [ -n "$verifier" ] ||
+        die "OpenAI вернул неполную авторизацию."
+
+    tokens="$(curl -fsS -X POST "$issuer/oauth/token" \
+        -H 'Content-Type: application/x-www-form-urlencoded' \
+        --data-urlencode 'grant_type=authorization_code' \
+        --data-urlencode "code=$code" \
+        --data-urlencode "redirect_uri=$issuer/deviceauth/callback" \
+        --data-urlencode "client_id=$client_id" \
+        --data-urlencode "code_verifier=$verifier")" ||
+        die "Не удалось получить OAuth-токены OpenAI."
+    access_token="$(printf '%s' "$tokens" | json_value access_token)"
+    [ -n "$access_token" ] && [ -n "$(printf '%s' "$tokens" | json_value refresh_token)" ] ||
+        die "OpenAI не вернул полный комплект OAuth-токенов."
+    mkdir -p "$(dirname "$oauth_path")"
+    printf '%s' "$tokens" | node -e '
+let input = "";
+process.stdin.on("data", chunk => input += chunk);
+process.stdin.on("end", () => process.stdout.write(JSON.stringify({tokens:JSON.parse(input)})));' |
+        write_file_atomic "$oauth_path"
+    chmod 600 "$oauth_path" 2>/dev/null || true
+
+    account_id="$(node -e '
+try {
+  let part = process.argv[1].split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+  while (part.length % 4) part += "=";
+  const claims = JSON.parse(Buffer.from(part, "base64").toString("utf8"));
+  process.stdout.write(claims["https://api.openai.com/auth"]?.chatgpt_account_id || "");
+} catch (_) {}' "$access_token")"
+    local curl_headers=(-H "Authorization: Bearer $access_token" -H 'originator: codex_cli_rs' \
+        -H 'User-Agent: codex_cli_rs/0.0.0 (Loregraph experimental)')
+    [ -n "$account_id" ] && curl_headers+=(-H "ChatGPT-Account-ID: $account_id")
+    catalog="$(curl -fsS 'https://chatgpt.com/backend-api/codex/models?client_version=1.0.0' \
+        "${curl_headers[@]}")" || die "Не удалось получить каталог моделей ChatGPT."
+    LIVE_MODELS="$(printf '%s' "$catalog" | node -e '
+let input = "";
+process.stdin.on("data", chunk => input += chunk);
+process.stdin.on("end", () => {
+  const data = JSON.parse(input);
+  const seen = new Set();
+  const models = (Array.isArray(data.models) ? data.models : [])
+    .filter(item => item && typeof item.slug === "string" && item.slug.trim() &&
+      !["hide", "hidden"].includes(String(item.visibility || "").toLowerCase()))
+    .sort((a, b) => (Number.isFinite(a.priority) ? a.priority : 10000) -
+      (Number.isFinite(b.priority) ? b.priority : 10000) || a.slug.localeCompare(b.slug))
+    .map(item => item.slug.trim()).filter(slug => !seen.has(slug) && seen.add(slug));
+  process.stdout.write(models.join("\\n"));
+});')"
+    [ -n "$LIVE_MODELS" ] ||
+        die "Авторизация успешна, но ChatGPT не вернул доступных этому аккаунту моделей."
+    ok "Вход в ChatGPT выполнен; получен живой каталог моделей."
+}
 
 # --- Update preferences and status (shared with the backend) -----------------
 # Flat key=value files, not JSON: this runs BEFORE uv and Node are installed,
@@ -314,8 +457,12 @@ ok "Node.js: $(node --version), npm: $(npm --version)"
 # --- 3. API key (.env) on first run ------------------------------------------
 
 ENV_FILE="$BACKEND/.env"
-if [ ! -f "$ENV_FILE" ]; then
+HAD_ENV_FILE=0
+[ -f "$ENV_FILE" ] && HAD_ENV_FILE=1
+if [ "$HAD_ENV_FILE" -eq 0 ] || [ "$CONFIGURE_AI" -eq 1 ]; then
     step "Первый запуск: настройка AI-ассистента (необязательно)"
+    [ "$HAD_ENV_FILE" -eq 1 ] &&
+        warn "Повторная настройка: текущий .env будет сохранён перед заменой."
     printf '    Без AI редактор мира работает полностью, не будет только AI-ассистента.\n\n'
     printf '      1  - Anthropic / Claude (рекомендуется)\n'
     printf '      2  - OpenAI\n'
@@ -332,6 +479,9 @@ if [ ! -f "$ENV_FILE" ]; then
     printf '      13 - Perplexity\n'
     printf '      14 - Nebius\n'
     printf '      15 - Ollama (локальные модели, без ключа)\n'
+    if [ "$EXPERIMENTAL_PROVIDERS" -eq 1 ]; then
+        printf '\033[33m      16 - ChatGPT / Codex OAuth (НЕПОДДЕРЖИВАЕМЫЙ эксперимент)\033[0m\n'
+    fi
     printf '      Enter - пропустить: провайдер, ключ и модели настраиваются в самом приложении (Настройки ИИ)\n\n'
     read -r -p "    Выберите провайдера (номер или Enter): " choice || choice=""
 
@@ -512,6 +662,31 @@ if [ ! -f "$ENV_FILE" ]; then
             ENV_LINES+=("CAMPAIGN_LLM_MODEL_EXTRACTION=$model")
             ENV_LINES+=("CAMPAIGN_LLM_MODEL_GENERATION=$model")
             ;;
+        16)
+            if [ "$EXPERIMENTAL_PROVIDERS" -ne 1 ]; then
+                warn "Экспериментальные провайдеры скрыты. Запустите ./start.sh --configure-ai --experimental-providers."
+            else
+                warn "Этот режим использует внутренний неподдерживаемый API ChatGPT/Codex."
+                warn "OpenAI может изменить или заблокировать его; риск для аккаунта и поддержку вы принимаете на себя."
+                read -r -p "    Чтобы продолжить, введите I ACCEPT: " ack || ack=""
+                if [ "$ack" != "I ACCEPT" ]; then
+                    warn "Подтверждение не получено - настройка отменена."
+                else
+                    connect_openai_codex "$DATA_DIR/openai_codex_oauth.json"
+                    select_live_model "$LIVE_MODELS" "обычного чата"
+                    assistant_model="$SELECTED_MODEL"
+                    select_live_model "$LIVE_MODELS" "проверок и извлечения"
+                    extraction_model="$SELECTED_MODEL"
+                    select_live_model "$LIVE_MODELS" "творческой генерации"
+                    generation_model="$SELECTED_MODEL"
+                    ENV_LINES+=("CAMPAIGN_EXPERIMENTAL_PROVIDERS_ENABLED=true")
+                    ENV_LINES+=("CAMPAIGN_LLM_PROVIDER=openai_codex")
+                    ENV_LINES+=("CAMPAIGN_LLM_MODEL_ASSISTANT=$assistant_model")
+                    ENV_LINES+=("CAMPAIGN_LLM_MODEL_EXTRACTION=$extraction_model")
+                    ENV_LINES+=("CAMPAIGN_LLM_MODEL_GENERATION=$generation_model")
+                fi
+            fi
+            ;;
     esac
 
     if [ "${#ENV_LINES[@]}" -gt 0 ]; then
@@ -645,11 +820,20 @@ if [ ! -f "$ENV_FILE" ]; then
             # Enter / anything else = local, the Settings default: nothing to write.
         esac
 
+        if [ "$HAD_ENV_FILE" -eq 1 ]; then
+            backup="$ENV_FILE.backup-$(date +%Y%m%d-%H%M%S)"
+            cp "$ENV_FILE" "$backup"
+            ok "Предыдущие настройки сохранены: backend/$(basename "$backup")"
+        fi
         printf '%s\n' "${ENV_LINES[@]}" > "$ENV_FILE"
         ok "Настройки сохранены в backend/.env (там же их можно поменять)."
     else
-        cp "$BACKEND/.env.example" "$ENV_FILE"
-        ok "Пропущено. AI можно настроить позже в backend/.env (см. подсказки внутри файла)."
+        if [ "$HAD_ENV_FILE" -eq 1 ]; then
+            ok "Настройка отменена; существующий backend/.env не изменён."
+        else
+            cp "$BACKEND/.env.example" "$ENV_FILE"
+            ok "Пропущено. AI можно настроить позже в backend/.env (см. подсказки внутри файла)."
+        fi
     fi
 fi
 

@@ -19,6 +19,7 @@ from loregraph.api.deps import (
     AppSettingsStoreDep,
     EmbeddingStackDep,
     ReindexServiceDep,
+    SettingsDep,
     SettingsProviderDep,
 )
 from loregraph.config import (
@@ -134,7 +135,7 @@ async def get_app_settings(
 
 
 @router.get("/catalog", response_model=SettingsCatalogOut)
-async def get_catalog() -> SettingsCatalogOut:
+async def get_catalog(settings: SettingsDep) -> SettingsCatalogOut:
     """Provider metadata (keys, defaults, suggestions) as data — the form is
     rendered from this, so no provider is hardcoded in the frontend."""
     return SettingsCatalogOut(
@@ -151,6 +152,7 @@ async def get_catalog() -> SettingsCatalogOut:
                 supports_model_listing=p.models_style is not None,
             )
             for p in PROVIDERS
+            if p.id != "openai_codex" or settings.experimental_providers_enabled
         ],
         embedding_providers=[
             EmbeddingProviderOut(

@@ -136,12 +136,18 @@ export interface AgentResumeRequest {
 export interface AgentConfig {
   llm_configured: boolean;
   llm_provider: string;
+  experimental_providers_enabled: boolean;
   vector_enabled: boolean;
   /** Which model actually answers, per task class — configurable at runtime
    * from the settings page, so the UI reads it rather than assuming. */
   model_assistant: string;
   model_generation: string;
   model_extraction: string;
+}
+
+export interface CodexDeviceCode {
+  user_code: string;
+  verification_url: string;
 }
 
 export type AgentEvent =
@@ -179,6 +185,9 @@ export async function fileToChatAttachment(file: File): Promise<ChatAttachment> 
 
 export const agentApi = {
   config: () => apiClient.get<AgentConfig>("/api/agent/config"),
+  startCodexOAuth: () => apiClient.post<CodexDeviceCode>("/api/agent/auth/openai-codex/start"),
+  pollCodexOAuth: () => apiClient.post<{ connected: boolean }>("/api/agent/auth/openai-codex/poll"),
+  logoutCodexOAuth: () => apiClient.delete<void>("/api/agent/auth/openai-codex"),
   createSession: (projectId: string) =>
     apiClient.post<AgentSession>(`/api/projects/${projectId}/agent/sessions`),
   list: (projectId: string) =>

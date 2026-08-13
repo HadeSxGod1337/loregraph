@@ -94,6 +94,17 @@ PROVIDERS: tuple[ProviderDescriptor, ...] = (
         models_style="ollama",
     ),
     ProviderDescriptor(
+        id="openai_codex",
+        label="ChatGPT / Codex (experimental)",
+        api_key_field=None,
+        default_models={
+            "assistant": "select-after-sign-in",
+            "extraction": "select-after-sign-in",
+            "generation": "select-after-sign-in",
+        },
+        models_style="codex",
+    ),
+    ProviderDescriptor(
         id="google",
         label="Google Gemini",
         api_key_field="google_api_key",

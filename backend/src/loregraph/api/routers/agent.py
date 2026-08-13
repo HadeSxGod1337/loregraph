@@ -3,7 +3,7 @@ import uuid
 from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 
@@ -25,6 +25,7 @@ from loregraph.exceptions import (
     SkillInputInvalidError,
     UnknownSkillError,
 )
+from loregraph.llm import openai_codex_oauth
 from loregraph.llm.factory import is_llm_configured
 from loregraph.schemas.agent import (
     AgentConfigOut,
@@ -39,6 +40,13 @@ from loregraph.schemas.agent import (
 from loregraph.storage.protocols import AgentSessionStore
 
 router = APIRouter(tags=["agent"])
+
+
+def _require_experimental_providers(settings: SettingsDep) -> None:
+    if not settings.experimental_providers_enabled:
+        # Keep the unsupported surface undiscoverable unless the operator has
+        # deliberately enabled experimental providers in this installation.
+        raise HTTPException(status_code=404, detail="Not found")
 
 # Local self-hosted tool, no upload proxy in front — cap chat attachments here
 # so one oversized/over-numerous payload can't blow up the checkpointed
@@ -176,11 +184,41 @@ async def agent_config(
     return AgentConfigOut(
         llm_configured=is_llm_configured(settings),
         llm_provider=settings.llm_provider,
+        experimental_providers_enabled=settings.experimental_providers_enabled,
         vector_enabled=vector_index is not None,
         model_assistant=settings.llm_model_assistant,
         model_generation=settings.llm_model_generation,
         model_extraction=settings.llm_model_extraction,
     )
+
+
+@router.post("/agent/auth/openai-codex/start")
+async def start_openai_codex_auth(settings: SettingsDep) -> dict[str, str]:
+    """Start the explicitly opt-in, experimental Codex device-code login."""
+    _require_experimental_providers(settings)
+    return openai_codex_oauth.start(settings.openai_codex_oauth_path)
+
+
+@router.post("/agent/auth/openai-codex/poll")
+async def poll_openai_codex_auth(settings: SettingsDep) -> dict[str, bool]:
+    _require_experimental_providers(settings)
+    return {"connected": openai_codex_oauth.poll(settings.openai_codex_oauth_path)}
+
+
+@router.get("/agent/auth/openai-codex/models")
+async def openai_codex_models(settings: SettingsDep) -> dict[str, list[str]]:
+    _require_experimental_providers(settings)
+    return {
+        "models": openai_codex_oauth.available_models(
+            settings.openai_codex_oauth_path
+        )
+    }
+
+
+@router.delete("/agent/auth/openai-codex")
+async def logout_openai_codex_auth(settings: SettingsDep) -> None:
+    _require_experimental_providers(settings)
+    openai_codex_oauth.logout(settings.openai_codex_oauth_path)
 
 
 @router.post(

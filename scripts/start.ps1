@@ -5,6 +5,10 @@
 
 param(
     [switch]$SkipUpdate,
+    # Re-run the first-launch AI provider wizard without deleting .env.
+    [switch]$ConfigureAI,
+    # Reveal unsupported providers. They remain hidden during normal setup.
+    [switch]$ExperimentalProviders,
     # LAN play mode: bind to all interfaces so players on the same network can
     # reach the app through an invite link. Off by default — the app stays on
     # localhost, exactly as before.
@@ -49,6 +53,108 @@ $UpdatePromptTimeout = 30
 function Write-Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg) { Write-Host "    $msg" -ForegroundColor Green }
 function Write-Warn2($msg) { Write-Host "    $msg" -ForegroundColor Yellow }
+
+function Select-LiveModel([object[]]$models, [string]$purpose) {
+    $available = @($models | ForEach-Object { "$($_)".Trim() } | Where-Object { $_ } | Select-Object -Unique)
+    if ($available.Count -eq 0) { throw "Провайдер не вернул ни одной доступной модели." }
+    Write-Host ""
+    Write-Host "    Доступные модели для ${purpose}:" -ForegroundColor Cyan
+    for ($i = 0; $i -lt $available.Count; $i++) {
+        Write-Host ("      {0,2} - {1}" -f ($i + 1), $available[$i])
+    }
+    while ($true) {
+        $raw = (Read-Host "    Выберите номер (Enter = 1)").Trim()
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $available[0] }
+        $number = 0
+        if ([int]::TryParse($raw, [ref]$number) -and $number -ge 1 -and $number -le $available.Count) {
+            return $available[$number - 1]
+        }
+        Write-Warn2 "Введите номер от 1 до $($available.Count)."
+    }
+}
+
+function Get-ChatGptAccountId([string]$accessToken) {
+    try {
+        $part = $accessToken.Split('.')[1].Replace('-', '+').Replace('_', '/')
+        while (($part.Length % 4) -ne 0) { $part += "=" }
+        $claims = ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($part))) | ConvertFrom-Json
+        return $claims.'https://api.openai.com/auth'.chatgpt_account_id
+    } catch { return $null }
+}
+
+function Connect-OpenAICodex([string]$oauthPath) {
+    $issuer = "https://auth.openai.com"
+    $clientId = "app_EMoamEEZ73f0CkXaXp7hrann"
+    Write-Host ""
+    Write-Warn2 "Экспериментальный режим: OpenAI официально не публикует этот Codex OAuth API."
+    $device = Invoke-RestMethod -Method Post `
+        -Uri "$issuer/api/accounts/deviceauth/usercode" `
+        -ContentType "application/json" `
+        -Body (@{ client_id = $clientId } | ConvertTo-Json)
+    if (-not $device.user_code -or -not $device.device_auth_id) {
+        throw "OpenAI вернул неполный код авторизации."
+    }
+    $verificationUrl = "$issuer/codex/device"
+    Write-Host "    Откроется страница OpenAI. Введите код: $($device.user_code)" -ForegroundColor Green
+    Start-Process $verificationUrl
+    $interval = 5
+    if ($device.interval) { $interval = [Math]::Max(3, [int]$device.interval) }
+    $deadline = (Get-Date).AddMinutes(15)
+    $authorization = $null
+    while ((Get-Date) -lt $deadline) {
+        Start-Sleep -Seconds $interval
+        try {
+            $authorization = Invoke-RestMethod -Method Post `
+                -Uri "$issuer/api/accounts/deviceauth/token" `
+                -ContentType "application/json" `
+                -Body (@{ device_auth_id = $device.device_auth_id; user_code = $device.user_code } | ConvertTo-Json)
+            break
+        } catch {
+            $status = $_.Exception.Response.StatusCode.value__
+            if ($status -notin 403, 404) { throw }
+        }
+    }
+    if ($null -eq $authorization) { throw "Время ожидания входа в ChatGPT истекло." }
+    $tokens = Invoke-RestMethod -Method Post `
+        -Uri "$issuer/oauth/token" `
+        -ContentType "application/x-www-form-urlencoded" `
+        -Body @{
+            grant_type = "authorization_code"
+            code = $authorization.authorization_code
+            redirect_uri = "$issuer/deviceauth/callback"
+            client_id = $clientId
+            code_verifier = $authorization.code_verifier
+        }
+    if (-not $tokens.access_token -or -not $tokens.refresh_token) {
+        throw "OpenAI не вернул полный комплект OAuth-токенов."
+    }
+    $oauthDir = Split-Path -Parent $oauthPath
+    if (-not (Test-Path $oauthDir)) { New-Item -ItemType Directory -Force $oauthDir | Out-Null }
+    $oauthJson = @{ tokens = $tokens } | ConvertTo-Json -Depth 8 -Compress
+    [IO.File]::WriteAllText($oauthPath, $oauthJson, $Utf8NoBom)
+
+    $headers = @{
+        Authorization = "Bearer $($tokens.access_token)"
+        originator = "codex_cli_rs"
+        "User-Agent" = "codex_cli_rs/0.0.0 (Loregraph experimental)"
+    }
+    $accountId = Get-ChatGptAccountId $tokens.access_token
+    if ($accountId) { $headers["ChatGPT-Account-ID"] = $accountId }
+    $catalog = Invoke-RestMethod -Method Get `
+        -Uri "https://chatgpt.com/backend-api/codex/models?client_version=1.0.0" `
+        -Headers $headers
+    $ranked = @($catalog.models | Where-Object {
+        $_.slug -and "$($_.visibility)".ToLowerInvariant() -notin @("hide", "hidden")
+    } | Sort-Object @{ Expression = {
+        if ($null -ne $_.priority) { [int]$_.priority } else { 10000 }
+    }}, slug)
+    $models = @($ranked | ForEach-Object { $_.slug } | Select-Object -Unique)
+    if ($models.Count -eq 0) {
+        throw "Авторизация успешна, но ChatGPT не вернул доступных этому аккаунту моделей."
+    }
+    Write-Ok "Вход в ChatGPT выполнен; получен живой каталог из $($models.Count) моделей."
+    return $models
+}
 
 function Update-SessionPath {
     $machine = [Environment]::GetEnvironmentVariable("Path", "Machine")
@@ -408,8 +514,12 @@ Write-Ok "Node.js: $(node --version), npm: $(npm --version)"
 # --- 3. API key (.env) on first run ------------------------------------------
 
 $EnvFile = Join-Path $Backend ".env"
-if (-not (Test-Path $EnvFile)) {
+$hadEnvFile = Test-Path $EnvFile
+if (-not $hadEnvFile -or $ConfigureAI) {
     Write-Step "Первый запуск: настройка AI-ассистента (необязательно)"
+    if ($hadEnvFile) {
+        Write-Warn2 "Повторная настройка: текущий .env будет сохранён перед заменой."
+    }
     Write-Host "    Без AI редактор мира работает полностью, не будет только AI-ассистента." -ForegroundColor Gray
     Write-Host ""
     Write-Host "      1  - Anthropic / Claude (рекомендуется)"
@@ -427,6 +537,9 @@ if (-not (Test-Path $EnvFile)) {
     Write-Host "      13 - Perplexity"
     Write-Host "      14 - Nebius"
     Write-Host "      15 - Ollama (локальные модели, без ключа)"
+    if ($ExperimentalProviders) {
+        Write-Host "      16 - ChatGPT / Codex OAuth (НЕПОДДЕРЖИВАЕМЫЙ эксперимент)" -ForegroundColor Yellow
+    }
     Write-Host "      Enter - пропустить: провайдер, ключ и модели настраиваются в самом приложении (Настройки ИИ)"
     Write-Host ""
     $choice = (Read-Host "    Выберите провайдера (номер или Enter)").Trim()
@@ -634,6 +747,31 @@ if (-not (Test-Path $EnvFile)) {
                 "CAMPAIGN_LLM_MODEL_GENERATION=$model"
             )
         }
+        "16" {
+            if (-not $ExperimentalProviders) {
+                Write-Warn2 "Экспериментальные провайдеры скрыты. Запустите start.bat -ConfigureAI -ExperimentalProviders."
+                break
+            }
+            Write-Warn2 "Этот режим использует внутренний неподдерживаемый API ChatGPT/Codex."
+            Write-Warn2 "OpenAI может изменить или заблокировать его; риск для аккаунта и поддержку вы принимаете на себя."
+            $ack = (Read-Host "    Чтобы продолжить, введите I ACCEPT").Trim()
+            if ($ack -cne "I ACCEPT") {
+                Write-Warn2 "Подтверждение не получено - настройка отменена."
+                break
+            }
+            $oauthPath = Join-Path $DataDir "openai_codex_oauth.json"
+            $models = Connect-OpenAICodex $oauthPath
+            $assistantModel = Select-LiveModel $models "обычного чата"
+            $extractionModel = Select-LiveModel $models "проверок и извлечения"
+            $generationModel = Select-LiveModel $models "творческой генерации"
+            $envLines = @(
+                "CAMPAIGN_EXPERIMENTAL_PROVIDERS_ENABLED=true",
+                "CAMPAIGN_LLM_PROVIDER=openai_codex",
+                "CAMPAIGN_LLM_MODEL_ASSISTANT=$assistantModel",
+                "CAMPAIGN_LLM_MODEL_EXTRACTION=$extractionModel",
+                "CAMPAIGN_LLM_MODEL_GENERATION=$generationModel"
+            )
+        }
     }
 
     if ($null -ne $envLines) {
@@ -742,11 +880,21 @@ if (-not (Test-Path $EnvFile)) {
         }
 
         $content = ($envLines -join "`n") + "`n"
+        if ($hadEnvFile) {
+            $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+            $backup = "$EnvFile.backup-$stamp"
+            Copy-Item -LiteralPath $EnvFile -Destination $backup
+            Write-Ok "Предыдущие настройки сохранены: backend\$(Split-Path -Leaf $backup)"
+        }
         [System.IO.File]::WriteAllText($EnvFile, $content, [System.Text.Encoding]::ASCII)
         Write-Ok "Настройки сохранены в backend\.env (там же их можно поменять)."
     } else {
-        Copy-Item (Join-Path $Backend ".env.example") $EnvFile
-        Write-Ok "Пропущено. AI можно настроить позже в backend\.env (см. подсказки внутри файла)."
+        if ($hadEnvFile) {
+            Write-Ok "Настройка отменена; существующий backend\.env не изменён."
+        } else {
+            Copy-Item (Join-Path $Backend ".env.example") $EnvFile
+            Write-Ok "Пропущено. AI можно настроить позже в backend\.env (см. подсказки внутри файла)."
+        }
     }
 }
 

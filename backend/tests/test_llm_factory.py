@@ -9,6 +9,7 @@ from langchain_openai import ChatOpenAI
 from loregraph.config import Settings
 from loregraph.exceptions import ConfigurationError
 from loregraph.llm.factory import TIER_TEMPERATURE, ModelTier, get_chat_model
+from loregraph.llm.openai_codex_oauth import CodexChatOpenAI
 
 
 def make_settings(tmp_path: Path, **overrides: Any) -> Settings:
@@ -35,6 +36,7 @@ def test_openai_provider(tmp_path: Path) -> None:
     )
     model = get_chat_model(settings, tier="generation")
     assert isinstance(model, ChatOpenAI)
+    assert type(model) is ChatOpenAI
     assert model.model_name == "gpt-test"
 
 
@@ -46,6 +48,39 @@ def test_ollama_provider_needs_no_key(tmp_path: Path) -> None:
     assert isinstance(model, ChatOllama)
     assert model.model == "llama-test"
     assert model.base_url == settings.ollama_base_url
+
+
+def test_openai_codex_requires_a_completed_oauth_login(tmp_path: Path) -> None:
+    settings = make_settings(
+        tmp_path, llm_provider="openai_codex", experimental_providers_enabled=True
+    )
+    with pytest.raises(ConfigurationError, match="OAuth is not connected"):
+        get_chat_model(settings, tier="generation")
+
+
+def test_openai_codex_provider_uses_responses_api(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("loregraph.llm.factory.codex_access_token", lambda _: "token")
+    settings = make_settings(
+        tmp_path,
+        llm_provider="openai_codex",
+        experimental_providers_enabled=True,
+        llm_model_generation="gpt-5-codex",
+    )
+    model = get_chat_model(settings, tier="generation")
+    assert isinstance(model, CodexChatOpenAI)
+    assert model.use_responses_api is True
+    assert model.store is False
+    assert str(model.openai_api_base) == settings.openai_codex_base_url
+    assert model.default_headers is not None
+    assert model.default_headers["originator"] == "codex_cli_rs"
+
+
+def test_openai_codex_requires_explicit_experimental_opt_in(tmp_path: Path) -> None:
+    settings = make_settings(tmp_path, llm_provider="openai_codex")
+    with pytest.raises(ConfigurationError, match="experimental"):
+        get_chat_model(settings, tier="generation")
 
 
 @pytest.mark.parametrize("provider", ["anthropic", "openai"])

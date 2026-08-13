@@ -6,6 +6,8 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from loregraph.config import Settings
+from loregraph.main import create_app
 from loregraph.schemas.app_settings import SECRET_MASK_PREFIX
 
 
@@ -148,10 +150,24 @@ def test_catalog_describes_providers_generically(client: TestClient) -> None:
     by_id = {provider["id"]: provider for provider in catalog["providers"]}
     assert by_id["anthropic"]["api_key_field"] == "anthropic_api_key"
     assert by_id["ollama"]["api_key_field"] is None
+    assert "openai_codex" not in by_id
     assert by_id["anthropic"]["default_models"]["generation"]
     assert catalog["model_tiers"] == ["assistant", "extraction", "generation"]
     embedding_ids = {p["id"] for p in catalog["embedding_providers"]}
     assert {"local", "disabled"} <= embedding_ids
+
+
+def test_experimental_provider_appears_only_after_launch_opt_in(
+    settings: Settings,
+) -> None:
+    opted_in = settings.model_copy(update={"experimental_providers_enabled": True})
+    with TestClient(
+        create_app(opted_in), client=("127.0.0.1", 50000)
+    ) as experimental_client:
+        catalog = experimental_client.get("/api/settings/catalog").json()
+
+    by_id = {provider["id"]: provider for provider in catalog["providers"]}
+    assert by_id["openai_codex"]["supports_model_listing"] is True
 
 
 def test_embedding_change_with_embeddings_off_needs_no_reindex(

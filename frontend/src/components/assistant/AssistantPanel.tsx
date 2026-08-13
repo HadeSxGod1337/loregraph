@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import type { AgentReviewPayload, DraftEntity, LoreDraft } from "../../api/agent";
+import { agentApi, type AgentReviewPayload, type DraftEntity, type LoreDraft } from "../../api/agent";
 import { ApiError, apiClient } from "../../api/client";
 import type { Edge, Entity } from "../../api/types";
 import {
@@ -49,7 +49,12 @@ uv run uvicorn loregraph.main:app --reload`}</pre>
     );
   }
   if (config && !config.llm_configured) {
-    return <OnboardingCard provider={config.llm_provider} />;
+    return (
+      <OnboardingCard
+        provider={config.llm_provider}
+        experimentalProvidersEnabled={config.experimental_providers_enabled}
+      />
+    );
   }
 
   return (
@@ -334,8 +339,67 @@ function ChatInput({
   );
 }
 
-function OnboardingCard({ provider }: { provider: string }) {
+function OnboardingCard({
+  provider,
+  experimentalProvidersEnabled,
+}: {
+  provider: string;
+  experimentalProvidersEnabled: boolean;
+}) {
   const { t } = useTranslation();
+  const [deviceCode, setDeviceCode] = useState<{ user_code: string; verification_url: string } | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  if (provider === "openai_codex" && experimentalProvidersEnabled) {
+    const start = async () => {
+      setOauthError(null);
+      try {
+        const result = await agentApi.startCodexOAuth();
+        setDeviceCode(result);
+        window.open(result.verification_url, "_blank", "noopener,noreferrer");
+      } catch (error) {
+        setOauthError(error instanceof Error ? error.message : t("assistant.onboarding.codexStartError"));
+      }
+    };
+    const check = async () => {
+      setChecking(true);
+      setOauthError(null);
+      try {
+        const result = await agentApi.pollCodexOAuth();
+        if (result.connected) window.location.reload();
+        else setOauthError(t("assistant.onboarding.codexPending"));
+      } catch (error) {
+        setOauthError(error instanceof Error ? error.message : t("assistant.onboarding.codexPollError"));
+      } finally {
+        setChecking(false);
+      }
+    };
+    return (
+      <div className="assistant-onboarding">
+        <h2>{t("assistant.onboarding.codexHeading")}</h2>
+        <p>{t("assistant.onboarding.codexBody")}</p>
+        {!deviceCode ? (
+          <button type="button" className="button-primary" onClick={() => void start()}>
+            {t("assistant.onboarding.codexSignIn")}
+          </button>
+        ) : (
+          <>
+            <p>
+              {t("assistant.onboarding.codexEnterCode")} <strong>{deviceCode.user_code}</strong>{" "}
+              <a href={deviceCode.verification_url} target="_blank" rel="noreferrer">
+                {t("assistant.onboarding.codexOpenAIPage")}
+              </a>
+              .
+            </p>
+            <button type="button" className="button-primary" disabled={checking} onClick={() => void check()}>
+              {checking ? t("assistant.onboarding.codexChecking") : t("assistant.onboarding.codexDone")}
+            </button>
+          </>
+        )}
+        {oauthError && <p role="alert">{oauthError}</p>}
+      </div>
+    );
+  }
   return (
     <div className="assistant-onboarding">
       <h2>{t("assistant.onboarding.setupHeading")}</h2>

@@ -117,6 +117,22 @@ async def list_provider_models(settings: Settings) -> ModelListing:
     descriptor = PROVIDERS_BY_ID.get(settings.llm_provider)
     if descriptor is None or descriptor.models_style is None:
         return ModelListing(models=())
+    if descriptor.models_style == "codex":
+        if not settings.experimental_providers_enabled:
+            return ModelListing(models=())
+        try:
+            from loregraph.llm.openai_codex_oauth import available_models
+
+            names = await asyncio.to_thread(
+                available_models, settings.openai_codex_oauth_path
+            )
+        except Exception as e:
+            logger.debug("Codex model listing failed", exc_info=True)
+            return ModelListing(
+                models=(), error=mask_keys(str(e), settings)[:PROBE_ERROR_MAX_CHARS]
+            )
+        return ModelListing(models=tuple(names))
+
     base_url = provider_base_url(descriptor, settings)
     if base_url is None:
         return ModelListing(models=())

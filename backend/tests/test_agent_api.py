@@ -7,7 +7,13 @@ def test_agent_config_unconfigured(client: TestClient) -> None:
     body = resp.json()
     assert body["llm_configured"] is False
     assert body["llm_provider"] == "anthropic"
+    assert body["experimental_providers_enabled"] is False
     assert body["vector_enabled"] is False  # disabled in test settings
+
+
+def test_experimental_oauth_routes_are_hidden_by_default(client: TestClient) -> None:
+    resp = client.post("/api/agent/auth/openai-codex/start")
+    assert resp.status_code == 404
 
 
 def test_create_session_needs_no_llm(client: TestClient, project_id: str) -> None:

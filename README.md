@@ -103,6 +103,11 @@ editor works fully; the Assistant tab links to the settings page. Semantic retri
 local multilingual embedding model by default (downloaded on first use); the
 lore never leaves your machine except for the LLM calls you configure.
 
+An unsupported ChatGPT/Codex OAuth experiment is available only through an
+explicit advanced launcher flag and an additional risk acknowledgement. It is
+hidden and disabled in normal installs; the public OpenAI API-key provider is
+the supported option. See `docs/getting-started.md` before opting in.
+
 ### Character sheets & templates
 
 Entities can be bound to a **template** — a set of fields plus a sheet layout that
@@ -293,6 +298,11 @@ MCP-сервер (`loregraph-mcp`) для внешних MCP-клиентов. �
 по умолчанию использует локальную многоязычную embedding-модель (скачивается при
 первом запуске); лор не покидает вашу машину, кроме LLM-вызовов, которые вы сами
 настроите.
+
+Неподдерживаемый эксперимент с ChatGPT/Codex OAuth доступен только через
+специальный флаг лаунчера и дополнительное подтверждение риска. В обычной
+установке он скрыт и отключён; поддерживаемый вариант — публичный OpenAI API с
+ключом. Перед включением прочитайте `docs/getting-started.md`.
 
 ### Листы персонажей и шаблоны
 
