@@ -97,15 +97,64 @@ class DraftRelationship(BaseModel):
     grounded_in: list[str] = Field(default_factory=list)
 
 
-class LoreDraft(BaseModel):
-    """What one agent run proposes: a coherent change to the world — new
-    entities, operations on the relationship graph, or both. This is the unit
-    the DM reviews: a piece of world, not a single card.
+class DraftEntityPatch(BaseModel):
+    """A targeted change to ONE entity that already exists — the draft-side
+    counterpart to schemas/entity.py::EntityPatch.
 
-    `entities` may be empty: "connect these two existing characters" is a
-    complete, committable proposal on its own."""
+    This is what makes "add fields to Егор", "rewrite his bio", "make his role
+    shorter" expressible in the same proposal as a creation or a new link,
+    instead of forcing the model to choose one of three mutually exclusive
+    tools up front (the bug that made it clone Егор instead of editing him).
+
+    Only what is named changes: `set_fields` upserts by key, `remove_field_
+    keys` is the ONLY way anything is deleted (omission never removes), and a
+    null title/type leaves it untouched. Loose like DraftRelationship — an
+    invalid patch is dropped with a warning at validation, never raised."""
+
+    entity_id: str = Field(
+        description="Id of the existing entity to change, from retrieval "
+        "(<existing_lore>) or a read tool. Never a draft ref."
+    )
+    title: str | None = Field(
+        default=None, description="New title, or null to leave it unchanged."
+    )
+    type: str | None = Field(
+        default=None, description="New snake_case type, or null to leave it."
+    )
+    set_fields: list[DraftField] = Field(
+        default_factory=list,
+        description="Fields to add or overwrite, by key. A key that already "
+        "exists is rewritten; a new key is appended. Fields not listed here "
+        "are left exactly as they are.",
+    )
+    remove_field_keys: list[str] = Field(
+        default_factory=list,
+        description="Keys to delete outright. The ONLY way a field is removed "
+        "— use it only when the game master explicitly asked to remove that "
+        "field, never to 'clean up'.",
+    )
+    edit_reason: str = Field(
+        default="", description="One sentence: what changed and why."
+    )
+    grounded_in: list[str] = Field(default_factory=list)
+
+
+class LoreDraft(BaseModel):
+    """What one agent run proposes: a coherent change to the world. This is the
+    unit the DM reviews — a piece of world, not a single card — and it can mix
+    any of three kinds of change in one proposal:
+
+    - `entities`: brand-new entities to create.
+    - `patches`: targeted edits to entities that already exist.
+    - `relationships`: operations on the relationship graph.
+
+    Every list may be empty. "Connect these two existing characters" is
+    relationships only; "shorten Мира's role" is one patch and nothing else;
+    an empty draft on all three is a valid, committable no-op the DM simply
+    approves away."""
 
     entities: list[DraftEntity] = Field(default_factory=list)
+    patches: list[DraftEntityPatch] = Field(default_factory=list)
     relationships: list[DraftRelationship] = Field(default_factory=list)
 
 

@@ -42,17 +42,8 @@ async def human_review(state: AgentState) -> dict[str, Any]:
 
 
 def route_after_review(state: AgentState) -> str:
-    """Approve/reject always fall through to commit; a revise has to go back
-    to the node that produced what is on screen.
-
-    Every "propose" skill shares this one review gate, so the return value has
-    to name its pipeline — sending a revised entity edit or relationship set
-    to generate_lore would run the creative lore generator over a draft it
-    never made."""
-    if state.decision_action != "revise":
-        return "commit"
-    if state.entity_edit_draft is not None:
-        return "revise_edit"
-    if state.pending_entity_ids:
-        return "revise_relationships"
-    return "revise_lore"
+    """Approve/reject fall through to commit; a revise goes back to the single
+    generation node. With one unified pipeline there is no per-kind branch to
+    pick anymore — generate_changes regenerates the whole proposal (entities,
+    patches and relationships) from the DM's feedback."""
+    return "revise" if state.decision_action == "revise" else "commit"

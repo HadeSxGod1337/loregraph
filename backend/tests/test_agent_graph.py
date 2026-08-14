@@ -128,10 +128,19 @@ def turn(project_id: str, text: str) -> dict[str, Any]:
     return {"project_id": project_id, "messages": [HumanMessage(text)]}
 
 
-def propose_call(brief: str) -> AIMessage:
+def propose_call(brief: str, target_entity_ids: list[str] | None = None) -> AIMessage:
     return AIMessage(
         "",
-        tool_calls=[{"name": "propose_lore", "args": {"brief": brief}, "id": "tc1"}],
+        tool_calls=[
+            {
+                "name": "propose_changes",
+                "args": {
+                    "brief": brief,
+                    "target_entity_ids": target_entity_ids or [],
+                },
+                "id": "tc1",
+            }
+        ],
     )
 
 
@@ -381,23 +390,14 @@ async def test_usage_is_recorded_per_node_and_model(db_session: AsyncSession) ->
 
     rows = {row.node: row for row in await usage_store.project_rollup(project.id)}
 
-    assert rows["generate_lore"].model == "generation-model"
-    assert rows["generate_lore"].calls == 1
-    assert rows["generate_lore"].input_tokens == 100
-    assert rows["generate_lore"].output_tokens == 50
+    assert rows["generate_changes"].model == "generation-model"
+    assert rows["generate_changes"].calls == 1
+    assert rows["generate_changes"].input_tokens == 100
+    assert rows["generate_changes"].output_tokens == 50
     assert rows["assistant"].model == "assistant-model"
     # No lore to check against, so the grounding judge never ran — and an
     # LLM call that did not happen must not show up as spend.
-    assert "verify_grounding" not in rows
-
-
-def test_mentions_uses_word_boundaries() -> None:
-    from loregraph.agent.nodes.check_duplicates import _mentions
-
-    assert _mentions("расскажи про Миру и «Мира» тоже", "Мира")
-    assert not _mentions("создай 1230 стражников", "123")  # no bare substring
-    assert not _mentions("мирами правят боги", "Мира")  # inside a longer word
-    assert not _mentions("любой текст с al внутри", "Al")  # too short
+    assert "validate_changes" not in rows
 
 
 @pytest.mark.asyncio
@@ -421,12 +421,12 @@ async def test_dm_edits_win_at_approve(db_session: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-async def test_propose_lore_may_connect_two_existing_entities(
+async def test_propose_changes_may_connect_two_existing_entities(
     db_session: AsyncSession,
 ) -> None:
-    """The creative pipeline is subject to the same endpoint symmetry as the
-    relationship one: a proposal that links two entities already in the world
-    used to be dropped by verify_grounding as an "unknown source"."""
+    """A proposal that links two entities already in the world must survive
+    validation: both endpoints are existing ids, and validate_changes
+    whitelists everything retrieval returned."""
     project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
     store = SqliteEntityStore(db_session)
     mira = await store.create(
@@ -486,7 +486,7 @@ async def test_relationship_only_commit_acks_without_entity_counts(
         db_session,
         [propose_call("свяжи их")],
         creative_results=[draft],
-        # Retrieval now returns lore, so verify_grounding's LLM-as-judge tier
+        # Retrieval now returns lore, so validate_changes' LLM-as-judge tier
         # runs too — it has nothing to flag here.
         extraction_results=[
             GroundingReport(claims_checked=0, claims_flagged=0, warnings=[])
@@ -498,6 +498,9 @@ async def test_relationship_only_commit_acks_without_entity_counts(
 
     state = AgentState.model_validate((await graph.aget_state(CONFIG)).values)
     event = state.messages[-1].additional_kwargs["event"]
-    assert event["code"] == "relationships_committed"
-    assert event["params"]["created"] == "1"
+    # One unified ack covers every kind of change: 0 created, 0 patched, 1 rel.
+    assert event["code"] == "changes_committed"
+    assert event["params"]["created"] == "0"
+    assert event["params"]["patched"] == "0"
+    assert event["params"]["rel_created"] == "1"
     assert len(await SqliteEdgeStore(db_session).list_all(project.id)) == 1

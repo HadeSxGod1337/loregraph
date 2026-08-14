@@ -81,7 +81,10 @@ class FakeGenerator:
 
 def propose_call(brief: str) -> AIMessage:
     return AIMessage(
-        "", tool_calls=[{"name": "propose_lore", "args": {"brief": brief}, "id": "tc1"}]
+        "",
+        tool_calls=[
+            {"name": "propose_changes", "args": {"brief": brief}, "id": "tc1"}
+        ],
     )
 
 

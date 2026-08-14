@@ -5,11 +5,11 @@ from typing import Any
 from loregraph.agent.state import NO_LORE_SENTINEL, AgentState
 from loregraph.connectors.live import LiveSourceEntry, LiveSourceProvider
 from loregraph.connectors.protocols import ExternalChunk
-from loregraph.schemas.edge import EdgeOut
 from loregraph.schemas.entity import EntityOut
 from loregraph.schemas.graph import SubgraphOut
 from loregraph.services.graph_query import edges_among, get_subgraph
 from loregraph.services.knowledge_index import KB_RETRIEVAL_K, KnowledgeIndex
+from loregraph.services.lore_format import relationship_line
 from loregraph.services.vector_index import VectorIndex, entity_to_text
 from loregraph.storage.protocols import EdgeStore, EntityStore
 from loregraph.storage.vectorstore.protocols import RetrievedChunk
@@ -113,9 +113,20 @@ async def retrieve_context(
         kb_chunks = knowledge_task.result()
     external_chunks = [chunk for task in external_tasks for chunk in task.result()]
 
+    # Entities the request points at directly (to edit or link) are always in
+    # scope, whether or not vector/graph retrieval surfaced them — they must be
+    # whitelisted for patches and relationship endpoints, and shown in full so
+    # the model edits real current state.
+    target_ids = [
+        entity_id
+        for entity_id in state.pending_entity_ids
+        if entity_id  # defensive: never a blank id from a malformed tool call
+    ]
     context_ids: list[str] = list(
         dict.fromkeys(
-            chunk_ids + ([node.id for node in subgraph.nodes] if subgraph else [])
+            target_ids
+            + chunk_ids
+            + ([node.id for node in subgraph.nodes] if subgraph else [])
         )
     )
     entities = await entity_store.get_many(context_ids)
@@ -144,7 +155,7 @@ async def retrieve_context(
         }.values()
     )
     shown_edges = context_edges[:MAX_CONTEXT_EDGES]
-    lore_lines.extend(_relationship_line(edge, title_by_id) for edge in shown_edges)
+    lore_lines.extend(relationship_line(edge, title_by_id) for edge in shown_edges)
     if len(context_edges) > len(shown_edges):
         lore_lines.append(
             f"<!-- {len(context_edges) - len(shown_edges)} further relationships "
@@ -157,8 +168,17 @@ async def retrieve_context(
     # new AgentState field — persisted checkpoints stay compatible.
     kb_lines.extend(_external_chunk_line(chunk) for chunk in external_chunks)
 
+    # Full (untruncated) text of the explicit targets, so the model edits the
+    # real current state instead of the 600-char search-context slice used for
+    # background lore.
+    by_id = {entity.id: entity for entity in entities}
+    target_lines = [
+        _target_line(by_id[entity_id]) for entity_id in target_ids if entity_id in by_id
+    ]
+
     return {
         "existing_lore": "\n".join(lore_lines) if lore_lines else NO_LORE_SENTINEL,
+        "targets_block": "\n".join(target_lines),
         "knowledge_context": (
             "\n".join(kb_lines) if kb_lines else NO_KNOWLEDGE_SENTINEL
         ),
@@ -169,20 +189,12 @@ async def retrieve_context(
     }
 
 
-def _relationship_line(edge: EdgeOut, title_by_id: dict[str, str]) -> str:
-    """One existing relationship, addressable by id.
-
-    The id is what makes an existing relationship editable at all: an update
-    or delete op has to name the edge it acts on, and this line is the only
-    place the model ever learns that id. Titles ride along so it does not have
-    to resolve opaque ids against the entity lines to understand the graph."""
-    source = title_by_id.get(edge.source_entity_id, edge.source_entity_id)
-    target = title_by_id.get(edge.target_entity_id, edge.target_entity_id)
-    label = f" ({edge.label})" if edge.label else ""
+def _target_line(entity: EntityOut) -> str:
+    """An explicit edit/link target, shown in full — no LORE_TEXT_LIMIT slice:
+    a patch has to see every field it might rewrite or leave alone."""
     return (
-        f'<relationship id="{edge.id}" source="graph_store">'
-        f"{edge.source_entity_id} ({source}) --{edge.type}--> "
-        f"{edge.target_entity_id} ({target}){label}</relationship>"
+        f'<entity id="{entity.id}" type="{entity.type}">'
+        f"{entity_to_text(entity)}</entity>"
     )
 
 

@@ -4,6 +4,7 @@ from loregraph.exceptions import EntityNotFoundError
 from loregraph.schemas.entity import (
     EntityCreate,
     EntityOut,
+    EntityPatch,
     EntityPlayerViewUpdate,
     EntityPositionEntry,
     EntityUpdate,
@@ -51,6 +52,20 @@ class EntityService:
     ) -> EntityOut:
         await self.get_in_project(project_id, entity_id)
         entity = await self._store.update(entity_id, data)
+        await self._index_safely(entity)
+        return entity
+
+    async def patch(
+        self, project_id: str, entity_id: str, data: EntityPatch
+    ) -> EntityOut:
+        """Partial update, for callers that hold an incomplete picture of the
+        entity — above all the agent, which reads entities as flat text.
+
+        Same project-scoping and re-indexing guarantees as `update`; the
+        difference is only that omission never deletes (schemas/entity.py::
+        EntityPatch)."""
+        await self.get_in_project(project_id, entity_id)
+        entity = await self._store.patch(entity_id, data)
         await self._index_safely(entity)
         return entity
 

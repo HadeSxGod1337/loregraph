@@ -13,8 +13,10 @@ from loregraph.exceptions import (
 from loregraph.schemas.entity import (
     AttachmentRef,
     EntityCreate,
+    EntityFieldIn,
     EntityFieldOut,
     EntityOut,
+    EntityPatch,
     EntityPlayerViewUpdate,
     EntityPositionEntry,
     EntityUpdate,
@@ -89,6 +91,55 @@ class SqliteEntityStore:
         row.title = data.title
         row.fields = [f.model_dump(mode="json") for f in data.fields]
         row.template_id = data.template_id
+        row.updated_at = datetime.now(UTC)
+        await self._session.commit()
+        return _row_to_out(row)
+
+    async def patch(self, entity_id: str, data: EntityPatch) -> EntityOut:
+        """Partial update: everything the patch doesn't name survives.
+
+        Unlike `update`, which rewrites the row from what the caller supplies,
+        this touches only the named keys — so `template_id`, attachment
+        fields, and the per-field `show_on_card` / `visible_to_players` flags
+        cannot be erased by a caller that never saw them (see
+        schemas/entity.py::EntityPatch).
+        """
+        row = await self._session.get(EntityRow, entity_id)
+        if row is None:
+            raise EntityNotFoundError(entity_id)
+
+        current = [EntityFieldIn.model_validate(f) for f in row.fields]
+        by_key = {field.key: field for field in current}
+        order = [field.key for field in current]
+
+        for incoming in data.set_fields:
+            existing = by_key.get(incoming.key)
+            if existing is None:
+                order.append(incoming.key)
+                by_key[incoming.key] = incoming
+            else:
+                # Value and type come from the patch; the visibility flags
+                # stay with the entity. A caller editing prose has no opinion
+                # about whether the field shows on the card or is revealed to
+                # players, and defaulting them to False would quietly undo the
+                # game master's own choices on every agent edit.
+                by_key[incoming.key] = incoming.model_copy(
+                    update={
+                        "show_on_card": existing.show_on_card,
+                        "visible_to_players": existing.visible_to_players,
+                    }
+                )
+
+        removed = set(data.remove_field_keys)
+        row.fields = [
+            by_key[key].model_dump(mode="json")
+            for key in dict.fromkeys(order)
+            if key not in removed
+        ]
+        if data.type is not None:
+            row.type = data.type
+        if data.title is not None:
+            row.title = data.title
         row.updated_at = datetime.now(UTC)
         await self._session.commit()
         return _row_to_out(row)

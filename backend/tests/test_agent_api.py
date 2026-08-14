@@ -112,8 +112,8 @@ def test_run_skill_with_invalid_input_is_422(
     created = client.post(f"/api/projects/{project_id}/agent/sessions").json()
     resp = client.post(
         f"/api/projects/{project_id}/agent/sessions/{created['thread_id']}"
-        "/skills/propose_lore/run",
-        # propose_lore requires a `brief` field.
+        "/skills/propose_changes/run",
+        # propose_changes requires a `brief` field.
         json={"input": {}},
     )
     assert resp.status_code == 422
@@ -123,7 +123,7 @@ def test_run_skill_to_unknown_session_is_404(
     client: TestClient, project_id: str
 ) -> None:
     resp = client.post(
-        f"/api/projects/{project_id}/agent/sessions/nope/skills/propose_lore/run",
+        f"/api/projects/{project_id}/agent/sessions/nope/skills/propose_changes/run",
         json={"input": {"brief": "тест"}},
     )
     assert resp.status_code == 404
@@ -137,7 +137,7 @@ def test_run_skill_without_key_is_409_once_input_is_valid(
     created = client.post(f"/api/projects/{project_id}/agent/sessions").json()
     resp = client.post(
         f"/api/projects/{project_id}/agent/sessions/{created['thread_id']}"
-        "/skills/propose_lore/run",
+        "/skills/propose_changes/run",
         json={"input": {"brief": "стартовый лор"}},
     )
     assert resp.status_code == 409

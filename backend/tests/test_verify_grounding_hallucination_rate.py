@@ -1,16 +1,16 @@
-"""Covers the numeric hallucination_rate verify_grounding.py derives from
+"""Covers the numeric hallucination_rate validate_changes.py derives from
 GroundingReport.claims_checked/claims_flagged, alongside the pre-existing
-free-text warnings — see agent/nodes/verify_grounding.py."""
+free-text warnings — see agent/nodes/validate_changes.py."""
 
 import pytest
 from pydantic import BaseModel
 
-from loregraph.agent.nodes.verify_grounding import verify_grounding
+from loregraph.agent.nodes.validate_changes import validate_changes
 from loregraph.agent.state import NO_LORE_SENTINEL, AgentState
 from loregraph.llm.structured import StructuredResult
 from loregraph.llm.usage import LLMCallUsage
 from loregraph.schemas.agent import DraftEntity, GroundingReport, LoreDraft
-from tests.fakes import EmptyEdgeStore
+from tests.fakes import EmptyEdgeStore, EmptyEntityStore
 
 pytestmark = pytest.mark.asyncio
 
@@ -47,9 +47,10 @@ def _state(
 
 async def test_hallucination_rate_is_computed_from_claim_counts() -> None:
     report = GroundingReport(claims_checked=4, claims_flagged=1, warnings=["bad claim"])
-    update = await verify_grounding(
+    update = await validate_changes(
         _state(),
         extraction=FakeExtraction(report),
+        entity_store=EmptyEntityStore(),
         token_budget=1000,
         edge_store=EmptyEdgeStore(),
         usage_store=None,
@@ -61,9 +62,10 @@ async def test_hallucination_rate_is_computed_from_claim_counts() -> None:
 
 async def test_zero_claims_checked_reports_no_rate() -> None:
     report = GroundingReport(claims_checked=0, claims_flagged=0, warnings=[])
-    update = await verify_grounding(
+    update = await validate_changes(
         _state(),
         extraction=FakeExtraction(report),
+        entity_store=EmptyEntityStore(),
         token_budget=1000,
         edge_store=EmptyEdgeStore(),
         usage_store=None,
@@ -76,9 +78,10 @@ async def test_claims_flagged_is_clamped_to_claims_checked() -> None:
     # Nothing in the schema stops the model from returning an inconsistent
     # count — the rate must never exceed 1.0 regardless.
     report = GroundingReport(claims_checked=2, claims_flagged=5, warnings=["x", "y"])
-    update = await verify_grounding(
+    update = await validate_changes(
         _state(),
         extraction=FakeExtraction(report),
+        entity_store=EmptyEntityStore(),
         token_budget=1000,
         edge_store=EmptyEdgeStore(),
         usage_store=None,
@@ -89,9 +92,10 @@ async def test_claims_flagged_is_clamped_to_claims_checked() -> None:
 
 async def test_llm_judge_tier_skipped_without_lore_reports_no_rate() -> None:
     report = GroundingReport(claims_checked=3, claims_flagged=1, warnings=["x"])
-    update = await verify_grounding(
+    update = await validate_changes(
         _state(existing_lore=NO_LORE_SENTINEL),
         extraction=FakeExtraction(report),
+        entity_store=EmptyEntityStore(),
         token_budget=1000,
         edge_store=EmptyEdgeStore(),
         usage_store=None,
@@ -102,9 +106,10 @@ async def test_llm_judge_tier_skipped_without_lore_reports_no_rate() -> None:
 
 async def test_llm_judge_tier_skipped_over_budget_reports_no_rate() -> None:
     report = GroundingReport(claims_checked=3, claims_flagged=1, warnings=["x"])
-    update = await verify_grounding(
+    update = await validate_changes(
         _state(),
         extraction=FakeExtraction(report),
+        entity_store=EmptyEntityStore(),
         token_budget=0,
         edge_store=EmptyEdgeStore(),
         usage_store=None,
