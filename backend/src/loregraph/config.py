@@ -8,6 +8,7 @@ type LLMProvider = Literal[
     "anthropic",
     "openai",
     "ollama",
+    "ollama_cloud",
     # Tier 1 — dedicated LangChain packages
     "google",
     "mistral",
@@ -82,6 +83,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
     ollama_base_url: str = "http://localhost:11434"
+    ollama_cloud_api_key: str | None = None
+    ollama_cloud_base_url: str = "https://ollama.com"
     # Tier 1 — dedicated packages
     google_api_key: str | None = None
     mistral_api_key: str | None = None
@@ -220,6 +223,7 @@ LLM_SETTINGS_FIELDS: frozenset[str] = frozenset(
         "web_search_enabled",
         "agent_prompt_caching",
         "ollama_base_url",
+        "ollama_cloud_base_url",
         "perplexity_base_url",
         "nebius_base_url",
     }
@@ -231,6 +235,7 @@ API_KEY_SETTINGS_FIELDS: frozenset[str] = frozenset(
     {
         "anthropic_api_key",
         "openai_api_key",
+        "ollama_cloud_api_key",
         "google_api_key",
         "mistral_api_key",
         "deepseek_api_key",

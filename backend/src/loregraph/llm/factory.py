@@ -43,6 +43,8 @@ def is_llm_configured(settings: Settings) -> bool:
             return settings.openai_api_key is not None
         case "ollama":
             return True
+        case "ollama_cloud":
+            return settings.ollama_cloud_api_key is not None
         case "google":
             return settings.google_api_key is not None
         case "mistral":
@@ -109,6 +111,22 @@ def get_chat_model(settings: Settings, *, tier: ModelTier) -> BaseChatModel:
             return ChatOllama(
                 model=model,
                 base_url=settings.ollama_base_url,
+                temperature=temperature,
+            )
+        case "ollama_cloud":
+            if settings.ollama_cloud_api_key is None:
+                raise ConfigurationError(
+                    "llm_provider is 'ollama_cloud' but "
+                    "CAMPAIGN_OLLAMA_CLOUD_API_KEY is not set"
+                )
+            return ChatOllama(
+                model=model,
+                base_url=settings.ollama_cloud_base_url,
+                client_kwargs={
+                    "headers": {
+                        "Authorization": f"Bearer {settings.ollama_cloud_api_key}"
+                    }
+                },
                 temperature=temperature,
             )
         # ── Tier 1 — dedicated LangChain packages ────────────────────────

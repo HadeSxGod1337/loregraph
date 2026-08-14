@@ -5,6 +5,8 @@
 
 param(
     [switch]$SkipUpdate,
+    # Re-run the first-launch AI provider wizard without deleting .env.
+    [switch]$ConfigureAI,
     # LAN play mode: bind to all interfaces so players on the same network can
     # reach the app through an invite link. Off by default — the app stays on
     # localhost, exactly as before.
@@ -49,6 +51,35 @@ $UpdatePromptTimeout = 30
 function Write-Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg) { Write-Host "    $msg" -ForegroundColor Green }
 function Write-Warn2($msg) { Write-Host "    $msg" -ForegroundColor Yellow }
+
+function Select-LiveModel([object[]]$models, [string]$purpose) {
+    $available = @($models | ForEach-Object { "$($_)".Trim() } | Where-Object { $_ } | Select-Object -Unique)
+    if ($available.Count -eq 0) { throw "Провайдер не вернул ни одной доступной модели." }
+    Write-Host ""
+    Write-Host "    Доступные модели для ${purpose}:" -ForegroundColor Cyan
+    for ($i = 0; $i -lt $available.Count; $i++) {
+        Write-Host ("      {0,2} - {1}" -f ($i + 1), $available[$i])
+    }
+    while ($true) {
+        $raw = (Read-Host "    Выберите номер (Enter = 1)").Trim()
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $available[0] }
+        $number = 0
+        if ([int]::TryParse($raw, [ref]$number) -and $number -ge 1 -and $number -le $available.Count) {
+            return $available[$number - 1]
+        }
+        Write-Warn2 "Введите номер от 1 до $($available.Count)."
+    }
+}
+
+function Get-OllamaCloudModels([string]$apiKey) {
+    $catalog = Invoke-RestMethod -Method Get -Uri "https://ollama.com/api/tags" `
+        -Headers @{ Authorization = "Bearer $apiKey" }
+    $models = @($catalog.models | ForEach-Object {
+        if ($_.model) { $_.model } elseif ($_.name) { $_.name }
+    } | Where-Object { $_ } | Select-Object -Unique)
+    if ($models.Count -eq 0) { throw "Ollama Cloud не вернул доступных моделей для этого ключа." }
+    return $models
+}
 
 function Update-SessionPath {
     $machine = [Environment]::GetEnvironmentVariable("Path", "Machine")
@@ -408,8 +439,12 @@ Write-Ok "Node.js: $(node --version), npm: $(npm --version)"
 # --- 3. API key (.env) on first run ------------------------------------------
 
 $EnvFile = Join-Path $Backend ".env"
-if (-not (Test-Path $EnvFile)) {
+$hadEnvFile = Test-Path $EnvFile
+if (-not $hadEnvFile -or $ConfigureAI) {
     Write-Step "Первый запуск: настройка AI-ассистента (необязательно)"
+    if ($hadEnvFile) {
+        Write-Warn2 "Повторная настройка: текущий .env будет сохранён перед заменой."
+    }
     Write-Host "    Без AI редактор мира работает полностью, не будет только AI-ассистента." -ForegroundColor Gray
     Write-Host ""
     Write-Host "      1  - Anthropic / Claude (рекомендуется)"
@@ -427,6 +462,7 @@ if (-not (Test-Path $EnvFile)) {
     Write-Host "      13 - Perplexity"
     Write-Host "      14 - Nebius"
     Write-Host "      15 - Ollama (локальные модели, без ключа)"
+    Write-Host "      16 - Ollama Cloud (API-ключ)"
     Write-Host "      Enter - пропустить: провайдер, ключ и модели настраиваются в самом приложении (Настройки ИИ)"
     Write-Host ""
     $choice = (Read-Host "    Выберите провайдера (номер или Enter)").Trim()
@@ -634,6 +670,24 @@ if (-not (Test-Path $EnvFile)) {
                 "CAMPAIGN_LLM_MODEL_GENERATION=$model"
             )
         }
+        "16" {
+            $key = (Read-Host "    Вставьте API-ключ Ollama Cloud").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $models = Get-OllamaCloudModels $key
+                $assistantModel = Select-LiveModel $models "обычного чата"
+                $extractionModel = Select-LiveModel $models "проверок и извлечения"
+                $generationModel = Select-LiveModel $models "творческой генерации"
+                $envLines = @(
+                    "CAMPAIGN_LLM_PROVIDER=ollama_cloud",
+                    "CAMPAIGN_OLLAMA_CLOUD_API_KEY=$key",
+                    "CAMPAIGN_LLM_MODEL_ASSISTANT=$assistantModel",
+                    "CAMPAIGN_LLM_MODEL_EXTRACTION=$extractionModel",
+                    "CAMPAIGN_LLM_MODEL_GENERATION=$generationModel"
+                )
+            } else {
+                Write-Warn2 "Ключ пустой - пропускаю настройку."
+            }
+        }
     }
 
     if ($null -ne $envLines) {
@@ -742,11 +796,21 @@ if (-not (Test-Path $EnvFile)) {
         }
 
         $content = ($envLines -join "`n") + "`n"
+        if ($hadEnvFile) {
+            $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+            $backup = "$EnvFile.backup-$stamp"
+            Copy-Item -LiteralPath $EnvFile -Destination $backup
+            Write-Ok "Предыдущие настройки сохранены: backend\$(Split-Path -Leaf $backup)"
+        }
         [System.IO.File]::WriteAllText($EnvFile, $content, [System.Text.Encoding]::ASCII)
         Write-Ok "Настройки сохранены в backend\.env (там же их можно поменять)."
     } else {
-        Copy-Item (Join-Path $Backend ".env.example") $EnvFile
-        Write-Ok "Пропущено. AI можно настроить позже в backend\.env (см. подсказки внутри файла)."
+        if ($hadEnvFile) {
+            Write-Ok "Настройка отменена; существующий backend\.env не изменён."
+        } else {
+            Copy-Item (Join-Path $Backend ".env.example") $EnvFile
+            Write-Ok "Пропущено. AI можно настроить позже в backend\.env (см. подсказки внутри файла)."
+        }
     }
 }
 

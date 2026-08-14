@@ -133,6 +133,32 @@ CAMPAIGN_LLM_PROVIDER=openai
 CAMPAIGN_OPENAI_API_KEY=sk-...
 ```
 
+Ollama Cloud с ключом API:
+
+```env
+CAMPAIGN_LLM_PROVIDER=ollama_cloud
+CAMPAIGN_OLLAMA_CLOUD_API_KEY=...
+CAMPAIGN_LLM_MODEL_ASSISTANT=<выберите в мастере>
+CAMPAIGN_LLM_MODEL_EXTRACTION=<выберите в мастере>
+CAMPAIGN_LLM_MODEL_GENERATION=<выберите в мастере>
+```
+
+Мастер настройки можно повторно запустить без удаления текущего `.env`:
+
+```powershell
+# Windows
+start.bat -ConfigureAI
+```
+
+```bash
+# Linux и macOS
+./start.sh --configure-ai
+```
+
+Перед заменой `backend/.env` мастер создаст резервную копию. Для Ollama Cloud
+он получает доступные модели у провайдера и предлагает отдельно выбрать модели
+для чата, проверок и генерации.
+
 Полностью локально, без ключа:
 
 ```env

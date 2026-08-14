@@ -7,6 +7,7 @@
 set -u
 
 SKIP_UPDATE=0
+CONFIGURE_AI=0
 LAN=0
 INTERNET=0
 LAN_HOST=""
@@ -17,6 +18,8 @@ for arg in "$@"; do
     esac
     case "$arg" in
         --skip-update) SKIP_UPDATE=1 ;;
+        # Re-run the AI provider wizard without deleting the current .env.
+        --configure-ai) CONFIGURE_AI=1 ;;
         # LAN play mode: bind to all interfaces so players on the same network
         # can connect. Off by default — the app stays on localhost.
         --lan)         LAN=1 ;;
@@ -52,6 +55,51 @@ step()   { printf '\n\033[36m==> %s\033[0m\n' "$1"; }
 ok()     { printf '\033[32m    %s\033[0m\n' "$1"; }
 warn()   { printf '\033[33m    %s\033[0m\n' "$1"; }
 die()    { printf '\033[31m    %s\033[0m\n' "$1"; exit 1; }
+
+select_live_model() {
+    # $1 = newline-delimited model ids, $2 = purpose. Result: SELECTED_MODEL.
+    local payload="$1" purpose="$2" line answer index
+    local models=()
+    while IFS= read -r line; do
+        [ -n "$line" ] && models+=("$line")
+    done <<< "$payload"
+    [ "${#models[@]}" -gt 0 ] || die "Провайдер не вернул ни одной доступной модели."
+
+    printf '\n\033[36m    Доступные модели для %s:\033[0m\n' "$purpose"
+    index=0
+    for line in "${models[@]}"; do
+        index=$((index + 1))
+        printf '      %2d - %s\n' "$index" "$line"
+    done
+    while :; do
+        read -r -p "    Выберите номер (Enter = 1): " answer || answer=""
+        [ -n "$answer" ] || answer=1
+        if [[ "$answer" =~ ^[0-9]+$ ]] &&
+           [ "$answer" -ge 1 ] && [ "$answer" -le "${#models[@]}" ]; then
+            SELECTED_MODEL="${models[$((answer - 1))]}"
+            return 0
+        fi
+        warn "Введите номер от 1 до ${#models[@]}."
+    done
+}
+
+get_ollama_cloud_models() {
+    # $1 = API key. Result: LIVE_MODELS (newline-delimited).
+    local catalog
+    catalog="$(curl -fsS 'https://ollama.com/api/tags' \
+        -H "Authorization: Bearer $1")" || die "Не удалось получить модели Ollama Cloud."
+    LIVE_MODELS="$(printf '%s' "$catalog" | node -e '
+let input = "";
+process.stdin.on("data", chunk => input += chunk);
+process.stdin.on("end", () => {
+  const data = JSON.parse(input), seen = new Set();
+  const models = (Array.isArray(data.models) ? data.models : [])
+    .map(item => item?.model || item?.name).filter(name => typeof name === "string" &&
+      name.trim() && !seen.has(name.trim()) && seen.add(name.trim()));
+  process.stdout.write(models.join("\\n"));
+});')"
+    [ -n "$LIVE_MODELS" ] || die "Ollama Cloud не вернул доступных моделей для этого ключа."
+}
 
 # --- Update preferences and status (shared with the backend) -----------------
 # Flat key=value files, not JSON: this runs BEFORE uv and Node are installed,
@@ -314,8 +362,12 @@ ok "Node.js: $(node --version), npm: $(npm --version)"
 # --- 3. API key (.env) on first run ------------------------------------------
 
 ENV_FILE="$BACKEND/.env"
-if [ ! -f "$ENV_FILE" ]; then
+HAD_ENV_FILE=0
+[ -f "$ENV_FILE" ] && HAD_ENV_FILE=1
+if [ "$HAD_ENV_FILE" -eq 0 ] || [ "$CONFIGURE_AI" -eq 1 ]; then
     step "Первый запуск: настройка AI-ассистента (необязательно)"
+    [ "$HAD_ENV_FILE" -eq 1 ] &&
+        warn "Повторная настройка: текущий .env будет сохранён перед заменой."
     printf '    Без AI редактор мира работает полностью, не будет только AI-ассистента.\n\n'
     printf '      1  - Anthropic / Claude (рекомендуется)\n'
     printf '      2  - OpenAI\n'
@@ -332,6 +384,7 @@ if [ ! -f "$ENV_FILE" ]; then
     printf '      13 - Perplexity\n'
     printf '      14 - Nebius\n'
     printf '      15 - Ollama (локальные модели, без ключа)\n'
+    printf '      16 - Ollama Cloud (API-ключ)\n'
     printf '      Enter - пропустить: провайдер, ключ и модели настраиваются в самом приложении (Настройки ИИ)\n\n'
     read -r -p "    Выберите провайдера (номер или Enter): " choice || choice=""
 
@@ -512,6 +565,26 @@ if [ ! -f "$ENV_FILE" ]; then
             ENV_LINES+=("CAMPAIGN_LLM_MODEL_EXTRACTION=$model")
             ENV_LINES+=("CAMPAIGN_LLM_MODEL_GENERATION=$model")
             ;;
+        16)
+            read -r -p "    Вставьте API-ключ Ollama Cloud: " key || key=""
+            key="${key// /}"
+            if [ -n "$key" ]; then
+                get_ollama_cloud_models "$key"
+                select_live_model "$LIVE_MODELS" "обычного чата"
+                assistant_model="$SELECTED_MODEL"
+                select_live_model "$LIVE_MODELS" "проверок и извлечения"
+                extraction_model="$SELECTED_MODEL"
+                select_live_model "$LIVE_MODELS" "творческой генерации"
+                generation_model="$SELECTED_MODEL"
+                ENV_LINES+=("CAMPAIGN_LLM_PROVIDER=ollama_cloud")
+                ENV_LINES+=("CAMPAIGN_OLLAMA_CLOUD_API_KEY=$key")
+                ENV_LINES+=("CAMPAIGN_LLM_MODEL_ASSISTANT=$assistant_model")
+                ENV_LINES+=("CAMPAIGN_LLM_MODEL_EXTRACTION=$extraction_model")
+                ENV_LINES+=("CAMPAIGN_LLM_MODEL_GENERATION=$generation_model")
+            else
+                warn "Ключ пустой - пропускаю настройку."
+            fi
+            ;;
     esac
 
     if [ "${#ENV_LINES[@]}" -gt 0 ]; then
@@ -645,11 +718,20 @@ if [ ! -f "$ENV_FILE" ]; then
             # Enter / anything else = local, the Settings default: nothing to write.
         esac
 
+        if [ "$HAD_ENV_FILE" -eq 1 ]; then
+            backup="$ENV_FILE.backup-$(date +%Y%m%d-%H%M%S)"
+            cp "$ENV_FILE" "$backup"
+            ok "Предыдущие настройки сохранены: backend/$(basename "$backup")"
+        fi
         printf '%s\n' "${ENV_LINES[@]}" > "$ENV_FILE"
         ok "Настройки сохранены в backend/.env (там же их можно поменять)."
     else
-        cp "$BACKEND/.env.example" "$ENV_FILE"
-        ok "Пропущено. AI можно настроить позже в backend/.env (см. подсказки внутри файла)."
+        if [ "$HAD_ENV_FILE" -eq 1 ]; then
+            ok "Настройка отменена; существующий backend/.env не изменён."
+        else
+            cp "$BACKEND/.env.example" "$ENV_FILE"
+            ok "Пропущено. AI можно настроить позже в backend/.env (см. подсказки внутри файла)."
+        fi
     fi
 fi
 
