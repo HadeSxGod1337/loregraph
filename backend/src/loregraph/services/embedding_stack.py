@@ -15,13 +15,13 @@ the id changed: that is exactly the condition for requiring a reindex.
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 from loregraph.config import Settings
 from loregraph.llm.embeddings import EmbeddingProvider, get_embedding_provider
 from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.vector_index import VectorIndex
-from loregraph.storage.vectorstore.protocols import VectorStore
+from loregraph.storage.vectorstore.protocols import IndexHealth, VectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ class EmbeddingStack:
         self._build_vector_store = build_vector_store
         self._build_embedder = build_embedder
         self._lock = asyncio.Lock()
+        self._index_stale: bool = False
         self._apply(settings, build_embedder(settings))
 
     def build_embedder(self, settings: Settings) -> EmbeddingProvider | None:
@@ -60,10 +61,48 @@ class EmbeddingStack:
         """
         return self._build_embedder(settings)
 
+    async def detect_stale_index(self, project_ids: Iterable[str]) -> bool:
+        """Ask the store whether anything it persisted is now unreadable.
+
+        Called once at startup, because the condition is invisible otherwise:
+        the embedding model id folds in the fastembed package version
+        (llm/embeddings.py), so an ordinary dependency upgrade silently
+        invalidates every collection — and the repair path only ever ran when
+        the user changed a setting. Left undetected, the first search after an
+        upgrade quietly returns nothing and the world looks empty.
+        """
+        store = self._store
+        if not isinstance(store, IndexHealth):
+            return False
+
+        def _any_stale() -> bool:
+            return any(store.collection_is_stale(pid) for pid in project_ids)
+
+        self._index_stale = await asyncio.to_thread(_any_stale)
+        if self._index_stale:
+            logger.warning(
+                "Stored vectors were built by a different configuration — a "
+                "reindex is required before search will find anything."
+            )
+        return self._index_stale
+
+    @property
+    def index_stale(self) -> bool:
+        """True when a reindex is needed and has not run yet."""
+        return self._index_stale
+
+    def mark_index_fresh(self) -> None:
+        """Called once a reindex has rebuilt the collections."""
+        self._index_stale = False
+
     def _apply(self, settings: Settings, embedder: EmbeddingProvider | None) -> None:
         store = self._build_vector_store(settings, embedder)
         self._embedder = embedder
         self._store = store
+        # A rebuild's own staleness is already reported by `rebuild`'s return
+        # value, which the settings router turns into an automatic reindex —
+        # this flag only carries the condition nobody asked about.
+        self._index_stale = False
         # None all the way down when embeddings are off: every consumer of
         # these already treats None as "vector layer unavailable, degrade".
         self._vector_index = VectorIndex(store) if store is not None else None

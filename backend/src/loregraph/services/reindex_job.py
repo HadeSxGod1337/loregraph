@@ -152,6 +152,10 @@ class ReindexService:
         self._progress.current_project = None
         self._progress.current_source = None
         self._progress.model_id = self._stack.model_id
+        # Every collection has just been rebuilt by the current configuration,
+        # so whatever startup found stale no longer is. Only reached on a
+        # clean pass — a run that raised leaves the flag up on purpose.
+        self._stack.mark_index_fresh()
 
     async def _reindex_knowledge(
         self, session: AsyncSession, knowledge_index: KnowledgeIndex, project_id: str

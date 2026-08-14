@@ -23,6 +23,8 @@ from evals.golden_retrieval import GOLDEN_QUERIES, GoldenQuery
 from evals.metrics import ndcg_at_k, recall_at_k, reciprocal_rank
 from loregraph.config import Settings
 from loregraph.llm.embeddings import FastEmbedProvider
+from loregraph.schemas.entity import EntityOut
+from loregraph.services.lore_search import search_lore
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.vectorstore.chroma_store import ChromaVectorStore
 
@@ -33,11 +35,46 @@ DEFAULT_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 _METRICS = ("recall@k", "ndcg@k", "mrr")
 
 
-async def _run_case(index: VectorIndex, case: GoldenQuery) -> dict[str, float]:
+class _CaseEntityStore:
+    """The case's own entities, as the EntityStore that search_lore reads.
+
+    The eval drives the *assistant's* retrieval path, not just the vector
+    store's: half of what search_lore does (the lexical contour, see
+    services/lore_search.py) lives above the store, and a number that skips it
+    would not describe what a game master experiences.
+    """
+
+    def __init__(self, entities: list[EntityOut]) -> None:
+        self._entities = entities
+
+    async def list_entities(
+        self, project_id: str, entity_type: str | None = None
+    ) -> list[EntityOut]:
+        return [
+            entity
+            for entity in self._entities
+            if entity.project_id == project_id
+            and (entity_type is None or entity.type == entity_type)
+        ]
+
+
+async def _run_case(
+    index: VectorIndex, case: GoldenQuery, *, vector_only: bool
+) -> dict[str, float]:
     for entity in case.entities:
         await index.index_entity(entity)
-    results = await index.query(case.project_id, case.query, k=case.k)
-    retrieved_ids = [chunk.entity_id for chunk in results]
+    if vector_only:
+        chunks = await index.query(case.project_id, case.query, k=case.k)
+        retrieved_ids = [chunk.entity_id for chunk in chunks]
+    else:
+        result = await search_lore(
+            vector_index=index,
+            entity_store=_CaseEntityStore(case.entities),  # type: ignore[arg-type]
+            project_id=case.project_id,
+            query=case.query,
+            limit=case.k,
+        )
+        retrieved_ids = [entity.id for entity in result.entities]
     relevant_ids = {
         entity_id for entity_id, grade in case.relevance.items() if grade > 0
     }
@@ -48,7 +85,9 @@ async def _run_case(index: VectorIndex, case: GoldenQuery) -> dict[str, float]:
     }
 
 
-async def run(model_name: str) -> list[tuple[str, dict[str, float]]]:
+async def run(
+    model_name: str, *, vector_only: bool = False
+) -> list[tuple[str, dict[str, float]]]:
     # Plain mkdtemp + best-effort rmtree instead of TemporaryDirectory:
     # Chroma's PersistentClient keeps its sqlite/hnsw files memory-mapped for
     # the process lifetime, so on Windows a strict on-exit rmtree (as
@@ -63,7 +102,10 @@ async def run(model_name: str) -> list[tuple[str, dict[str, float]]]:
             tmp / "chroma", FastEmbedProvider(model_name, Settings().models_dir)
         )
         index = VectorIndex(store)
-        return [(case.case_id, await _run_case(index, case)) for case in GOLDEN_QUERIES]
+        return [
+            (case.case_id, await _run_case(index, case, vector_only=vector_only))
+            for case in GOLDEN_QUERIES
+        ]
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -87,9 +129,16 @@ def _print_report(model_name: str, rows: list[tuple[str, dict[str, float]]]) -> 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument(
+        "--vector-only",
+        action="store_true",
+        help="Measure the vector store alone, skipping the lexical contour "
+        "search_lore adds on top — useful for attributing a change to one "
+        "layer or the other.",
+    )
     args = parser.parse_args()
-    rows = asyncio.run(run(args.model))
-    _print_report(args.model, rows)
+    rows = asyncio.run(run(args.model, vector_only=args.vector_only))
+    _print_report(f"{args.model}{' (vector only)' if args.vector_only else ''}", rows)
 
 
 if __name__ == "__main__":

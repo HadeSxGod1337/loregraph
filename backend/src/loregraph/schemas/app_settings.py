@@ -72,6 +72,11 @@ class ReindexStatusOut(BaseModel):
     sources_indexed: int = 0
     error: str | None = None
     model_id: str | None = None
+    # Stored vectors were built by a configuration this process can't read
+    # (embedding model or chunk layout changed since they were written), so
+    # search finds nothing until a reindex runs. Detected at startup, not on
+    # a setting change — the setting-change case already auto-reindexes.
+    index_stale: bool = False
 
 
 class LaunchOnlyOut(BaseModel):
