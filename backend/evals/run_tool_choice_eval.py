@@ -35,7 +35,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from evals.tool_choice_cases import CASES, PROJECT_ID, ToolChoiceCase
 from loregraph.agent.nodes.assistant import assistant
 from loregraph.agent.nodes.tools import run_tools
-from loregraph.agent.skills.registry import entry_node_for
+from loregraph.agent.skills.registry import pipeline_entry_node
 from loregraph.agent.state import AgentState
 from loregraph.config import Settings
 from loregraph.exceptions import EntityNotFoundError
@@ -194,11 +194,11 @@ async def _tools_used(
                 for entity_id in call["args"].get("target_entity_ids", []) or []:
                     if entity_id in title_by_id:
                         target_titles.add(title_by_id[entity_id])
-        # A "propose"/"job" skill ends the chat turn in production —
-        # route_after_assistant hands off to its pipeline instead of the
-        # read-tool executor. Mirroring that (data-driven off the same
-        # registry) keeps the loop faithful and stops here.
-        if any(entry_node_for(call["name"]) for call in message.tool_calls):
+        # A branching skill (propose_changes / brainstorm_lore) ends the chat
+        # turn in production — route_after_assistant hands off to its pipeline
+        # instead of the read-tool executor. Mirroring that (data-driven off the
+        # same registry) keeps the loop faithful and stops here.
+        if any(pipeline_entry_node(call["name"]) for call in message.tool_calls):
             break
         tool_update = await run_tools(
             state,

@@ -588,6 +588,7 @@
       "check_duplicates_draft": "🧭 Проверяю дубликаты…",
       "verify_grounding": "✔️ Проверяю факты…",
       "commit": "💾 Записываю в мир…",
+      "brainstorm": "💡 Придумываю идеи…",
       "fallback": "⚙️ {{node}}…"
     },
     "status": {
@@ -690,7 +691,9 @@
     "edit_failed": "Ошибка редактирования: {{reason}}",
     "relationships_committed": "Готово — связей создано: {{created}}, изменено: {{updated}}, убрано: {{removed}}.",
     "relationships_failed": "Работа со связями остановлена: {{reason}}",
-    "changes_committed": "Готово — создано {{created}} ({{created_titles}}), изменено {{patched}} ({{patched_titles}}), связи ({{rel_created}} создано, {{rel_updated}} изменено, {{rel_deleted}} удалено)."
+    "changes_committed": "Готово — создано {{created}} ({{created_titles}}), изменено {{patched}} ({{patched_titles}}), связи ({{rel_created}} создано, {{rel_updated}} изменено, {{rel_deleted}} удалено).",
+    "review_stale": "Предложение не применено — мир изменился с момента ревью. Ничего не записано; повтори запрос заново.",
+    "brainstorm_empty": "Пока не получилось придумать идеи — попробуй переформулировать запрос."
   },
   "integrations": {
     "heading": "Интеграции",

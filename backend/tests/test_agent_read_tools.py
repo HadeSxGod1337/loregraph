@@ -281,3 +281,85 @@ async def test_search_lore_annotates_relationship_census(world: World) -> None:
     content = await world.call("search_lore", {"query": "Безглазые"})
 
     assert "[ally_of ×1, enemy_of ×1]" in content
+
+
+# ---------------------------------------------------------------------------
+# list_relationships — complete, paged enumeration (the fourth way the
+# assistant used to mislead: presenting the first slice of a hub entity's edges
+# as if it were the whole neighborhood, with no way to reach the rest).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_relationships_pages_a_high_degree_entity(world: World) -> None:
+    """ "Покажи все связи X" on a 70-edge hub must not silently become the first
+    40: the total is exact, and a cursor makes the remainder reachable."""
+    hub = await world.entity("faction", "Гильдия")
+    for index in range(70):
+        member = await world.entity("npc", f"Член {index}")
+        await world.edge(hub, member, "member_of")
+
+    page1 = await world.call("list_relationships", {"entity_id": hub})
+    assert "70 relationship(s)" in page1
+    assert "70 outgoing, 0 incoming" in page1
+    assert page1.count("[out]") == 40
+    assert "cursor=40 for the next page" in page1
+
+    page2 = await world.call("list_relationships", {"entity_id": hub, "cursor": 40})
+    assert page2.count("[out]") == 30
+    assert "this is all of them" in page2
+
+    # Following the cursor reaches every edge exactly once — the "all
+    # relationships" the truncated single page could never deliver.
+    shown = {
+        line for page in (page1, page2) for line in page.splitlines() if "[out]" in line
+    }
+    assert len(shown) == 70
+
+
+@pytest.mark.asyncio
+async def test_list_relationships_separates_incoming_and_outgoing(world: World) -> None:
+    a = await world.entity("npc", "A")
+    b = await world.entity("npc", "B")
+    c = await world.entity("npc", "C")
+    await world.edge(a, b, "ally_of")  # outgoing from A
+    await world.edge(c, a, "enemy_of")  # incoming to A
+
+    content = await world.call("list_relationships", {"entity_id": a})
+    assert "1 outgoing, 1 incoming" in content
+    assert "[out]" in content and "[in]" in content
+
+    only_in = await world.call(
+        "list_relationships", {"entity_id": a, "direction": "incoming"}
+    )
+    assert "[in]" in only_in and "[out]" not in only_in
+    assert "enemy_of" in only_in and "ally_of" not in only_in
+
+
+@pytest.mark.asyncio
+async def test_list_relationships_filters_by_type(world: World) -> None:
+    a = await world.entity("npc", "A")
+    b = await world.entity("npc", "B")
+    c = await world.entity("npc", "C")
+    await world.edge(a, b, "ally_of")
+    await world.edge(a, c, "enemy_of")
+
+    content = await world.call(
+        "list_relationships", {"entity_id": a, "type": "ally_of"}
+    )
+    assert "ally_of" in content
+    assert "enemy_of" not in content
+    assert "1 relationship(s)" in content
+
+
+@pytest.mark.asyncio
+async def test_list_relationships_reports_none_for_isolated(world: World) -> None:
+    lonely = await world.entity("npc", "Егор")
+    content = await world.call("list_relationships", {"entity_id": lonely})
+    assert "no relationships" in content
+
+
+@pytest.mark.asyncio
+async def test_list_relationships_unknown_entity(world: World) -> None:
+    content = await world.call("list_relationships", {"entity_id": "nope"})
+    assert content == "Entity not found: nope"

@@ -565,6 +565,7 @@
       "check_duplicates_draft": "🧭 Checking for duplicates…",
       "verify_grounding": "✔️ Verifying facts…",
       "commit": "💾 Writing to the world…",
+      "brainstorm": "💡 Brainstorming ideas…",
       "fallback": "⚙️ {{node}}…"
     },
     "status": {
@@ -663,7 +664,9 @@
     "edit_failed": "Edit failed: {{reason}}",
     "relationships_committed": "Done — {{created}} relationships created, {{updated}} changed, {{removed}} removed.",
     "relationships_failed": "Relationship step stopped: {{reason}}",
-    "changes_committed": "Done — {{created}} created ({{created_titles}}), {{patched}} edited ({{patched_titles}}), and relationship ops ({{rel_created}} created, {{rel_updated}} changed, {{rel_deleted}} removed)."
+    "changes_committed": "Done — {{created}} created ({{created_titles}}), {{patched}} edited ({{patched_titles}}), and relationship ops ({{rel_created}} created, {{rel_updated}} changed, {{rel_deleted}} removed).",
+    "review_stale": "Proposal not applied — the world changed since this was reviewed. Nothing was written; re-run the request against the current world.",
+    "brainstorm_empty": "No ideas this time — try rephrasing the request."
   },
   "integrations": {
     "heading": "Integrations",

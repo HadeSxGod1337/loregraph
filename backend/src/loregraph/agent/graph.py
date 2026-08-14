@@ -11,6 +11,7 @@ from loregraph.agent.nodes.assistant import (
     begin_changes,
     route_after_assistant,
 )
+from loregraph.agent.nodes.brainstorm import brainstorm
 from loregraph.agent.nodes.commit import commit
 from loregraph.agent.nodes.generate_changes import generate_changes
 from loregraph.agent.nodes.human_review import human_review, route_after_review
@@ -102,6 +103,25 @@ def build_agent_graph(
     )
     builder.add_node("begin_changes", begin_changes)
 
+    # --- Creative, non-mutating pipeline: brainstorm ideas, answer in chat,
+    # then END. No retrieve/validate/review/commit — the structural guarantee
+    # that a suggested idea never becomes canon on its own. Runs on the same
+    # creative tier as generate_changes (brainstorming is what it exists for).
+    builder.add_node(
+        "brainstorm",
+        partial(
+            brainstorm,
+            creative=creative,
+            vector_index=vector_index,
+            entity_store=entity_store,
+            edge_store=edge_store,
+            project_store=project_store,
+            token_budget=token_budget,
+            usage_store=usage_store,
+            model_name=generation_model_name,
+        ),
+    )
+
     # --- Unified proposal pipeline: one path for create + edit + relate.
     builder.add_node(
         "retrieve_context",
@@ -152,7 +172,7 @@ def build_agent_graph(
     skill_entry_nodes = {
         manifest.entry_node
         for manifest in SKILLS.values()
-        if manifest.kind in ("propose", "job") and manifest.entry_node
+        if manifest.kind in ("propose", "job", "creative") and manifest.entry_node
     }
 
     def route_entry(state: AgentState) -> str:
@@ -173,6 +193,11 @@ def build_agent_graph(
         {"tools": "tools", "end": END, **{node: node for node in skill_entry_nodes}},
     )
     builder.add_edge("tools", "assistant")
+
+    # The creative branch is terminal: brainstorm answers in chat and stops.
+    # No path from here to commit — ideas cannot reach canon without a separate,
+    # explicit propose_changes.
+    builder.add_edge("brainstorm", END)
 
     # Single write pipeline: retrieve grounding (including the explicit edit
     # targets in full) → generate the whole proposal → validate it (dedup,
