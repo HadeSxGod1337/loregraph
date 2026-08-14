@@ -133,6 +133,38 @@ CAMPAIGN_LLM_PROVIDER=openai
 CAMPAIGN_OPENAI_API_KEY=sk-...
 ```
 
+### Неподдерживаемый эксперимент: ChatGPT/Codex OAuth
+
+Этот вариант использует внутренние API ChatGPT/Codex, а не публичный OpenAI
+API. OpenAI может изменить или закрыть их без предупреждения. Возможны поломка
+интеграции и ограничения аккаунта; проект не может гарантировать поддержку.
+Используйте его только если понимаете и принимаете эти риски.
+
+В обычном мастере этот провайдер **не показывается**. Чтобы увидеть его:
+
+```powershell
+# Windows
+start.bat -ConfigureAI -ExperimentalProviders
+```
+
+```bash
+# Linux и macOS
+./start.sh --configure-ai --experimental-providers
+```
+
+После выбора ChatGPT/Codex мастер ещё раз покажет предупреждение и потребует
+ввести `I ACCEPT`. Только после этого он начнёт OAuth-вход, получит доступные
+аккаунту модели и запишет в `.env` явное согласие:
+
+```env
+CAMPAIGN_EXPERIMENTAL_PROVIDERS_ENABLED=true
+CAMPAIGN_LLM_PROVIDER=openai_codex
+```
+
+Без `CAMPAIGN_EXPERIMENTAL_PROVIDERS_ENABLED=true` backend не активирует этот
+провайдер, а его OAuth-маршруты отвечают как несуществующие. Обычный провайдер
+`openai` с API-ключом остаётся отдельным и не меняется.
+
 Полностью локально, без ключа:
 
 ```env

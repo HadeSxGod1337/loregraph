@@ -16,6 +16,7 @@ from loregraph.llm.capabilities import (
     ModelCapabilities,
     StructuredOutputStrategy,
 )
+from loregraph.llm.openai_codex_oauth import CodexChatOpenAI
 from loregraph.llm.usage import LLMCallUsage, parse_usage
 
 MAX_STRUCTURED_ATTEMPTS = 3
@@ -171,7 +172,15 @@ class LangChainStructuredGenerator:
         kwargs: dict[str, Any] = {"include_raw": True}
         if strategy is StructuredOutputStrategy.JSON_MODE:
             kwargs["method"] = "json_mode"
-        runnable = self._model.with_structured_output(schema, **kwargs)
+        # Codex must stream Responses API calls. LangChain's streaming parser
+        # fills `parsed` for a JSON-schema dictionary, but not for a Pydantic
+        # class; `_parse_strategy_response` validates the dictionary locally.
+        wire_schema: type[T] | dict[str, Any] = (
+            schema.model_json_schema()
+            if isinstance(self._model, CodexChatOpenAI)
+            else schema
+        )
+        runnable = self._model.with_structured_output(wire_schema, **kwargs)
         return runnable.ainvoke
 
     async def _invoke_with_transport(

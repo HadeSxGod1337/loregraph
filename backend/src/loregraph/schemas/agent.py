@@ -351,6 +351,7 @@ class AgentSessionDetail(AgentSessionOut):
 class AgentConfigOut(BaseModel):
     llm_configured: bool
     llm_provider: str
+    experimental_providers_enabled: bool = False
     vector_enabled: bool
     # Which model actually answers, per tier — configurable at runtime now, so
     # the chat header can name it instead of the user having to guess.

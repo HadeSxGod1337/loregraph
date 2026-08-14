@@ -585,7 +585,17 @@
       "setupBody3": "Then restart the backend. The key is masked in all logs and errors.",
       "setupUi": "Add a key on the AI settings page — it applies right away, no restart.",
       "setupCta": "Open AI settings",
-      "setupEnvNote": "backend/.env still works as a starting point, but it is only read when the app starts."
+      "setupEnvNote": "backend/.env still works as a starting point, but it is only read when the app starts.",
+      "codexHeading": "ChatGPT / Codex (experimental)",
+      "codexBody": "Sign in to ChatGPT in a separate tab. This OAuth flow uses an experimental, unsupported Codex interface.",
+      "codexSignIn": "Sign in to ChatGPT",
+      "codexEnterCode": "Enter code",
+      "codexOpenAIPage": "on the OpenAI page",
+      "codexChecking": "Checking…",
+      "codexDone": "I completed sign-in",
+      "codexPending": "Sign-in has not been confirmed yet. Complete it in the browser and try again.",
+      "codexStartError": "Could not start sign-in.",
+      "codexPollError": "Could not check sign-in."
     },
     "historyPlaceholder": "— conversation history —",
     "newConversation": "New conversation",

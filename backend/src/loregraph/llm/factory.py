@@ -8,6 +8,10 @@ from pydantic import SecretStr
 
 from loregraph.config import Settings
 from loregraph.exceptions import ConfigurationError
+from loregraph.llm.openai_codex_oauth import CodexChatOpenAI
+from loregraph.llm.openai_codex_oauth import access_token as codex_access_token
+from loregraph.llm.openai_codex_oauth import connected as codex_connected
+from loregraph.llm.openai_codex_oauth import request_headers as codex_request_headers
 
 type ModelTier = Literal["assistant", "extraction", "generation"]
 
@@ -43,6 +47,10 @@ def is_llm_configured(settings: Settings) -> bool:
             return settings.openai_api_key is not None
         case "ollama":
             return True
+        case "openai_codex":
+            return settings.experimental_providers_enabled and codex_connected(
+                settings.openai_codex_oauth_path
+            )
         case "google":
             return settings.google_api_key is not None
         case "mistral":
@@ -109,6 +117,22 @@ def get_chat_model(settings: Settings, *, tier: ModelTier) -> BaseChatModel:
             return ChatOllama(
                 model=model,
                 base_url=settings.ollama_base_url,
+                temperature=temperature,
+            )
+        case "openai_codex":
+            if not settings.experimental_providers_enabled:
+                raise ConfigurationError(
+                    "openai_codex is experimental; set "
+                    "CAMPAIGN_EXPERIMENTAL_PROVIDERS_ENABLED=true to opt in"
+                )
+            token = codex_access_token(settings.openai_codex_oauth_path)
+            return CodexChatOpenAI(
+                model=model,
+                api_key=SecretStr(token),
+                base_url=settings.openai_codex_base_url,
+                default_headers=codex_request_headers(token),
+                use_responses_api=True,
+                store=False,
                 temperature=temperature,
             )
         # ── Tier 1 — dedicated LangChain packages ────────────────────────
