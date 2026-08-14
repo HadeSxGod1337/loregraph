@@ -976,6 +976,7 @@ const STATUS_NODES = ["retrieve", "compose_lore", "extract_relationships", "revi
  * HITL review always has something coherent to approve. */
 function scriptedDraft(): LoreDraft {
   return {
+    patches: [],
     entities: [
       {
         ref: "draft_courier",
@@ -1082,7 +1083,8 @@ async function runAgentReview(
   // approve
   emit({ type: "status", node: "commit" });
   await delay(200);
-  const draft = decision.draft ?? review?.draft ?? { entities: [], relationships: [] };
+  const draft = decision.draft ??
+    review?.draft ?? { entities: [], patches: [], relationships: [] };
   const committed = commitDraft(session.project_id, draft);
   session.committed_entity_ids = committed;
   session.review = null;

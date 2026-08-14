@@ -429,6 +429,7 @@ function ReviewCard({
   const { t } = useTranslation();
   const [draft, setDraft] = useState<LoreDraft>(review.draft!);
   const [removedRefs, setRemovedRefs] = useState<Set<string>>(new Set());
+  const [removedPatches, setRemovedPatches] = useState<Set<number>>(new Set());
   const [removedRelationships, setRemovedRelationships] = useState<Set<number>>(
     new Set(),
   );
@@ -446,6 +447,7 @@ function ReviewCard({
     if (!review.draft) return;
     setDraft(review.draft);
     setRemovedRefs(new Set());
+    setRemovedPatches(new Set());
     setRemovedRelationships(new Set());
     setFeedback("");
     setShowFeedback(false);
@@ -494,6 +496,7 @@ function ReviewCard({
     const keptRefs = new Set(keptEntities.map((e) => e.ref));
     return {
       entities: keptEntities,
+      patches: draft.patches.filter((_, index) => !removedPatches.has(index)),
       relationships: draft.relationships.filter((relationship, index) => {
         if (removedRelationships.has(index)) return false;
         if ((relationship.op ?? "create") !== "create") return true;
@@ -518,11 +521,13 @@ function ReviewCard({
     draft.entities.filter((e) => !removedRefs.has(e.ref)).map((e) => e.ref),
   );
   const keptEntityCount = draft.entities.length - removedRefs.size;
-  // Relationship ops count toward what "approve" applies: a proposal that
-  // only rewires the graph creates no entity, and counting entities alone
-  // would leave its approve button permanently disabled.
+  const keptPatchCount = draft.patches.length - removedPatches.size;
+  // Patches and relationship ops count toward what "approve" applies: a
+  // proposal that only edits an entity or rewires the graph creates no
+  // entity, and counting entities alone would leave its approve button
+  // permanently disabled.
   const keptOpCount = keptDraft().relationships.length;
-  const keptCount = keptEntityCount + keptOpCount;
+  const keptCount = keptEntityCount + keptPatchCount + keptOpCount;
 
   return (
     <div className="assistant-review">
@@ -602,6 +607,109 @@ function ReviewCard({
           );
         })}
       </div>
+
+      {draft.patches.length > 0 && (
+        <div className="assistant-draft-patches">
+          {draft.patches.map((patch, index) => {
+            const removed = removedPatches.has(index);
+            const existing = entities.find((e) => e.id === patch.entity_id);
+            const currentByKey = new Map(
+              (existing?.fields ?? []).map((f) => [f.key, String(f.value)]),
+            );
+            return (
+              <div
+                key={`${patch.entity_id}-${index}`}
+                className={
+                  removed
+                    ? "assistant-draft-patch removed"
+                    : "assistant-draft-patch"
+                }
+              >
+                <div className="assistant-draft-entity-head">
+                  <label
+                    className="assistant-draft-keep"
+                    title={t("assistant.review.includeInCommitTitle")}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!removed}
+                      onChange={() =>
+                        setRemovedPatches((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(index)) next.delete(index);
+                          else next.add(index);
+                          return next;
+                        })
+                      }
+                    />
+                    <span className="assistant-edit-badge">
+                      {t("assistant.review.editHeading")}
+                    </span>
+                  </label>
+                  <strong className="assistant-draft-title">
+                    {patch.title ?? existing?.title ?? patch.entity_id}
+                  </strong>
+                </div>
+
+                {patch.title && existing && patch.title !== existing.title && (
+                  <div className="assistant-patch-field">
+                    <span className="assistant-patch-key">
+                      {t("assistant.review.titleLabel")}
+                    </span>
+                    <span className="assistant-patch-old">{existing.title}</span>
+                    {" → "}
+                    <span className="assistant-patch-new">{patch.title}</span>
+                  </div>
+                )}
+
+                {patch.set_fields.map((field) => {
+                  const current = currentByKey.get(field.key);
+                  const isNew = current === undefined;
+                  return (
+                    <div className="assistant-patch-field" key={field.key}>
+                      <span className="assistant-patch-key">
+                        {field.key}
+                        {isNew && (
+                          <span className="assistant-patch-tag">
+                            {" "}
+                            {t("assistant.review.newFieldTag")}
+                          </span>
+                        )}
+                      </span>
+                      {!isNew && (
+                        <>
+                          <span className="assistant-patch-old">{current}</span>
+                          {" → "}
+                        </>
+                      )}
+                      <span className="assistant-patch-new">
+                        {String(field.value)}
+                      </span>
+                    </div>
+                  );
+                })}
+
+                {patch.remove_field_keys.map((key) => (
+                  <div className="assistant-patch-field" key={`rm-${key}`}>
+                    <span className="assistant-patch-key assistant-relationship-struck">
+                      {key}
+                    </span>{" "}
+                    <span className="assistant-patch-tag">
+                      {t("assistant.review.removeFieldTag")}
+                    </span>
+                  </div>
+                ))}
+
+                {patch.edit_reason && (
+                  <p className="assistant-patch-reason">
+                    <em>{patch.edit_reason}</em>
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {draft.relationships.length > 0 && (
         <div className="assistant-relationships">

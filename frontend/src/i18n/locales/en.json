@@ -628,7 +628,10 @@
         "create": "connect",
         "update": "change",
         "delete": "remove"
-      }
+      },
+      "titleLabel": "Title",
+      "newFieldTag": "(new field)",
+      "removeFieldTag": "(remove)"
     }
   },
   "warnings": {
@@ -648,7 +651,8 @@
     "dropped_draft_entity": "Dropped the new entity \"{{title}}\": this step only changes relationships.",
     "relationship_scope_empty": "Fewer than two of the requested entities exist — nothing to connect.",
     "conflicting_relationship": "These entities are already \"{{existing_type}}\", but \"{{proposed_type}}\" is proposed.",
-    "duplicate_relationship": "A \"{{type}}\" relationship between these entities already exists."
+    "duplicate_relationship": "A \"{{type}}\" relationship between these entities already exists.",
+    "patch_unknown_entity": "Skipped an edit to an entity that no longer exists (id {{id}})."
   },
   "events": {
     "budget_exhausted_reply": "Token budget for this conversation is exhausted — start a new session to continue.",
@@ -658,7 +662,8 @@
     "entity_updated": "Updated entity '{{title}}'.",
     "edit_failed": "Edit failed: {{reason}}",
     "relationships_committed": "Done — {{created}} relationships created, {{updated}} changed, {{removed}} removed.",
-    "relationships_failed": "Relationship step stopped: {{reason}}"
+    "relationships_failed": "Relationship step stopped: {{reason}}",
+    "changes_committed": "Done — {{created}} created ({{created_titles}}), {{patched}} edited ({{patched_titles}}), and relationship ops ({{rel_created}} created, {{rel_updated}} changed, {{rel_deleted}} removed)."
   },
   "integrations": {
     "heading": "Integrations",
