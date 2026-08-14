@@ -88,9 +88,11 @@ def test_player_sees_only_revealed_entities_and_fields(
     assert "template_id" not in entity
 
     # A hidden entity is 404 by id, never confirming it exists.
-    hidden_ids = [e["id"] for e in client.get(
-        f"/api/projects/{project_id}/entities"
-    ).json() if e["title"] == "Hidden"]
+    hidden_ids = [
+        e["id"]
+        for e in client.get(f"/api/projects/{project_id}/entities").json()
+        if e["title"] == "Hidden"
+    ]
     assert player.get(f"/api/play/entities/{hidden_ids[0]}").status_code == 404
 
 
@@ -188,6 +190,7 @@ def test_player_can_fetch_revealed_attachment_only(
     assert player.get(shown_url).status_code == 200
     assert player.get(hidden_url).status_code == 404
     # Traversal is still blocked for a player token.
-    assert player.get(
-        f"/files/{revealed['id']}/..%2f..%2fcampaign.sqlite3"
-    ).status_code == 404
+    assert (
+        player.get(f"/files/{revealed['id']}/..%2f..%2fcampaign.sqlite3").status_code
+        == 404
+    )

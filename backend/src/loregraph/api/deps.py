@@ -332,9 +332,7 @@ async def get_player_view_service(
     return PlayerViewService(entity_store, edge_store, note_store)
 
 
-PlayerViewServiceDep = Annotated[
-    PlayerViewService, Depends(get_player_view_service)
-]
+PlayerViewServiceDep = Annotated[PlayerViewService, Depends(get_player_view_service)]
 
 
 async def get_optional_player_identity(

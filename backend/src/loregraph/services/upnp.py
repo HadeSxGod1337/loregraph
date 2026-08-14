@@ -275,9 +275,7 @@ class UpnpClient:
         body = await self._call("GetExternalIPAddress", "")
         if body is None:
             return None
-        match = re.search(
-            r"<NewExternalIPAddress>([^<]*)</NewExternalIPAddress>", body
-        )
+        match = re.search(r"<NewExternalIPAddress>([^<]*)</NewExternalIPAddress>", body)
         return match.group(1).strip() if match else None
 
     async def add_port_mapping(self, port: int, lease: int) -> bool:

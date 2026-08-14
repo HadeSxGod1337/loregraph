@@ -61,17 +61,23 @@ def test_player_cannot_edit_or_delete_others_note(
         json={"body": _doc("mine"), "is_public": True},
     ).json()
 
-    assert bob.put(
-        f"/api/play/notes/{note['id']}",
-        json={"body": _doc("hax"), "is_public": True},
-    ).status_code == 404
+    assert (
+        bob.put(
+            f"/api/play/notes/{note['id']}",
+            json={"body": _doc("hax"), "is_public": True},
+        ).status_code
+        == 404
+    )
     assert bob.delete(f"/api/play/notes/{note['id']}").status_code == 404
 
     # Alice can edit and delete her own.
-    assert alice.put(
-        f"/api/play/notes/{note['id']}",
-        json={"body": _doc("edited"), "is_public": False},
-    ).status_code == 200
+    assert (
+        alice.put(
+            f"/api/play/notes/{note['id']}",
+            json={"body": _doc("edited"), "is_public": False},
+        ).status_code
+        == 200
+    )
     assert alice.delete(f"/api/play/notes/{note['id']}").status_code == 204
 
 
