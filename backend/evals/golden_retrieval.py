@@ -236,4 +236,118 @@ GOLDEN_QUERIES: list[GoldenQuery] = [
         relevance={"npc_guard_corrupt": 2},
         k=3,
     ),
+    GoldenQuery(
+        case_id="namesakes_by_bare_name",
+        # Three unrelated characters share one given name. The query is the
+        # bare name, so every one of them is the answer — a semantic ranker
+        # that returns "the most Egor-like Egor" has failed this question.
+        query="Егор",
+        project_id="namesakes",
+        entities=[
+            _entity(
+                "npc_egor_mage",
+                "namesakes",
+                "npc",
+                "Егор",
+                summary="Молодой маг-артефактор из маленького городка.",
+            ),
+            _entity(
+                "npc_egor_senior",
+                "namesakes",
+                "npc",
+                "Егор",
+                summary="Старший товарищ по школе, связан через Александра.",
+            ),
+            _entity(
+                "npc_egor_emperor",
+                "namesakes",
+                "npc",
+                "Егор",
+                summary="Высокопоставленный правитель, держит договор с кланом.",
+            ),
+            _entity(
+                "npc_mira",
+                "namesakes",
+                "npc",
+                "Мира Кузнец",
+                summary="Кузнец, чинит оружие и доспехи.",
+            ),
+        ],
+        relevance={
+            "npc_egor_mage": 2,
+            "npc_egor_senior": 2,
+            "npc_egor_emperor": 2,
+        },
+        k=4,
+    ),
+    GoldenQuery(
+        case_id="fact_in_the_tail_of_a_long_entity",
+        # The distinguishing fact sits far past the local embedder's ~128-token
+        # input window. Before entity chunking this was structurally
+        # unreachable: the tail was dropped before embedding, silently.
+        query="Кто хранит ключ от старой шахты?",
+        project_id="long_entity",
+        entities=[
+            _entity(
+                "npc_keeper",
+                "long_entity",
+                "npc",
+                "Тобиас Верн",
+                bio=" ".join(
+                    [
+                        "Родился в семье лесорубов и всю жизнь провёл в "
+                        "предгорьях, ничем не выделяясь среди соседей."
+                    ]
+                    * 12
+                ),
+                secret="Единственный, у кого остался ключ от старой шахты.",
+            ),
+            _entity(
+                "npc_miner",
+                "long_entity",
+                "npc",
+                "Гарен",
+                bio="Бывший шахтёр, давно не спускался под землю.",
+            ),
+            _entity(
+                "loc_mine",
+                "long_entity",
+                "location",
+                "Старая шахта",
+                bio="Заброшенная выработка к северу от посёлка, вход завален.",
+            ),
+        ],
+        relevance={"npc_keeper": 2, "loc_mine": 1},
+        k=3,
+    ),
+    GoldenQuery(
+        case_id="rare_proper_name_among_many",
+        # A name that appears exactly once, in a project big enough that a
+        # dense-only ranker has no reason to float it. This is the lexical
+        # contour's regression (services/lore_search.py).
+        query="Кассивелаун",
+        project_id="crowded",
+        entities=[
+            _entity(
+                "npc_target",
+                "crowded",
+                "npc",
+                "Кассивелаун",
+                summary="Немолодой картограф, почти не покидает архив.",
+            ),
+            *(
+                _entity(
+                    f"npc_filler_{i}",
+                    "crowded",
+                    "npc",
+                    f"Житель {i}",
+                    summary="Обычный горожанин, торгует на рынке, "
+                    "ничем не примечателен.",
+                )
+                for i in range(30)
+            ),
+        ],
+        relevance={"npc_target": 2},
+        k=3,
+    ),
 ]

@@ -127,6 +127,7 @@ async def _run(state: AgentState, provider: McpToolProvider | None) -> str:
         vector_index=None,
         knowledge_index=None,
         entity_store=None,  # type: ignore[arg-type]
+        edge_store=None,  # type: ignore[arg-type]
         mcp_tools=provider,
     )
     return str(update["messages"][0].content)

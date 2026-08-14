@@ -1,5 +1,5 @@
 """Regression suite over evals/hallucination_cases.py: the deterministic
-tier of verify_grounding (relationship-endpoint and citation checks) must
+tier of validate_changes (relationship-endpoint and citation checks) must
 keep catching every planted hallucination and never flag a clean draft.
 Unlike evals/run_hallucination_eval.py's printed report, this is a CI-safe
 assertion suite — no LLM calls, no network, deterministic like the rest of
@@ -11,11 +11,11 @@ import pytest
 
 from evals.hallucination_cases import CASES, HallucinationCase
 from evals.metrics import hallucination_catch_rate
-from loregraph.agent.nodes.verify_grounding import verify_grounding
+from loregraph.agent.nodes.validate_changes import validate_changes
 from loregraph.agent.state import AgentState
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.schemas.agent import AgentWarning
-from tests.fakes import EmptyEdgeStore
+from tests.fakes import EmptyEdgeStore, EmptyEntityStore
 
 _GUARD_CODES = frozenset(
     {"dropped_unknown_source", "dropped_unknown_target", "uncited_lore_id"}
@@ -27,12 +27,16 @@ async def _guard_warnings(case: HallucinationCase) -> list[AgentWarning]:
         project_id="eval",
         pending_brief="eval",
         context_entity_ids=case.context_entity_ids,
+        # attempts at the retry ceiling so a planted duplicate never loops back
+        # — this suite exercises the endpoint/citation guards, not dedup.
+        attempts=2,
         draft=case.draft,
     )
-    update = await verify_grounding(
+    update = await validate_changes(
         state,
         extraction=cast(StructuredGenerator, None),  # unused: token_budget=0 below
         token_budget=0,
+        entity_store=EmptyEntityStore(),
         edge_store=EmptyEdgeStore(),
         usage_store=None,
         model_name="eval",

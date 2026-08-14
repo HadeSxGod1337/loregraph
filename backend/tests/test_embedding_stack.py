@@ -141,3 +141,70 @@ async def test_warmup_survives_a_failing_embedder(tmp_path: Path) -> None:
 
     # Startup must not fail because a model couldn't be preloaded.
     await stack.warmup()
+
+
+class HealthAwareVectorStore(FakeVectorStore):
+    """A store that can answer the IndexHealth question. ChromaVectorStore
+    can; a hypothetical serverless one would not have to."""
+
+    def __init__(self, embedder: EmbeddingProvider, *, stale: bool) -> None:
+        super().__init__(embedder)
+        self._stale = stale
+        self.asked: list[str] = []
+
+    def collection_is_stale(self, project_id: str) -> bool:
+        self.asked.append(project_id)
+        return self._stale
+
+
+def _health_stack(tmp_path: Path, *, stale: bool) -> EmbeddingStack:
+    def build(
+        settings: Settings, embedder: EmbeddingProvider | None
+    ) -> HealthAwareVectorStore | None:
+        return (
+            HealthAwareVectorStore(embedder, stale=stale)
+            if embedder is not None
+            else None
+        )
+
+    return EmbeddingStack(make_settings(tmp_path), build, build_embedder)
+
+
+@pytest.mark.asyncio
+async def test_detect_stale_index_flags_unreadable_collections(
+    tmp_path: Path,
+) -> None:
+    """A fastembed upgrade changes the model id and silently invalidates every
+    collection; nothing used to notice until searches came back empty."""
+    stack = _health_stack(tmp_path, stale=True)
+
+    assert await stack.detect_stale_index(["p1", "p2"]) is True
+    assert stack.index_stale is True
+
+
+@pytest.mark.asyncio
+async def test_detect_stale_index_stays_quiet_when_current(tmp_path: Path) -> None:
+    stack = _health_stack(tmp_path, stale=False)
+
+    assert await stack.detect_stale_index(["p1"]) is False
+    assert stack.index_stale is False
+
+
+@pytest.mark.asyncio
+async def test_store_without_health_capability_is_never_reported_stale(
+    tmp_path: Path,
+) -> None:
+    """ISP: a store that cannot answer is not assumed to be broken."""
+    stack = make_stack(make_settings(tmp_path))
+
+    assert await stack.detect_stale_index(["p1"]) is False
+
+
+@pytest.mark.asyncio
+async def test_marking_the_index_fresh_clears_the_flag(tmp_path: Path) -> None:
+    stack = _health_stack(tmp_path, stale=True)
+    await stack.detect_stale_index(["p1"])
+
+    stack.mark_index_fresh()
+
+    assert stack.index_stale is False

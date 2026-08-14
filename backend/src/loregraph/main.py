@@ -212,6 +212,12 @@ def create_app(
             app.state.session_factory, app.state.store_factories, embedding_stack
         )
         app.state.reindex_service = reindex_service
+        # Cheap metadata read, once: tells the settings page that stored
+        # vectors predate the current configuration, instead of letting the
+        # user discover it as "the assistant suddenly can't find anything".
+        async with app.state.session_factory() as session:
+            projects = await app.state.store_factories.project(session).list_projects()
+        await embedding_stack.detect_stale_index(project.id for project in projects)
         # Off the critical path: startup stays instant, but by the time the
         # user first hits "Generate lore" the model is (usually) loaded.
         warmup_task = asyncio.create_task(embedding_stack.warmup())
@@ -311,9 +317,7 @@ def create_app(
     app.include_router(connections.router, prefix=_API_PREFIX, dependencies=_master)
     app.include_router(updates.router, prefix=_API_PREFIX, dependencies=_master)
     app.include_router(players.router, prefix=_API_PREFIX, dependencies=_master)
-    app.include_router(
-        network_router.router, prefix=_API_PREFIX, dependencies=_master
-    )
+    app.include_router(network_router.router, prefix=_API_PREFIX, dependencies=_master)
     # No master dependency: the websocket authenticates itself per-route.
     app.include_router(realtime.router, prefix=_API_PREFIX)
     # Player-facing API: its own player-token guard, never the master one, and

@@ -3913,6 +3913,59 @@
   flex-direction: row !important;
 }
 
+/* Edit (patch) cards in a mixed proposal — same frame as a created entity,
+   with a compact old→new field diff. */
+.assistant-draft-patches {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.assistant-draft-patch {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg);
+}
+
+.assistant-draft-patch.removed {
+  opacity: 0.5;
+}
+
+.assistant-patch-field {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.assistant-patch-key {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.assistant-patch-old {
+  color: var(--text-muted, #888);
+  text-decoration: line-through;
+}
+
+.assistant-patch-new {
+  color: var(--text);
+}
+
+.assistant-patch-tag {
+  font-size: 0.75rem;
+  color: var(--text-muted, #888);
+}
+
+.assistant-patch-reason {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted, #888);
+}
+
 .assistant-draft-title {
   flex: 1;
   font-weight: 600;

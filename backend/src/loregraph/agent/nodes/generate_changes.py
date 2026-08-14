@@ -9,7 +9,7 @@ from loregraph.storage.protocols import ProjectStore, UsageStore
 
 BUDGET_EXHAUSTED_WARNING = AgentWarning(code="budget_exhausted")
 
-NODE = "generate_lore"
+NODE = "generate_changes"
 
 
 def _revision_block(state: AgentState) -> str:
@@ -18,10 +18,10 @@ def _revision_block(state: AgentState) -> str:
     if not state.revision_feedback or state.draft is None:
         return ""
     return (
-        "\nYou are REVISING your previous draft. Keep everything the game "
-        "master did not criticize (same refs, same titles), change only what "
-        "the feedback asks for.\n"
-        f"<previous_draft>\n{state.draft.model_dump_json()}\n</previous_draft>\n"
+        "\nYou are REVISING your previous proposal. Keep everything the game "
+        "master did not criticize (same refs, same titles, same patches), "
+        "change only what the feedback asks for.\n"
+        f"<previous_proposal>\n{state.draft.model_dump_json()}\n</previous_proposal>\n"
         f"<feedback>\n{state.revision_feedback}\n</feedback>"
     )
 
@@ -29,10 +29,10 @@ def _revision_block(state: AgentState) -> str:
 def _retry_block(state: AgentState) -> str:
     if not state.retry_feedback:
         return ""
-    return f"\nIMPORTANT — previous attempt was rejected: {state.retry_feedback}"
+    return f"\nIMPORTANT — fix this before proposing again: {state.retry_feedback}"
 
 
-async def generate_lore(
+async def generate_changes(
     state: AgentState,
     *,
     creative: StructuredGenerator,
@@ -41,15 +41,17 @@ async def generate_lore(
     usage_store: UsageStore | None,
     model_name: str,
 ) -> dict[str, Any]:
-    """One creative call produces a coherent batch: entities (types chosen by
-    the model, steered toward the project's existing taxonomy) plus the
-    relationship web between them and to existing lore."""
+    """One creative call produces a whole proposal — new entities, patches to
+    existing ones, and relationship operations — in a single coherent pass.
+
+    This is the one write-generation node: create, edit and link all flow
+    through it, so "improve Егор and connect him to the Тень" is one proposal,
+    not three tools the model has to choose between up front. Write access is
+    deliberately absent; only commit() touches the stores."""
     if state.over_budget(token_budget):
         # Never silently burn the user's key past the ceiling: surface the
-        # stop at review instead.
-        # retry_feedback is cleared AND attempts advanced: check_duplicates_
-        # draft re-arms retry_feedback for the unchanged draft, so without
-        # the attempts bump the generate↔check cycle would loop forever.
+        # stop at review instead. retry_feedback cleared AND attempts advanced
+        # so the generate↔validate cycle cannot loop forever.
         return {
             "warnings": [*state.warnings, BUDGET_EXHAUSTED_WARNING],
             "retry_feedback": "",
@@ -57,15 +59,14 @@ async def generate_lore(
         }
 
     project = await project_store.get(state.project_id)
-    # Split into a stable prefix and a volatile tail so prompt caching can
-    # work: retrieved lore, the knowledge base, the taxonomy and the brief are
-    # identical across every regeneration of this proposal (collision retry,
-    # review revision), while the revision/retry directives are what changed.
-    # The generator puts the cache breakpoint on the prefix (see
-    # llm/structured.py) — regenerations then re-read it instead of re-paying.
+    # Stable prefix (retrieved lore, targets, taxonomy, brief) vs. volatile
+    # tail (revision/retry directives) so prompt caching reuses the prefix
+    # across every regeneration of this proposal — see llm/structured.py.
     cached_prefix = render(
-        "generate_lore.user.md",
+        "propose_changes.user.md",
         existing_lore=state.existing_lore,
+        targets=state.targets_block
+        or "(none — this request names no existing entity to edit)",
         knowledge_context=state.knowledge_context,
         known_types=", ".join(state.known_entity_types) or "(none yet)",
         available_links=state.available_links or "(no entities in scope)",
@@ -77,7 +78,7 @@ async def generate_lore(
     result = await creative.generate(
         LoreDraft,
         system=render(
-            "generate_lore.system.md",
+            "propose_changes.system.md",
             project_instructions_block=project_instructions_block(
                 project.agent_instructions
             ),

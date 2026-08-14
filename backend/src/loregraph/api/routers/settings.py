@@ -91,8 +91,11 @@ def _launch_only(settings: Settings) -> LaunchOnlyOut:
     )
 
 
-def _reindex_out(progress: ReindexProgress) -> ReindexStatusOut:
+def _reindex_out(
+    progress: ReindexProgress, *, index_stale: bool = False
+) -> ReindexStatusOut:
     return ReindexStatusOut(
+        index_stale=index_stale,
         state=progress.state,
         total_projects=progress.total_projects,
         done_projects=progress.done_projects,
@@ -116,7 +119,7 @@ def _settings_out(
         llm_configured=is_llm_configured(provider.current),
         embeddings_enabled=stack.vector_index is not None,
         embedding_model_id=stack.model_id,
-        reindex=_reindex_out(reindex.progress),
+        reindex=_reindex_out(reindex.progress, index_stale=stack.index_stale),
         launch_only=_launch_only(provider.current),
     )
 
@@ -281,12 +284,14 @@ async def start_reindex(
         raise ConfigurationError(
             "Vector indexing is disabled — set an embedding provider first"
         )
-    return _reindex_out(reindex.start())
+    return _reindex_out(reindex.start(), index_stale=stack.index_stale)
 
 
 @router.get("/reindex", response_model=ReindexStatusOut)
-async def reindex_status(reindex: ReindexServiceDep) -> ReindexStatusOut:
-    return _reindex_out(reindex.progress)
+async def reindex_status(
+    reindex: ReindexServiceDep, stack: EmbeddingStackDep
+) -> ReindexStatusOut:
+    return _reindex_out(reindex.progress, index_stale=stack.index_stale)
 
 
 def _validated_patch(

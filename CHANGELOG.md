@@ -17,6 +17,80 @@ before upgrading.
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-08-14
+
+Create, edit and relate used to be three skills the assistant picked between up
+front — the wrong pick was how "fill in this existing character" turned into a
+duplicate NPC instead of an edit. This release collapses them into one
+proposal pipeline, adds a brainstorm mode that separates inventing ideas from
+changing the world, and makes structured generation work against DeepSeek's
+reasoning models.
+
+### Added
+
+- **Brainstorm mode.** "Придумай врага для Ордена" now routes to a
+  non-mutating skill that generates ideas grounded in existing canon (the
+  named faction's goals, allies and enemies) and answers in chat — no review
+  gate, no commit, nothing written. A suggested idea never becomes canon on
+  its own; "…и добавь его" still routes to the proposal pipeline, and mutation
+  intent wins when both are asked for in the same turn.
+- **Read-before-write routing.** A read tool bundled with a proposal in the
+  same turn now runs first, deferring the proposal so the model reissues it
+  with the ids the read produced instead of starting on context it never
+  received. A per-turn tool-call ceiling stops a runaway read loop from
+  burning the whole budget.
+- **Complete relationship listing.** `list_relationships` enumerates a hub
+  entity's edges completely and page by page, separating incoming from
+  outgoing and reporting the exact total — "show me all of X's connections"
+  is now actually completable instead of a truncated first page read as the
+  whole neighborhood.
+- **DeepSeek structured output.** DeepSeek's reasoning models (`deepseek-
+  reasoner`, DeepSeek V4 thinking mode) don't support the tool-forced
+  structured output every other provider uses; the generator now resolves a
+  per-provider/model capability policy and falls back to JSON mode or raw-JSON
+  parsing so generation, extraction and import still return validated,
+  schema-checked results. A model that rejects the forced tool choice at
+  request time downgrades once for the rest of that run instead of failing
+  the turn.
+- **Hybrid lore search.** Retrieval reworked onto a hybrid vector + keyword
+  ranker with entity-level chunking, so long entities are no longer silently
+  truncated to the first ~480 characters before embedding. An exact-name hit
+  no longer loses to a poor embedding rank, so several namesakes all surface
+  when the assistant needs to ask which one you mean. Dense retrieval
+  degrades to the lexical result on an embedding-provider or vector-store
+  failure instead of failing the whole search.
+- **Stale-index detection.** The app now notices at startup when stored
+  vectors were written by a configuration it can no longer read (embedding
+  model or chunk layout changed) and surfaces it as a reindex status instead
+  of the assistant silently finding nothing.
+
+### Changed
+
+- **One proposal pipeline.** Create, edit and relationship changes are now a
+  single `propose_changes` skill and a single review card, instead of the
+  assistant guessing create-vs-edit-vs-link up front and two mutually
+  exclusive review UIs. Edits go through a real patch (set or remove fields by
+  key) instead of a whole-row replace, so template, per-field visibility,
+  field types and attachments survive an agent edit instead of being silently
+  wiped.
+- **Commit preflights against a stale review.** The approved proposal is
+  re-validated against the current world immediately before any write: a
+  patch target that vanished, a created title that now collides with a
+  namesake, or a relationship edge that no longer exists refuses the whole
+  proposal cleanly instead of applying it half way.
+- **Multi-tool turns are honest.** A tool call the turn didn't actually run is
+  now reported as not run, instead of being answered as if it had started.
+
+### Migration
+
+- Agent checkpoint state version bumped (unifying create/edit/link into one
+  pipeline changed its shape). Any campaign with a draft paused mid-review
+  when you upgrade has that draft reset — resume by asking the assistant
+  again. Nothing already committed to a project is affected.
+- Existing search indexes are unaffected by the retrieval rework; the
+  stale-index check only fires if your embedding configuration itself
+  changes.
+
 ## [0.4.0] — 2026-08-13
 
 Everything about running the assistant used to mean editing `backend/.env` and
@@ -407,7 +481,8 @@ First tagged release. Everything below is the state of the app as of this tag.
 None — this is the first release.
 
 [#1]: https://github.com/HadeSxGod1337/loregraph/issues/1
-[Unreleased]: https://github.com/HadeSxGod1337/loregraph/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/HadeSxGod1337/loregraph/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.5.0
 [0.4.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.4.0
 [0.3.1]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.3.1
 [0.3.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.3.0

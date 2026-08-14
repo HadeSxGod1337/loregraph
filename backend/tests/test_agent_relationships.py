@@ -1,10 +1,12 @@
-"""The manage_relationships pipeline: wiring entities that already exist.
+"""Relationship operations through the unified propose_changes pipeline.
 
 The regression this suite exists for is narrow and was expensive — asked to
 connect two existing characters, the agent used to invent a throwaway NPC to
 hang the edge on, because a relationship's source was only ever allowed to be
-an entity from the same draft. So every test here checks not just that the
-right edge appeared, but that no entity did.
+an entity from the same draft. So the create tests check not just that the
+right edge appeared, but that no unwanted entity did. update/delete/guard
+tests pin that the ops (re-type, reverse, delete, and the deterministic
+guards) survived the move off the old dedicated manage_relationships pipeline.
 """
 
 from collections import deque
@@ -27,7 +29,11 @@ from loregraph.agent.graph import build_agent_graph
 from loregraph.agent.state import AgentState
 from loregraph.llm.structured import StructuredResult
 from loregraph.llm.usage import LLMCallUsage
-from loregraph.schemas.agent import DraftEntity, DraftRelationship, LoreDraft
+from loregraph.schemas.agent import (
+    DraftRelationship,
+    GroundingReport,
+    LoreDraft,
+)
 from loregraph.schemas.edge import EdgeCreate
 from loregraph.schemas.entity import EntityCreate, EntityOut
 from loregraph.schemas.project import ProjectCreate
@@ -88,18 +94,26 @@ async def db_session(tmp_path: Path) -> AsyncGenerator[AsyncSession, None]:
         await engine.dispose()
 
 
+# The grounding judge in validate_changes runs whenever retrieval returned
+# lore (it always does here — the target entities are the lore). A clean
+# report keeps it a no-op; a generous supply covers the rare double pass.
+_CLEAN_REPORTS: list[BaseModel] = [
+    GroundingReport(claims_checked=0, claims_flagged=0, warnings=[]) for _ in range(4)
+]
+
+
 def make_graph(
     session: AsyncSession,
     script: list[AIMessage],
-    extraction_results: list[BaseModel] | None = None,
+    creative_results: list[BaseModel] | None = None,
     edge_service: EdgeService | None = None,
 ) -> Any:
     entity_store = SqliteEntityStore(session)
     edge_store = SqliteEdgeStore(session)
     return build_agent_graph(
         chat_model=ScriptedChatModel(script=deque(script)),
-        creative=FakeGenerator([]),
-        extraction=FakeGenerator(extraction_results or []),
+        creative=FakeGenerator(creative_results or []),
+        extraction=FakeGenerator(list(_CLEAN_REPORTS)),
         vector_index=None,
         knowledge_index=None,
         entity_store=entity_store,
@@ -113,12 +127,14 @@ def make_graph(
 
 
 def manage_call(entity_ids: list[str], brief: str) -> AIMessage:
+    """A relationship request is now a propose_changes call naming the entities
+    to wire as its targets — the pipeline is unified."""
     return AIMessage(
         "",
         tool_calls=[
             {
-                "name": "manage_relationships",
-                "args": {"entity_ids": entity_ids, "brief": brief},
+                "name": "propose_changes",
+                "args": {"brief": brief, "target_entity_ids": entity_ids},
                 "id": "mr1",
             }
         ],
@@ -175,7 +191,7 @@ async def test_connecting_two_existing_entities_invents_nothing(
     graph = make_graph(
         db_session,
         [manage_call([karina.id, nikolai.id], "свяжи Карину и Николая")],
-        extraction_results=[draft],
+        creative_results=[draft],
     )
     await _run_to_review(graph, project_id, "свяжи Карину и Николая")
 
@@ -197,33 +213,6 @@ async def test_connecting_two_existing_entities_invents_nothing(
     assert [e.id for e in entities] == [karina.id, nikolai.id], (
         "wiring two entities together must not create a third"
     )
-
-
-async def test_draft_entities_are_dropped_from_a_wiring_request(
-    db_session: AsyncSession,
-) -> None:
-    """Even if the model slips an entity in, this pipeline refuses to write
-    it — that slip is exactly the bug being fixed."""
-    project_id, karina, nikolai = await _world(db_session)
-    draft = LoreDraft(
-        entities=[DraftEntity(ref="e1", type="npc", title="Мария", summary="...")],
-        relationships=[
-            DraftRelationship(
-                source_ref=karina.id, target_ref=nikolai.id, type="family_of"
-            )
-        ],
-    )
-    graph = make_graph(
-        db_session,
-        [manage_call([karina.id, nikolai.id], "свяжи их")],
-        extraction_results=[draft],
-    )
-    await _run_to_review(graph, project_id, "свяжи их")
-
-    state = await agent_state(graph)
-    assert state.draft is not None
-    assert state.draft.entities == []
-    assert any(w.code == "dropped_draft_entity" for w in state.warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +243,7 @@ async def test_update_retypes_the_same_edge(db_session: AsyncSession) -> None:
     graph = make_graph(
         db_session,
         [manage_call([karina.id, nikolai.id], "они теперь враги")],
-        extraction_results=[draft],
+        creative_results=[draft],
     )
     await _run_to_review(graph, project_id, "они теперь враги")
     await graph.ainvoke(Command(resume={"action": "approve"}), CONFIG)
@@ -290,7 +279,7 @@ async def test_update_without_a_type_keeps_the_current_one(
     graph = make_graph(
         db_session,
         [manage_call([karina.id, nikolai.id], "разверни связь")],
-        extraction_results=[draft],
+        creative_results=[draft],
     )
     await _run_to_review(graph, project_id, "разверни связь")
     await graph.ainvoke(Command(resume={"action": "approve"}), CONFIG)
@@ -319,7 +308,7 @@ async def test_delete_removes_the_edge_but_keeps_the_entities(
     graph = make_graph(
         db_session,
         [manage_call([karina.id, nikolai.id], "убери связь")],
-        extraction_results=[draft],
+        creative_results=[draft],
     )
     await _run_to_review(graph, project_id, "убери связь")
     await graph.ainvoke(Command(resume={"action": "approve"}), CONFIG)
@@ -345,7 +334,7 @@ async def test_reject_leaves_the_graph_untouched(db_session: AsyncSession) -> No
     graph = make_graph(
         db_session,
         [manage_call([karina.id, nikolai.id], "убери связь")],
-        extraction_results=[draft],
+        creative_results=[draft],
     )
     await _run_to_review(graph, project_id, "убери связь")
     await graph.ainvoke(Command(resume={"action": "reject"}), CONFIG)
@@ -366,7 +355,7 @@ async def test_unknown_edge_id_is_dropped_not_fatal(db_session: AsyncSession) ->
     graph = make_graph(
         db_session,
         [manage_call([karina.id, nikolai.id], "убери связь")],
-        extraction_results=[draft],
+        creative_results=[draft],
     )
     await _run_to_review(graph, project_id, "убери связь")
 
@@ -386,7 +375,7 @@ async def test_self_relationship_is_dropped(db_session: AsyncSession) -> None:
     graph = make_graph(
         db_session,
         [manage_call([karina.id, nikolai.id], "свяжи её с собой")],
-        extraction_results=[draft],
+        creative_results=[draft],
     )
     await _run_to_review(graph, project_id, "свяжи её с собой")
 
@@ -394,27 +383,6 @@ async def test_self_relationship_is_dropped(db_session: AsyncSession) -> None:
     assert state.draft is not None
     assert state.draft.relationships == []
     assert any(w.code == "dropped_self_relationship" for w in state.warnings)
-
-
-async def test_scope_of_one_entity_stops_before_review(
-    db_session: AsyncSession,
-) -> None:
-    project_id, karina, _ = await _world(db_session)
-    graph = make_graph(
-        db_session, [manage_call([karina.id], "свяжи её")], extraction_results=[]
-    )
-    await _run_to_review(graph, project_id, "свяжи её")
-
-    snapshot = await graph.aget_state(CONFIG)
-    assert not any(task.interrupts for task in snapshot.tasks), (
-        "an empty scope must not trap the session at a review with nothing in it"
-    )
-    # commit's no-draft branch reports why, folding the warning codes into the
-    # event it puts in the chat.
-    state = await agent_state(graph)
-    event = state.messages[-1].additional_kwargs["event"]
-    assert event["code"] == "draft_failed"
-    assert "relationship_scope_empty" in event["params"]["reason_codes"]
 
 
 async def test_conflicting_type_warns_but_still_offers_the_op(
@@ -442,7 +410,7 @@ async def test_conflicting_type_warns_but_still_offers_the_op(
     graph = make_graph(
         db_session,
         [manage_call([karina.id, nikolai.id], "они рассорились")],
-        extraction_results=[draft],
+        creative_results=[draft],
     )
     await _run_to_review(graph, project_id, "они рассорились")
 
@@ -491,7 +459,7 @@ async def test_delete_does_not_run_when_an_earlier_op_fails(
     graph = make_graph(
         db_session,
         [manage_call([karina.id, nikolai.id], "замени связь")],
-        extraction_results=[draft],
+        creative_results=[draft],
         edge_service=ExplodingCreate(edge_store, entity_store),
     )
     await _run_to_review(graph, project_id, "замени связь")

@@ -49,9 +49,7 @@ class EntityRow(Base):
     # (no backfill, see db.py): NULL == not revealed / no player text. The API
     # contract is a strict bool, coerced on read.
     revealed_to_players: Mapped[bool | None] = mapped_column(default=None)
-    player_text: Mapped[dict[str, object] | None] = mapped_column(
-        JSON, default=None
-    )
+    player_text: Mapped[dict[str, object] | None] = mapped_column(JSON, default=None)
     created_at: Mapped[datetime]
     updated_at: Mapped[datetime]
 

@@ -32,9 +32,9 @@ def test_assistant_system_prompt_omits_block_when_absent() -> None:
     assert "<project_instructions" not in rendered
 
 
-def test_generate_lore_system_prompt_includes_instructions_block() -> None:
+def test_propose_changes_system_prompt_includes_instructions_block() -> None:
     rendered = render(
-        "generate_lore.system.md",
+        "propose_changes.system.md",
         project_instructions_block=project_instructions_block(
             'Always add a "plot hook" field.'
         ),
@@ -42,9 +42,9 @@ def test_generate_lore_system_prompt_includes_instructions_block() -> None:
     assert 'Always add a "plot hook" field.' in rendered
 
 
-def test_generate_lore_system_prompt_omits_block_when_absent() -> None:
+def test_propose_changes_system_prompt_omits_block_when_absent() -> None:
     rendered = render(
-        "generate_lore.system.md",
+        "propose_changes.system.md",
         project_instructions_block=project_instructions_block(None),
     )
     assert "<project_instructions" not in rendered

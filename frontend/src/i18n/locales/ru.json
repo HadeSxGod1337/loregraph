@@ -588,6 +588,7 @@
       "check_duplicates_draft": "🧭 Проверяю дубликаты…",
       "verify_grounding": "✔️ Проверяю факты…",
       "commit": "💾 Записываю в мир…",
+      "brainstorm": "💡 Придумываю идеи…",
       "fallback": "⚙️ {{node}}…"
     },
     "status": {
@@ -655,7 +656,10 @@
         "create": "связать",
         "update": "изменить",
         "delete": "убрать"
-      }
+      },
+      "titleLabel": "Название",
+      "newFieldTag": "(новое поле)",
+      "removeFieldTag": "(удалить)"
     }
   },
   "warnings": {
@@ -675,7 +679,8 @@
     "dropped_draft_entity": "Отброшена новая сущность «{{title}}»: этот шаг меняет только связи.",
     "relationship_scope_empty": "Не нашлось хотя бы двух сущностей из запроса — связывать нечего.",
     "conflicting_relationship": "Между этими сущностями уже есть связь «{{existing_type}}», а предлагается «{{proposed_type}}».",
-    "duplicate_relationship": "Связь «{{type}}» между этими сущностями уже существует."
+    "duplicate_relationship": "Связь «{{type}}» между этими сущностями уже существует.",
+    "patch_unknown_entity": "Пропущена правка несуществующей сущности (id {{id}})."
   },
   "events": {
     "budget_exhausted_reply": "Бюджет токенов на этот разговор исчерпан — начни новую сессию, чтобы продолжить.",
@@ -685,7 +690,10 @@
     "entity_updated": "Сущность «{{title}}» обновлена.",
     "edit_failed": "Ошибка редактирования: {{reason}}",
     "relationships_committed": "Готово — связей создано: {{created}}, изменено: {{updated}}, убрано: {{removed}}.",
-    "relationships_failed": "Работа со связями остановлена: {{reason}}"
+    "relationships_failed": "Работа со связями остановлена: {{reason}}",
+    "changes_committed": "Готово — создано {{created}} ({{created_titles}}), изменено {{patched}} ({{patched_titles}}), связи ({{rel_created}} создано, {{rel_updated}} изменено, {{rel_deleted}} удалено).",
+    "review_stale": "Предложение не применено — мир изменился с момента ревью. Ничего не записано; повтори запрос заново.",
+    "brainstorm_empty": "Пока не получилось придумать идеи — попробуй переформулировать запрос."
   },
   "integrations": {
     "heading": "Интеграции",

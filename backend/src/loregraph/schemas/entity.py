@@ -85,6 +85,28 @@ class EntityUpdate(BaseModel):
     template_id: str | None = None
 
 
+class EntityPatch(BaseModel):
+    """Targeted change to an entity: only what is named here changes.
+
+    The counterpart to EntityUpdate, which replaces the whole row. A caller
+    that cannot see the entity in full — the agent, which reads it as flat
+    text and never learns about attachment fields, `show_on_card`,
+    `visible_to_players` or `template_id` — must not be able to erase what it
+    cannot see. `EntityUpdate` from such a caller silently dropped every one
+    of those; a patch structurally cannot.
+
+    `set_fields` is an upsert by key: a key that exists is overwritten
+    (keeping its per-field flags unless the patch carries new ones), a key
+    that doesn't is appended. Removing something is only ever explicit, via
+    `remove_field_keys` — omission never deletes.
+    """
+
+    type: str | None = None
+    title: str | None = None
+    set_fields: list[EntityFieldIn] = []
+    remove_field_keys: list[str] = []
+
+
 class EntityOut(BaseModel):
     id: str
     project_id: str

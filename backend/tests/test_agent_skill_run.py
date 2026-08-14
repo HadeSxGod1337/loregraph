@@ -1,14 +1,14 @@
-"""Phase 2 of the skills architecture (see agent/skills/registry.py): a
-"propose"/"job" skill has two equally valid entry points — a chat tool call
-(covered by test_agent_graph.py's propose_lore/edit_entity tests) and a
-direct run via AgentRunner.stream_skill_run / POST .../skills/{name}/run,
-with no assistant LLM call involved at all. These tests exercise the
-second path and prove it reaches the identical pipeline deterministically."""
+"""Phase 2 of the skills architecture (see agent/skills/registry.py): the
+propose_changes skill has two equally valid entry points — a chat tool call
+(covered by test_agent_graph.py) and a direct run via
+AgentRunner.stream_skill_run / POST .../skills/{name}/run, with no assistant
+LLM call involved at all. These tests exercise the second path and prove it
+reaches the identical pipeline deterministically."""
 
 from collections import deque
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import pytest_asyncio
@@ -24,11 +24,18 @@ from loregraph.agent.graph import build_agent_graph
 from loregraph.agent.runner import AgentRunner
 from loregraph.llm.structured import StructuredResult
 from loregraph.llm.usage import LLMCallUsage
-from loregraph.schemas.agent import DraftEntity, EntityEditDraft, LoreDraft
+from loregraph.schemas.agent import (
+    DraftEntity,
+    DraftEntityPatch,
+    DraftField,
+    GroundingReport,
+    LoreDraft,
+)
 from loregraph.schemas.entity import EntityCreate
 from loregraph.schemas.project import ProjectCreate
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
+from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.sqlite.agent_session_store import SqliteAgentSessionStore
 from loregraph.storage.sqlite.db import (
     create_engine_for,
@@ -38,6 +45,7 @@ from loregraph.storage.sqlite.db import (
 from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
+from tests.fakes import FixedVectorIndex
 
 
 class ScriptedChatModel(BaseChatModel):
@@ -96,7 +104,7 @@ async def db_session(tmp_path: Path) -> AsyncIterator[AsyncSession]:
 
 
 @pytest.mark.asyncio
-async def test_skill_run_starts_propose_lore_without_any_llm_chat_call(
+async def test_skill_run_starts_propose_changes_without_any_llm_chat_call(
     db_session: AsyncSession,
 ) -> None:
     project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
@@ -127,7 +135,7 @@ async def test_skill_run_starts_propose_lore_without_any_llm_chat_call(
     events = [
         e
         async for e in runner.stream_skill_run(
-            project.id, thread_id, "propose_lore", {"brief": "стартовый лор"}
+            project.id, thread_id, "propose_changes", {"brief": "стартовый лор"}
         )
     ]
 
@@ -140,27 +148,35 @@ async def test_skill_run_starts_propose_lore_without_any_llm_chat_call(
 
 
 @pytest.mark.asyncio
-async def test_skill_run_edit_entity_reaches_same_pipeline_as_chat(
+async def test_skill_run_edit_reaches_same_pipeline_as_chat(
     db_session: AsyncSession,
 ) -> None:
+    """A direct propose_changes run naming a target entity edits it — the same
+    unified pipeline a chat tool call uses, no assistant LLM call involved."""
     project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
     entity_store = SqliteEntityStore(db_session)
     edge_store = SqliteEdgeStore(db_session)
     entity = await entity_store.create(
         EntityCreate(type="npc", title="Мира Кузнец", fields=[]), project.id
     )
-    edit_draft = EntityEditDraft(
-        entity_id=entity.id,
-        type="npc",
-        title="Мира Кузнец",
-        summary="Мастер-кузнец с тёмным прошлым.",
-        edit_reason="Добавлено тёмное прошлое.",
+    draft = LoreDraft(
+        patches=[
+            DraftEntityPatch(
+                entity_id=entity.id,
+                set_fields=[
+                    DraftField(key="backstory", value="Мастер-кузнец с тёмным прошлым.")
+                ],
+                edit_reason="Добавлено тёмное прошлое.",
+            )
+        ]
     )
     graph = build_agent_graph(
         chat_model=ScriptedChatModel(script=deque()),
-        creative=FakeGenerator([edit_draft]),
-        extraction=FakeGenerator([]),
-        vector_index=None,
+        creative=FakeGenerator([draft]),
+        extraction=FakeGenerator(
+            [GroundingReport(claims_checked=0, claims_flagged=0, warnings=[])]
+        ),
+        vector_index=cast(VectorIndex, FixedVectorIndex([entity.id])),
         knowledge_index=None,
         entity_store=entity_store,
         edge_store=edge_store,
@@ -180,14 +196,14 @@ async def test_skill_run_edit_entity_reaches_same_pipeline_as_chat(
         async for e in runner.stream_skill_run(
             project.id,
             thread_id,
-            "edit_entity",
-            {"entity_id": entity.id, "brief": "дай тёмное прошлое"},
+            "propose_changes",
+            {"brief": "дай тёмное прошлое", "target_entity_ids": [entity.id]},
         )
     ]
 
     review_events = [e for e in events if e["type"] == "review"]
     assert len(review_events) == 1
-    assert review_events[0]["payload"]["entity_edit_draft"]["entity_id"] == entity.id
+    assert review_events[0]["payload"]["draft"]["patches"][0]["entity_id"] == entity.id
 
 
 @pytest.mark.asyncio
@@ -221,7 +237,7 @@ async def test_skill_run_rejects_awaiting_review_session(
     await anext(
         e
         async for e in runner.stream_skill_run(
-            project.id, thread_id, "propose_lore", {"brief": "первый"}
+            project.id, thread_id, "propose_changes", {"brief": "первый"}
         )
         if e["type"] == "review"
     )
@@ -229,7 +245,7 @@ async def test_skill_run_rejects_awaiting_review_session(
     events = [
         e
         async for e in runner.stream_skill_run(
-            project.id, thread_id, "propose_lore", {"brief": "второй"}
+            project.id, thread_id, "propose_changes", {"brief": "второй"}
         )
     ]
     assert events == [

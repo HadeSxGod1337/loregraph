@@ -1,7 +1,14 @@
+import logging
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, AnyMessage, SystemMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    AnyMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from pydantic import BaseModel
 
 from loregraph.agent.events import event_message
@@ -12,7 +19,8 @@ from loregraph.agent.mcp_tools import (
 )
 from loregraph.agent.skills.registry import (
     base_chat_tool_schemas,
-    entry_node_for,
+    is_write_skill,
+    pipeline_entry_node,
     query_external_source,
 )
 from loregraph.agent.state import AgentState
@@ -22,9 +30,30 @@ from loregraph.llm.usage import parse_usage
 from loregraph.prompts import project_instructions_block, render
 from loregraph.storage.protocols import ProjectStore, UsageStore
 
+logger = logging.getLogger(__name__)
+
 # Conversation window sent to the LLM: enough for coherent chat, small enough
 # to keep per-turn token cost flat as the conversation grows.
 MAX_CHAT_WINDOW = 24
+
+# How many assistant→tools round trips one user turn may take before the
+# assistant is told to answer from what it has instead of calling more tools.
+# Generous enough for legitimate work (search → graph → a few list_relationships
+# pages → propose), tight enough that a pathological read-loop cannot burn the
+# whole token budget. The graph's recursion_limit is the hard backstop beneath
+# this soft one.
+MAX_TOOL_ITERATIONS = 10
+
+# Appended to the system prompt only on the turn the ceiling is reached. Kept as
+# a directive (tools stay bound so the tool_use/tool_result history still
+# validates with the provider) rather than dropping the tools, which some
+# providers reject when the history already contains tool calls.
+FORCE_ANSWER_DIRECTIVE = (
+    "\n\nYou have already used several tools on this reply. Do NOT call any more "
+    "tools now — answer the game master directly from what you have already "
+    "retrieved. If something you needed is still missing, say what is missing "
+    "and stop, rather than searching again."
+)
 
 NODE = "assistant"
 
@@ -78,6 +107,20 @@ def chat_window(messages: list[AnyMessage]) -> list[AnyMessage]:
     return window
 
 
+def _tool_iterations_this_turn(messages: list[AnyMessage]) -> int:
+    """How many tool-calling assistant turns have happened since the last user
+    message — the depth of the assistant↔tools loop for THIS turn. Counts back
+    only to the most recent HumanMessage so a long conversation's earlier tool
+    use never trips the current turn's ceiling."""
+    count = 0
+    for message in reversed(messages):
+        if isinstance(message, HumanMessage):
+            break
+        if isinstance(message, AIMessage) and message.tool_calls:
+            count += 1
+    return count
+
+
 async def assistant(
     state: AgentState,
     *,
@@ -116,20 +159,26 @@ async def assistant(
         tools.append(discover_mcp_tools)
         tools.append(call_mcp_tool)
     model = chat_model.bind_tools(tools)
+    system_text = render(
+        "assistant.system.md",
+        project_instructions_block=project_instructions_block(
+            project.agent_instructions
+        ),
+        external_sources_block=external_sources_block(live_sources),
+        mcp_tools_block=mcp_tools_block(mcp_tools),
+    )
+    if _tool_iterations_this_turn(state.messages) >= MAX_TOOL_ITERATIONS:
+        # Loop bound (§tool-loop): direct a reply this turn instead of another
+        # tool call. Soft and observable — the graph recursion_limit is the hard
+        # backstop if a model ignores this.
+        logger.warning(
+            "Assistant reached the per-turn tool-call ceiling (%d); directing "
+            "it to answer from what it already retrieved.",
+            MAX_TOOL_ITERATIONS,
+        )
+        system_text += FORCE_ANSWER_DIRECTIVE
     response = await model.ainvoke(
-        [
-            SystemMessage(
-                render(
-                    "assistant.system.md",
-                    project_instructions_block=project_instructions_block(
-                        project.agent_instructions
-                    ),
-                    external_sources_block=external_sources_block(live_sources),
-                    mcp_tools_block=mcp_tools_block(mcp_tools),
-                )
-            ),
-            *chat_window(state.messages),
-        ]
+        [SystemMessage(system_text), *chat_window(state.messages)]
     )
     usage = parse_usage(response.usage_metadata)
     await record_usage(
@@ -148,119 +197,144 @@ async def assistant(
 
 
 def route_after_assistant(state: AgentState) -> str:
-    """tools → run read tools; a "propose"/"job" skill's own entry node
-    (agent/skills/registry.py, e.g. begin_proposal/begin_edit) → start its
-    pipeline; end → the turn is a plain reply (answer or clarifying
-    question). Dispatch is data-driven off the registry, not a hardcoded
-    branch per skill name — a new "propose"/"job" skill only needs a
-    registry entry and a matching graph edge, no change here."""
+    """Where the turn goes after the assistant spoke:
+
+    - no tool calls → end (a plain reply or clarifying question);
+    - only read tools → tools (run them inline);
+    - a branching skill (propose_changes / brainstorm_lore) → its entry node.
+
+    Two ordering rules apply when a branching skill is bundled with other calls:
+
+    1. Read-before-pipeline (§mixed read+write): if the same turn also has read
+       calls, run the reads FIRST and defer the pipeline — otherwise a proposal
+       would begin on ids the model asked for but never received. The deferred
+       pipeline call is answered honestly in the tools node so the model
+       reissues it next turn with the real results.
+    2. Mutation priority (§creative+mutation): a write skill (propose_changes)
+       bundled with a brainstorm wins — the change is prepared, the brainstorm
+       deferred (honest_tool_results says so).
+
+    Dispatch stays data-driven off the registry — a new branching skill needs a
+    registry entry and a graph edge, not a change here."""
     last = state.messages[-1] if state.messages else None
     if not isinstance(last, AIMessage) or not last.tool_calls:
         return "end"
-    for call in last.tool_calls:
-        entry_node = entry_node_for(call["name"])
-        if entry_node is not None:
-            return entry_node
-    return "tools"
+    pipeline_calls = [
+        call
+        for call in last.tool_calls
+        if pipeline_entry_node(call["name"]) is not None
+    ]
+    if not pipeline_calls:
+        return "tools"
+    has_reads = any(
+        pipeline_entry_node(call["name"]) is None for call in last.tool_calls
+    )
+    if has_reads:
+        return "tools"
+    write_call = next(
+        (call for call in pipeline_calls if is_write_skill(call["name"])), None
+    )
+    chosen = write_call or pipeline_calls[0]
+    entry_node = pipeline_entry_node(chosen["name"])
+    assert entry_node is not None
+    return entry_node
 
 
-def _begin_skill(
-    state: AgentState,
-    *,
-    skill_name: str,
-    started_message: str,
-    from_tool_call: Any,
-    from_kickoff: Any,
-) -> dict[str, Any]:
-    """Shared shape of every "propose"-kind skill's entry node: resolve the
-    triggering input from whichever of the two entry points fired (a chat
-    tool call, or a direct skill_kickoff — see agent/skills/registry.py),
-    then apply the caller-supplied per-skill state via the two callables.
+CHANGES_STARTED_MESSAGE = (
+    "Proposal pipeline started; the result goes to the game master's review."
+)
 
-    `from_tool_call(call) -> dict` and `from_kickoff(input) -> dict` each
-    return the skill-specific fields (e.g. pending_brief) to merge into the
-    common reset below."""
+
+def _str_list(value: Any) -> list[str]:
+    return [str(item) for item in value] if isinstance(value, list) else []
+
+
+def begin_changes(state: AgentState) -> dict[str, Any]:
+    """Entry node for the single write skill, propose_changes, reached either
+    from a chat tool call (route_after_assistant) or a direct skill_kickoff.
+
+    Only the triggering propose_changes call is answered with the "started"
+    ToolMessage. Any OTHER tool calls the model made in the same turn are NOT
+    acknowledged here: honest_tool_results (below) already answered them, so a
+    read the model asked for really ran, and a second write it also asked for
+    is refused rather than silently dropped-but-confirmed."""
     if state.skill_kickoff is not None:
         messages: list[Any] = []
-        specific = from_kickoff(state.skill_kickoff.input)
+        data = state.skill_kickoff.input
+        specific = {
+            "pending_brief": str(data.get("brief", "")),
+            "pending_entity_ids": _str_list(data.get("target_entity_ids", [])),
+        }
     else:
         last = state.messages[-1]
         assert isinstance(last, AIMessage)
-        call = next(c for c in last.tool_calls if c["name"] == skill_name)
-        messages = [
-            ToolMessage(started_message, tool_call_id=c["id"] or "")
-            for c in last.tool_calls
-        ]
-        specific = from_tool_call(call)
+        messages = honest_tool_results(last, dispatched="propose_changes")
+        call = next(c for c in last.tool_calls if c["name"] == "propose_changes")
+        specific = {
+            "pending_brief": str(call["args"].get("brief", "")),
+            "pending_entity_ids": _str_list(call["args"].get("target_entity_ids", [])),
+        }
     return {
         "messages": messages,
         "skill_kickoff": None,
         "revision_feedback": "",
         "draft": None,
         "entity_edit_draft": None,
+        "targets_block": "",
         "warnings": [],
         "grounding_hallucination_rate": None,
         "attempts": 0,
         "retry_feedback": "",
         "draft_committed": False,
         "decision_action": None,
-        "pending_entity_ids": [],
         **specific,
     }
 
 
-def begin_proposal(state: AgentState) -> dict[str, Any]:
-    """Entry node for the propose_lore skill, reached either from a chat
-    tool call (route_after_assistant) or a direct skill_kickoff."""
-    return _begin_skill(
-        state,
-        skill_name="propose_lore",
-        started_message="Draft pipeline started; the result goes to the game "
-        "master's review.",
-        from_tool_call=lambda call: {
-            "pending_brief": str(call["args"].get("brief", ""))
-        },
-        from_kickoff=lambda data: {"pending_brief": str(data.get("brief", ""))},
-    )
+def honest_tool_results(message: AIMessage, *, dispatched: str) -> list[ToolMessage]:
+    """One ToolMessage per tool call the model made this turn — telling the
+    truth about each.
 
+    Every tool call needs an answer or the provider 400s on the next turn, but
+    the answer must match what actually happened. The `dispatched` call (the
+    write skill routing us here) gets the "started" acknowledgement; any OTHER
+    branching skill in the same turn (a second proposal, or a brainstorm the
+    mutation took priority over) is refused, not silently confirmed; and a read
+    tool the model also asked for is told it did not run, so the model reissues
+    it instead of believing a stale answer. This is the bug behind "the agent
+    said it did three things and did one".
 
-def begin_relationships(state: AgentState) -> dict[str, Any]:
-    """Entry node for the manage_relationships skill, reached either from a
-    chat tool call (route_after_assistant) or a direct skill_kickoff."""
-    return _begin_skill(
-        state,
-        skill_name="manage_relationships",
-        started_message="Relationship pipeline started; the result goes to "
-        "the game master's review.",
-        from_tool_call=lambda call: {
-            "pending_brief": str(call["args"].get("brief", "")),
-            "pending_entity_ids": [
-                str(entity_id) for entity_id in call["args"].get("entity_ids", [])
-            ],
-        },
-        from_kickoff=lambda data: {
-            "pending_brief": str(data.get("brief", "")),
-            "pending_entity_ids": [
-                str(entity_id) for entity_id in data.get("entity_ids", [])
-            ],
-        },
-    )
-
-
-def begin_edit(state: AgentState) -> dict[str, Any]:
-    """Entry node for the edit_entity skill, reached either from a chat tool
-    call (route_after_assistant) or a direct skill_kickoff."""
-    return _begin_skill(
-        state,
-        skill_name="edit_entity",
-        started_message="Edit pipeline started; the result goes to the game "
-        "master's review.",
-        from_tool_call=lambda call: {
-            "pending_brief": str(call["args"].get("brief", "")),
-            "pending_edit_entity_id": str(call["args"].get("entity_id", "")),
-        },
-        from_kickoff=lambda data: {
-            "pending_brief": str(data.get("brief", "")),
-            "pending_edit_entity_id": str(data.get("entity_id", "")),
-        },
-    )
+    Reads are normally executed first by route_after_assistant (read-before-
+    pipeline), so the read branch here is only reached by a direct skill_kickoff
+    that also carried stray calls — kept defensive so no tool call goes
+    unanswered either way."""
+    results: list[ToolMessage] = []
+    seen_dispatch = False
+    for call in message.tool_calls:
+        call_id = call["id"] or ""
+        name = call["name"]
+        if name == dispatched and not seen_dispatch:
+            seen_dispatch = True
+            results.append(ToolMessage(CHANGES_STARTED_MESSAGE, tool_call_id=call_id))
+        elif pipeline_entry_node(name) is not None:
+            # Another branching skill (second proposal, or a brainstorm): only
+            # one pipeline runs per turn, so tell the model this one did NOT.
+            results.append(
+                ToolMessage(
+                    f"'{name}' was not run: only one proposal or brainstorm is "
+                    "prepared per turn. Ask again after this one is handled.",
+                    tool_call_id=call_id,
+                )
+            )
+        else:
+            # A read tool bundled with the write call: it did not execute (the
+            # turn routed straight into the proposal). Say so plainly so the
+            # model re-reads instead of reporting an answer it never got.
+            results.append(
+                ToolMessage(
+                    f"'{name}' was not run this turn because a proposal was "
+                    "started. Call it again if you still need its result.",
+                    tool_call_id=call_id,
+                )
+            )
+    return results

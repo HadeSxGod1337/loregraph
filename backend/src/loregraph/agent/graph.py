@@ -8,24 +8,19 @@ from langgraph.graph.state import CompiledStateGraph
 from loregraph.agent.mcp_tools import McpToolProvider
 from loregraph.agent.nodes.assistant import (
     assistant,
-    begin_edit,
-    begin_proposal,
-    begin_relationships,
+    begin_changes,
     route_after_assistant,
 )
-from loregraph.agent.nodes.check_duplicates import (
-    check_duplicates_draft,
-    check_duplicates_request,
-    route_after_draft_check,
-)
+from loregraph.agent.nodes.brainstorm import brainstorm
 from loregraph.agent.nodes.commit import commit
-from loregraph.agent.nodes.generate_edit import generate_edit
-from loregraph.agent.nodes.generate_lore import generate_lore
-from loregraph.agent.nodes.generate_relationships import generate_relationships
+from loregraph.agent.nodes.generate_changes import generate_changes
 from loregraph.agent.nodes.human_review import human_review, route_after_review
 from loregraph.agent.nodes.retrieve_context import retrieve_context
 from loregraph.agent.nodes.tools import run_tools
-from loregraph.agent.nodes.verify_grounding import verify_grounding
+from loregraph.agent.nodes.validate_changes import (
+    route_after_validate,
+    validate_changes,
+)
 from loregraph.agent.skills.registry import SKILLS
 from loregraph.agent.state import AgentState
 from loregraph.connectors.live import LiveSourceProvider
@@ -101,15 +96,33 @@ def build_agent_graph(
             vector_index=vector_index,
             knowledge_index=knowledge_index,
             entity_store=entity_store,
+            edge_store=edge_store,
             live_sources=live_sources,
             mcp_tools=mcp_tools,
         ),
     )
-    builder.add_node("begin_proposal", begin_proposal)
-    builder.add_node("begin_edit", begin_edit)
-    builder.add_node("begin_relationships", begin_relationships)
+    builder.add_node("begin_changes", begin_changes)
 
-    # --- Proposal pipeline (unchanged core)
+    # --- Creative, non-mutating pipeline: brainstorm ideas, answer in chat,
+    # then END. No retrieve/validate/review/commit — the structural guarantee
+    # that a suggested idea never becomes canon on its own. Runs on the same
+    # creative tier as generate_changes (brainstorming is what it exists for).
+    builder.add_node(
+        "brainstorm",
+        partial(
+            brainstorm,
+            creative=creative,
+            vector_index=vector_index,
+            entity_store=entity_store,
+            edge_store=edge_store,
+            project_store=project_store,
+            token_budget=token_budget,
+            usage_store=usage_store,
+            model_name=generation_model_name,
+        ),
+    )
+
+    # --- Unified proposal pipeline: one path for create + edit + relate.
     builder.add_node(
         "retrieve_context",
         partial(
@@ -122,13 +135,9 @@ def build_agent_graph(
         ),
     )
     builder.add_node(
-        "check_duplicates_request",
-        partial(check_duplicates_request, entity_store=entity_store),
-    )
-    builder.add_node(
-        "generate_lore",
+        "generate_changes",
         partial(
-            generate_lore,
+            generate_changes,
             creative=creative,
             token_budget=token_budget,
             project_store=project_store,
@@ -137,15 +146,12 @@ def build_agent_graph(
         ),
     )
     builder.add_node(
-        "check_duplicates_draft",
-        partial(check_duplicates_draft, entity_store=entity_store),
-    )
-    builder.add_node(
-        "verify_grounding",
+        "validate_changes",
         partial(
-            verify_grounding,
+            validate_changes,
             extraction=extraction,
             token_budget=token_budget,
+            entity_store=entity_store,
             edge_store=edge_store,
             usage_store=usage_store,
             model_name=extraction_model_name,
@@ -157,35 +163,6 @@ def build_agent_graph(
         partial(commit, entity_service=entity_service, edge_service=edge_service),
     )
 
-    # ── Relationship pipeline ───────────────────────────────────────────────────
-    builder.add_node(
-        "generate_relationships",
-        partial(
-            generate_relationships,
-            extraction=extraction,
-            token_budget=token_budget,
-            entity_store=entity_store,
-            edge_store=edge_store,
-            project_store=project_store,
-            usage_store=usage_store,
-            model_name=extraction_model_name,
-        ),
-    )
-
-    # ── Edit pipeline ───────────────────────────────────────────────────────────
-    builder.add_node(
-        "generate_edit",
-        partial(
-            generate_edit,
-            creative=creative,
-            token_budget=token_budget,
-            entity_store=entity_store,
-            project_store=project_store,
-            usage_store=usage_store,
-            model_name=generation_model_name,
-        ),
-    )
-
     # Every "propose"/"job" skill's entry_node is a valid route_after_
     # assistant target (chat tool-call dispatch) AND a valid START target
     # (direct skill_kickoff, bypassing the assistant LLM entirely — see
@@ -195,7 +172,7 @@ def build_agent_graph(
     skill_entry_nodes = {
         manifest.entry_node
         for manifest in SKILLS.values()
-        if manifest.kind in ("propose", "job") and manifest.entry_node
+        if manifest.kind in ("propose", "job", "creative") and manifest.entry_node
     }
 
     def route_entry(state: AgentState) -> str:
@@ -217,38 +194,27 @@ def build_agent_graph(
     )
     builder.add_edge("tools", "assistant")
 
-    builder.add_edge("begin_proposal", "retrieve_context")
-    builder.add_edge("retrieve_context", "check_duplicates_request")
-    builder.add_edge("check_duplicates_request", "generate_lore")
-    builder.add_edge("generate_lore", "check_duplicates_draft")
+    # The creative branch is terminal: brainstorm answers in chat and stops.
+    # No path from here to commit — ideas cannot reach canon without a separate,
+    # explicit propose_changes.
+    builder.add_edge("brainstorm", END)
+
+    # Single write pipeline: retrieve grounding (including the explicit edit
+    # targets in full) → generate the whole proposal → validate it (dedup,
+    # relationship + patch checks, grounding) → review → commit.
+    builder.add_edge("begin_changes", "retrieve_context")
+    builder.add_edge("retrieve_context", "generate_changes")
+    builder.add_edge("generate_changes", "validate_changes")
     builder.add_conditional_edges(
-        "check_duplicates_draft",
-        route_after_draft_check,
-        {"retry": "generate_lore", "continue": "verify_grounding"},
+        "validate_changes",
+        route_after_validate,
+        {"retry": "generate_changes", "continue": "human_review"},
     )
-    builder.add_edge("verify_grounding", "human_review")
     builder.add_conditional_edges(
         "human_review",
         route_after_review,
-        {
-            "revise_lore": "generate_lore",
-            "revise_edit": "generate_edit",
-            "revise_relationships": "generate_relationships",
-            "commit": "commit",
-        },
+        {"revise": "generate_changes", "commit": "commit"},
     )
     builder.add_edge("commit", END)
-
-    # Edit pipeline edges (skips retrieve/dedup/verify — not applicable to
-    # targeted single-entity edits).
-    builder.add_edge("begin_edit", "generate_edit")
-    builder.add_edge("generate_edit", "human_review")
-
-    # Relationship pipeline edges: scope comes from the ids the assistant
-    # passed, so there is nothing to retrieve or deduplicate, and the node
-    # validates its own output against what it read — straight to review.
-    builder.add_edge("begin_relationships", "generate_relationships")
-    builder.add_edge("generate_relationships", "human_review")
-    # human_review → commit already wired above; commit → END already wired.
 
     return builder.compile(checkpointer=checkpointer)

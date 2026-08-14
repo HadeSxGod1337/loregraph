@@ -33,11 +33,30 @@ export interface DraftRelationship {
   grounded_in: string[];
 }
 
+/** A targeted edit to an entity that already exists (backend
+ * schemas/agent.py::DraftEntityPatch). Only what is named changes:
+ * `set_fields` upserts by key, `remove_field_keys` is the only way anything
+ * is deleted, and null title/type leave them untouched. */
+export interface DraftEntityPatch {
+  entity_id: string;
+  title?: string | null;
+  type?: string | null;
+  set_fields: DraftField[];
+  remove_field_keys: string[];
+  edit_reason: string;
+  grounded_in: string[];
+}
+
 export interface LoreDraft {
   entities: DraftEntity[];
+  patches: DraftEntityPatch[];
   relationships: DraftRelationship[];
 }
 
+/** Legacy: the old edit pipeline produced this instead of a patch inside the
+ * draft. New sessions never set it (edits ride in `LoreDraft.patches`), but
+ * it stays in the contract so a review reopened from before the unified
+ * pipeline still renders. */
 export interface EntityEditDraft {
   entity_id: string;
   type: string;

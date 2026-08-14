@@ -98,6 +98,7 @@ async def test_query_external_source_returns_chunks(
         vector_index=None,
         knowledge_index=None,
         entity_store=SqliteEntityStore(db_session),
+        edge_store=SqliteEdgeStore(db_session),
         live_sources=provider,
     )
     content = update["messages"][0].content
@@ -114,6 +115,7 @@ async def test_query_external_source_unknown_name_lists_available(
         vector_index=None,
         knowledge_index=None,
         entity_store=SqliteEntityStore(db_session),
+        edge_store=SqliteEdgeStore(db_session),
         live_sources=provider,
     )
     content = update["messages"][0].content
@@ -131,6 +133,7 @@ async def test_query_external_source_offline_yields_message_not_exception(
         vector_index=None,
         knowledge_index=None,
         entity_store=SqliteEntityStore(db_session),
+        edge_store=SqliteEdgeStore(db_session),
         live_sources=provider,
     )
     content = update["messages"][0].content
@@ -152,6 +155,7 @@ async def test_query_external_source_returns_all_chunks_within_connector_budget(
         vector_index=None,
         knowledge_index=None,
         entity_store=SqliteEntityStore(db_session),
+        edge_store=SqliteEdgeStore(db_session),
         live_sources=provider,
     )
     content = update["messages"][0].content
@@ -174,6 +178,7 @@ async def test_query_external_source_notes_truncation_when_it_does_happen(
         vector_index=None,
         knowledge_index=None,
         entity_store=SqliteEntityStore(db_session),
+        edge_store=SqliteEdgeStore(db_session),
         live_sources=provider,
     )
     content = update["messages"][0].content

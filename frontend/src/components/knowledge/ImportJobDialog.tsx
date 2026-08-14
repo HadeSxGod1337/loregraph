@@ -187,8 +187,8 @@ function ImportReviewView({
   currentSlice: number;
   totalSlices: number;
   committedSoFar: number;
-  onApprove: (draft: { entities: DraftEntity[]; relationships: [] }) => void;
-  onApproveAll: (draft: { entities: DraftEntity[]; relationships: [] }) => void;
+  onApprove: (draft: { entities: DraftEntity[]; patches: []; relationships: [] }) => void;
+  onApproveAll: (draft: { entities: DraftEntity[]; patches: []; relationships: [] }) => void;
   onReject: () => void;
 }) {
   const { t } = useTranslation();
@@ -204,9 +204,10 @@ function ImportReviewView({
     setEntities((prev) => prev.map((e) => (e.ref === ref ? { ...e, ...patch } : e)));
   }
 
-  function keptDraft(): { entities: DraftEntity[]; relationships: [] } {
+  function keptDraft(): { entities: DraftEntity[]; patches: []; relationships: [] } {
     return {
       entities: entities.filter((e) => !removedRefs.has(e.ref)),
+      patches: [],
       relationships: [],
     };
   }

@@ -19,7 +19,14 @@ from loregraph.schemas.agent import (
 # the frontend can translate them — old v3 checkpoints cannot resume either.
 # v5: entity_edit_draft + pending_edit_entity_id added for the edit-entity
 # pipeline — old v4 checkpoints cannot resume interrupted edit sessions.
-STATE_VERSION = 5
+# v6: the three write pipelines (propose_lore / edit_entity /
+# manage_relationships) collapse into one `propose_changes` pipeline; a draft
+# now carries patches (edits) alongside entities and relationships, and
+# `targets_block` holds the full text of the entities a request points at.
+# entity_edit_draft / pending_edit_entity_id are retained but unused (old
+# interrupted edit sessions cannot resume onto the new graph — the pending
+# draft resets, same contract as every prior bump).
+STATE_VERSION = 6
 
 # Marker injected into prompts when retrieval found nothing — the model must
 # be told explicitly instead of being left to hallucinate connections.
@@ -58,6 +65,11 @@ class AgentState(BaseModel):
     # grounded_in target (see prompts/generate_lore.system.md).
     knowledge_context: str = ""
     context_entity_ids: list[str] = Field(default_factory=list)
+    # Full text of the entities the request points at directly (the ones to
+    # edit or link), rendered separately from existing_lore so the generator
+    # sees them as "already exists, patch me" rather than search results.
+    # Additive field with a default, safe for pre-existing checkpoints.
+    targets_block: str = ""
     # Ids of the relationships shown to the model in existing_lore — the
     # whitelist an update/delete op must address, mirroring what
     # context_entity_ids does for entities. Additive field with a default,
