@@ -38,6 +38,7 @@ from loregraph.exceptions import (
     InvalidPlayerTokenError,
     UnsupportedConnectorCapabilityError,
 )
+from loregraph.llm.capabilities import resolve_model_capabilities
 from loregraph.llm.factory import get_chat_model
 from loregraph.llm.structured import LangChainStructuredGenerator
 from loregraph.schemas.connection import ConnectionOut
@@ -607,9 +608,22 @@ async def get_agent_runner(
     graph = build_agent_graph(
         chat_model=assistant_model,
         creative=LangChainStructuredGenerator(
-            generation_model, prompt_caching=prompt_caching
+            generation_model,
+            prompt_caching=prompt_caching,
+            capabilities=resolve_model_capabilities(
+                settings.llm_provider, settings.llm_model_generation
+            ),
+            provider=settings.llm_provider,
+            model_name=settings.llm_model_generation,
         ),
-        extraction=LangChainStructuredGenerator(extraction_model),
+        extraction=LangChainStructuredGenerator(
+            extraction_model,
+            capabilities=resolve_model_capabilities(
+                settings.llm_provider, settings.llm_model_extraction
+            ),
+            provider=settings.llm_provider,
+            model_name=settings.llm_model_extraction,
+        ),
         vector_index=vector_index,
         knowledge_index=knowledge_index,
         entity_store=entity_store,
@@ -703,8 +717,22 @@ async def get_import_job_runner(
     # pricier "generation" tier tuned for creative temperature.
     extraction_model = get_chat_model(settings, tier="extraction")
     graph = build_import_graph(
-        extraction=LangChainStructuredGenerator(extraction_model),
-        creative=LangChainStructuredGenerator(extraction_model),
+        extraction=LangChainStructuredGenerator(
+            extraction_model,
+            capabilities=resolve_model_capabilities(
+                settings.llm_provider, settings.llm_model_extraction
+            ),
+            provider=settings.llm_provider,
+            model_name=settings.llm_model_extraction,
+        ),
+        creative=LangChainStructuredGenerator(
+            extraction_model,
+            capabilities=resolve_model_capabilities(
+                settings.llm_provider, settings.llm_model_extraction
+            ),
+            provider=settings.llm_provider,
+            model_name=settings.llm_model_extraction,
+        ),
         source_resolver=source_resolver,
         entity_store=entity_store,
         entity_service=entity_service,
