@@ -8,7 +8,14 @@ the real sqlite stores, so the contract itself stays covered by them.
 from collections.abc import Sequence
 
 from loregraph.schemas.edge import EdgeCreate, EdgeOut, EdgeUpdate
-from loregraph.schemas.entity import EntityOut
+from loregraph.schemas.entity import (
+    EntityCreate,
+    EntityOut,
+    EntityPatch,
+    EntityPlayerViewUpdate,
+    EntityPositionEntry,
+    EntityUpdate,
+)
 from loregraph.storage.vectorstore.protocols import RetrievedChunk
 
 
@@ -55,6 +62,40 @@ class EmptyEntityStore:
     async def get_many(self, entity_ids: Sequence[str]) -> list[EntityOut]:
         wanted = set(entity_ids)
         return [e for e in self._entities if e.id in wanted]
+
+    async def list_entity_types(self, project_id: str) -> list[str]:
+        return []
+
+    async def exists(self, entity_id: str) -> bool:
+        return any(e.id == entity_id for e in self._entities)
+
+    async def get(self, entity_id: str) -> EntityOut:
+        raise NotImplementedError
+
+    async def create(self, data: EntityCreate, project_id: str) -> EntityOut:
+        raise NotImplementedError
+
+    async def update(self, entity_id: str, data: EntityUpdate) -> EntityOut:
+        raise NotImplementedError
+
+    async def patch(self, entity_id: str, data: EntityPatch) -> EntityOut:
+        raise NotImplementedError
+
+    async def delete(self, entity_id: str) -> None:
+        raise NotImplementedError
+
+    async def set_icon(self, entity_id: str, attachment_id: str | None) -> EntityOut:
+        raise NotImplementedError
+
+    async def set_player_view(
+        self, entity_id: str, data: EntityPlayerViewUpdate
+    ) -> EntityOut:
+        raise NotImplementedError
+
+    async def update_positions(
+        self, positions: Sequence[EntityPositionEntry]
+    ) -> list[EntityOut]:
+        raise NotImplementedError
 
 
 class EmptyEdgeStore:

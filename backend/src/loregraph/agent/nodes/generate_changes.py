@@ -65,8 +65,8 @@ async def generate_changes(
     cached_prefix = render(
         "propose_changes.user.md",
         existing_lore=state.existing_lore,
-        targets=state.targets_block or "(none — this request names no existing "
-        "entity to edit)",
+        targets=state.targets_block
+        or "(none — this request names no existing entity to edit)",
         knowledge_context=state.knowledge_context,
         known_types=", ".join(state.known_entity_types) or "(none yet)",
         available_links=state.available_links or "(no entities in scope)",

@@ -1,12 +1,13 @@
 """On-demand grounding-guard eval — NOT part of the regular pytest/CI run.
 
-Exercises the real deterministic tier of agent/nodes/verify_grounding.py
-against the golden hallucination_cases.py (no mocks). The LLM-as-judge tier
-is skipped on purpose (token_budget=0 forces state.over_budget() True) since
-it needs a live model call — that belongs to CLAUDE.md's nightly/on-request
-eval tier, not this harness. Reports the deterministic guard's catch rate
-and any false positives on clean drafts, i.e. the fraction of hallucinated
-claims that would slip past this line of defense.
+Exercises the real deterministic tier of agent/nodes/validate_changes.py
+(relationship-endpoint and citation checks) against the golden
+hallucination_cases.py (no mocks). The LLM-as-judge tier is skipped on
+purpose (token_budget=0 forces state.over_budget() True) since it needs a
+live model call — that belongs to CLAUDE.md's nightly/on-request eval tier,
+not this harness. Reports the deterministic guard's catch rate and any false
+positives on clean drafts, i.e. the fraction of hallucinated claims that
+would slip past this line of defense.
 
 Usage (from backend/):
     uv run python -m evals.run_hallucination_eval
@@ -17,12 +18,13 @@ from typing import cast
 
 from evals.hallucination_cases import CASES, HallucinationCase
 from evals.metrics import hallucination_catch_rate
-from loregraph.agent.nodes.verify_grounding import verify_grounding
+from loregraph.agent.nodes.validate_changes import validate_changes
 from loregraph.agent.state import AgentState
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.schemas.agent import AgentWarning
 from loregraph.schemas.edge import EdgeOut
-from loregraph.storage.protocols import EdgeStore
+from loregraph.schemas.entity import EntityOut
+from loregraph.storage.protocols import EdgeStore, EntityStore
 
 _GUARD_CODES = frozenset(
     {"dropped_unknown_source", "dropped_unknown_target", "uncited_lore_id"}
@@ -40,6 +42,16 @@ class _NoEdges:
         return []
 
 
+class _NoEntities:
+    """An empty world, so validate_changes' created-entity dedup pass never
+    fires — these cases test the citation/endpoint guards, not dedup."""
+
+    async def list_entities(
+        self, project_id: str, entity_type: str | None = None
+    ) -> list[EntityOut]:
+        return []
+
+
 async def _run_case(case: HallucinationCase) -> list[AgentWarning]:
     state = AgentState(
         project_id="eval",
@@ -47,12 +59,13 @@ async def _run_case(case: HallucinationCase) -> list[AgentWarning]:
         context_entity_ids=case.context_entity_ids,
         draft=case.draft,
     )
-    update = await verify_grounding(
+    update = await validate_changes(
         state,
         # Unused: token_budget=0 skips the LLM-as-judge branch entirely, so
         # the extraction client is never called.
         extraction=cast(StructuredGenerator, None),
         token_budget=0,
+        entity_store=cast(EntityStore, _NoEntities()),
         edge_store=cast(EdgeStore, _NoEdges()),
         usage_store=None,
         model_name="eval",
