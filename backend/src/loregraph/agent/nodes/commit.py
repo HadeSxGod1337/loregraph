@@ -8,7 +8,14 @@ from langchain_core.messages import AIMessage
 from loregraph.agent.events import event_message
 from loregraph.agent.relationships import RelationshipOpsResult, apply_relationship_ops
 from loregraph.agent.state import AgentState
-from loregraph.schemas.agent import DraftEntity, DraftEntityPatch, EntityEditDraft
+from loregraph.exceptions import EdgeNotFoundError
+from loregraph.schemas.agent import (
+    AgentWarning,
+    DraftEntity,
+    DraftEntityPatch,
+    EntityEditDraft,
+    LoreDraft,
+)
 from loregraph.schemas.entity import (
     EntityCreate,
     EntityFieldIn,
@@ -96,9 +103,7 @@ def _field_in(field: Any, title_to_id: dict[str, str]) -> EntityFieldIn:
             field_type=FieldType.RICH_TEXT,
             value=_wikilinks_to_prosemirror(field.value, title_to_id),
         )
-    return EntityFieldIn(
-        key=field.key, field_type=FieldType.TEXT, value=field.value
-    )
+    return EntityFieldIn(key=field.key, field_type=FieldType.TEXT, value=field.value)
 
 
 def _build_fields(
@@ -148,6 +153,82 @@ async def _rollback_created(
             )
 
 
+async def _preflight(
+    draft: LoreDraft,
+    entity_service: EntityService,
+    edge_service: EdgeService,
+    project_id: str,
+) -> list[AgentWarning]:
+    """Validate the approved proposal against the CURRENT world, immediately
+    before any write — so a review that went stale (an entity deleted, an edge
+    removed, or a namesake created since the DM saw the card) is caught and the
+    whole proposal is refused cleanly, never applied half-way.
+
+    Returns the problems found; an empty list means it is safe to write. This
+    narrows but does not fully close the write window: the stores autocommit
+    per operation (there is no cross-service transaction without a storage
+    rewrite this task deliberately does not do), so a failure BETWEEN these
+    checks and the writes below still cannot roll a completed patch back.
+    Preflight makes that window small; commit() reports the remaining limit
+    honestly rather than claiming an atomicity it does not have."""
+    problems: list[AgentWarning] = []
+    existing = await entity_service.list_entities(project_id)
+    existing_ids = {entity.id for entity in existing}
+    id_by_title = {entity.title.casefold(): entity.id for entity in existing}
+    draft_refs = {entity.ref for entity in draft.entities}
+
+    # A patch is an in-place edit with no clean inverse — the one write that
+    # cannot be compensated — so a vanished target is the most important thing
+    # to catch before writing anything.
+    for patch in draft.patches:
+        if patch.entity_id not in existing_ids:
+            problems.append(
+                AgentWarning(code="stale_patch_target", params={"id": patch.entity_id})
+            )
+
+    # A created title that now collides with an existing one means a namesake
+    # appeared since validation (validation already dropped clones of entities
+    # that existed then) — writing it would silently duplicate the world.
+    for entity in draft.entities:
+        existing_id = id_by_title.get(entity.title.casefold())
+        if existing_id is not None:
+            problems.append(
+                AgentWarning(
+                    code="stale_duplicate_title",
+                    params={"title": entity.title, "existing_id": existing_id},
+                )
+            )
+
+    for relationship in draft.relationships:
+        if relationship.op in ("update", "delete"):
+            edge_id = relationship.edge_id or ""
+            try:
+                await edge_service.get_in_project(project_id, edge_id)
+            except EdgeNotFoundError:
+                problems.append(
+                    AgentWarning(
+                        code="stale_relationship_edge",
+                        params={"edge_id": edge_id, "op": relationship.op},
+                    )
+                )
+        else:  # create: existing-entity endpoints must still exist (draft refs
+            # are created below, so they are always fine)
+            for ref in (relationship.source_ref, relationship.target_ref):
+                if ref and ref not in draft_refs and ref not in existing_ids:
+                    problems.append(
+                        AgentWarning(
+                            code="stale_relationship_endpoint", params={"ref": ref}
+                        )
+                    )
+    return problems
+
+
+REVIEW_STALE_MESSAGE = (
+    "Proposal not applied — the world changed since this was reviewed. Nothing "
+    "was written; re-run the request against the current world."
+)
+
+
 async def commit(
     state: AgentState,
     *,
@@ -156,10 +237,18 @@ async def commit(
 ) -> dict[str, Any]:
     """The only node with write access (structural HITL guarantee — no other
     node receives the services as an argument). Applies the whole approved
-    proposal: entities first (building the ref → real id map), then the
-    relationship operations against it (agent/relationships.py). All-or-
-    nothing per proposal: a mid-batch failure rolls back the entities created
-    so far, so a retry can't duplicate them.
+    proposal: entities first (building the ref → real id map), then patches,
+    then the relationship operations against it (agent/relationships.py).
+
+    Not fully atomic, and does not claim to be. A `_preflight` pass runs
+    immediately before any write and refuses the whole proposal if the review
+    has gone stale, which is what makes a mid-write failure unlikely. If one
+    still happens, entities created so far are rolled back (a retry can't
+    duplicate them), but a patch already applied to a pre-existing entity has
+    no clean inverse and cannot be — the stores autocommit per operation. So
+    ordering is create → patch → relationship-ops (destructive edge deletes
+    last), and the honest guarantee is "preflighted, creates compensated",
+    not all-or-nothing.
 
     A proposal may be entities only, relationship operations only, or both —
     "connect these two characters" commits with no entity written at all.
@@ -196,6 +285,28 @@ async def commit(
             ],
             "draft": None,
             "warnings": [],
+            "pending_brief": "",
+        }
+
+    # ── Preflight: refuse a stale review cleanly, before touching anything ────
+    problems = await _preflight(
+        state.draft, entity_service, edge_service, state.project_id
+    )
+    if problems:
+        logger.warning(
+            "Commit refused: review is stale (%d problem(s)); nothing written.",
+            len(problems),
+        )
+        return {
+            "messages": [
+                event_message(
+                    REVIEW_STALE_MESSAGE,
+                    "review_stale",
+                    problems=str(len(problems)),
+                )
+            ],
+            "draft": None,
+            "warnings": problems,
             "pending_brief": "",
         }
 

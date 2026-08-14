@@ -20,6 +20,8 @@ from loregraph.llm.structured import StructuredResult
 from loregraph.llm.usage import LLMCallUsage
 from loregraph.schemas.agent import (
     DraftEntity,
+    DraftEntityPatch,
+    DraftField,
     DraftRelationship,
     GroundingReport,
     LoreDraft,
@@ -504,3 +506,88 @@ async def test_relationship_only_commit_acks_without_entity_counts(
     assert event["params"]["patched"] == "0"
     assert event["params"]["rel_created"] == "1"
     assert len(await SqliteEdgeStore(db_session).list_all(project.id)) == 1
+
+
+# ---------------------------------------------------------------------------
+# Commit preflight: refuse a stale review cleanly instead of applying it half
+# way. A patch is the one write with no clean inverse, so a target that
+# vanished after review must be caught BEFORE anything is written.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_commit_refuses_a_stale_patch_target(db_session: AsyncSession) -> None:
+    """The entity a patch targets is deleted between review and approval: commit
+    must write NOTHING and say the review went stale — never silently apply the
+    rest of the proposal against a world that moved."""
+    project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
+    entity_store = SqliteEntityStore(db_session)
+    egor = await entity_store.create(
+        EntityCreate(type="npc", title="Егор", fields=[]), project.id
+    )
+    draft = LoreDraft(
+        patches=[
+            DraftEntityPatch(
+                entity_id=egor.id,
+                set_fields=[DraftField(key="role", value="маг")],
+                edit_reason="—",
+            )
+        ]
+    )
+    graph = make_graph(
+        db_session,
+        [propose_call("заполни Егора", [egor.id])],
+        creative_results=[draft],
+        extraction_results=[GroundingReport()],
+        retrieved_entity_ids=[egor.id],
+    )
+    await graph.ainvoke(turn(project.id, "заполни Егора"), CONFIG)
+
+    # The world moves under the paused review: Егор is deleted.
+    await EntityService(entity_store).delete(project.id, egor.id)
+
+    await graph.ainvoke(Command(resume={"action": "approve"}), CONFIG)
+
+    state = await state_of(graph)
+    assert not state.draft_committed
+    assert state.committed_entity_ids == []
+    assert state.messages[-1].additional_kwargs.get("event", {}).get("code") == (
+        "review_stale"
+    )
+    # Nothing was written — the entity stays deleted, no partial patch resurrected it.
+    assert await entity_store.list_entities(project.id) == []
+
+
+@pytest.mark.asyncio
+async def test_commit_refuses_a_created_title_that_now_collides(
+    db_session: AsyncSession,
+) -> None:
+    """A namesake appears between review and approval: the created entity would
+    now duplicate it. Preflight refuses the whole proposal rather than silently
+    writing the duplicate."""
+    project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
+    entity_store = SqliteEntityStore(db_session)
+    draft = LoreDraft(
+        entities=[DraftEntity(ref="e1", type="npc", title="Егор", summary="—")]
+    )
+    # Empty world at validation, so the creation passes dedup and reaches review.
+    graph = make_graph(
+        db_session, [propose_call("создай Егора")], creative_results=[draft]
+    )
+    await graph.ainvoke(turn(project.id, "создай Егора"), CONFIG)
+
+    # Someone else creates an Егор while the review is paused.
+    await entity_store.create(
+        EntityCreate(type="npc", title="Егор", fields=[]), project.id
+    )
+
+    await graph.ainvoke(Command(resume={"action": "approve"}), CONFIG)
+
+    state = await state_of(graph)
+    assert not state.draft_committed
+    assert state.messages[-1].additional_kwargs.get("event", {}).get("code") == (
+        "review_stale"
+    )
+    # Only the concurrently-created Егор exists — no duplicate was written.
+    entities = await entity_store.list_entities(project.id)
+    assert [e.title for e in entities] == ["Егор"]
