@@ -206,6 +206,7 @@ export function GraphControls({
           },
           ...(hasHierarchyBranches
             ? [
+                { separator: true } as const,
                 { label: t("graph.collapseAllHierarchy"), onClick: onCollapseAllHierarchy },
                 { label: t("graph.expandAllHierarchy"), onClick: onExpandAllHierarchy },
               ]

@@ -84,14 +84,22 @@ export const EntityNode = memo(function EntityNode({ id, data }: NodeProps) {
         </div>
       )}
       {hasHierarchyChildren && (
-        // `nodrag`/`nopan` (React Flow's own escape hatch, same as Handle
-        // uses internally) keep a press-and-hold here from starting a card
-        // drag; stopPropagation on both click and dblclick keeps it from
-        // also reaching the pane's onNodeClick/onNodeDoubleClick (select /
-        // set-as-root) — this control only ever toggles hierarchy visibility.
+        // Bottom-right corner: away from both connection handles (top/bottom
+        // -center) and clear of an incoming edge's arrowhead, which can
+        // approach from any side (FloatingEdge routes from measured bounds,
+        // not fixed handle positions) — sitting at the card's own left edge
+        // used to read as part of whatever edge landed nearby instead of a
+        // card control. `nodrag`/`nopan` (React Flow's own escape hatch,
+        // same as Handle uses internally) keep a press-and-hold here from
+        // starting a card drag; stopPropagation on both click and dblclick
+        // keeps it from also reaching the pane's onNodeClick/onNodeDoubleClick
+        // (select / set-as-root) — this control only ever toggles hierarchy
+        // visibility. Icon is chosen directly (not a single glyph rotated by
+        // CSS) so "expanded shows chevron-down / collapsed shows
+        // chevron-right" is literal, not an equivalence to double-check.
         <button
           type="button"
-          className={`entity-node-collapse-toggle nodrag nopan${isCollapsed ? "" : " is-open"}`}
+          className={`entity-node-collapse-toggle nodrag nopan${isCollapsed ? " is-collapsed" : ""}`}
           onClick={(event) => {
             event.stopPropagation();
             onToggle(id);
@@ -101,7 +109,7 @@ export const EntityNode = memo(function EntityNode({ id, data }: NodeProps) {
           aria-label={collapseLabel}
           aria-expanded={!isCollapsed}
         >
-          <Icon name="chevron-down" size={12} />
+          <Icon name={isCollapsed ? "chevron-right" : "chevron-down"} size={12} />
           {isCollapsed && hiddenCount > 0 && (
             <span className="entity-node-collapse-count">{hiddenCount}</span>
           )}

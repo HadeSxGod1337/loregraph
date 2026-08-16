@@ -8,6 +8,15 @@ export interface KebabMenuItem {
   danger?: boolean;
 }
 
+/** A visual divider between two groups of items — e.g. layout actions vs.
+ * hierarchy actions in the graph dock's menu. Purely presentational, no
+ * label or click handler of its own. */
+export interface KebabMenuSeparator {
+  separator: true;
+}
+
+export type KebabMenuEntry = KebabMenuItem | KebabMenuSeparator;
+
 /** "⋯" menu for secondary row actions — keeps destructive operations out of
  * the always-visible surface of a card. `placement` defaults to opening
  * downward (the original, still-used-elsewhere behavior); pass "up" for
@@ -19,7 +28,7 @@ export function KebabMenu({
   placement = "down",
 }: {
   label: string;
-  items: KebabMenuItem[];
+  items: KebabMenuEntry[];
   placement?: "down" | "up";
 }) {
   const [open, setOpen] = useState(false);
@@ -57,20 +66,24 @@ export function KebabMenu({
       </button>
       {open && (
         <div className="kebab-menu-list" role="menu">
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              className={item.danger ? "danger" : undefined}
-              onClick={() => {
-                setOpen(false);
-                item.onClick();
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
+          {items.map((item, index) =>
+            "separator" in item ? (
+              <div key={`separator-${index}`} className="kebab-menu-separator" role="separator" />
+            ) : (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                className={item.danger ? "danger" : undefined}
+                onClick={() => {
+                  setOpen(false);
+                  item.onClick();
+                }}
+              >
+                {item.label}
+              </button>
+            ),
+          )}
         </div>
       )}
     </div>

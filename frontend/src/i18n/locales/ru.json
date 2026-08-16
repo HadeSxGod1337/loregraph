@@ -373,7 +373,7 @@
     "expandBranchHiddenCount_few": "Раскрыть ветку — скрыто {{count}} сущности",
     "expandBranchHiddenCount_many": "Раскрыть ветку — скрыто {{count}} сущностей",
     "expandBranchHiddenCount_other": "Раскрыть ветку — скрыто {{count}} сущностей",
-    "collapseAllHierarchy": "Свернуть все иерархические ветки",
+    "collapseAllHierarchy": "Свернуть все ветки",
     "expandAllHierarchy": "Развернуть все"
   },
   "edges": {

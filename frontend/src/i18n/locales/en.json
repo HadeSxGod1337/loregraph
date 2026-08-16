@@ -362,7 +362,7 @@
     "expandBranch": "Expand branch",
     "expandBranchHiddenCount_one": "Expand branch — {{count}} entity hidden",
     "expandBranchHiddenCount_other": "Expand branch — {{count}} entities hidden",
-    "collapseAllHierarchy": "Collapse all hierarchy branches",
+    "collapseAllHierarchy": "Collapse all branches",
     "expandAllHierarchy": "Expand all"
   },
   "edges": {
