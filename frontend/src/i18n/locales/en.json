@@ -447,6 +447,9 @@
       "toggleHeaderRow": "Toggle header row",
       "mergeOrSplit": "Merge / split cells",
       "delete": "Delete table"
+    },
+    "more": {
+      "menu": "More formatting"
     }
   },
   "entityLink": {

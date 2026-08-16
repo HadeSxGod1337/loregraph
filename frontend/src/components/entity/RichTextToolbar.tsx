@@ -236,6 +236,18 @@ function ColorGrid({ colors, current, resetLabel, onPick, onReset }: ColorGridPr
   );
 }
 
+/** Icon + text row for a menu item inside the overflow menu — plain text
+ * reads fine in the small always-visible toolbar buttons, but a flat list of
+ * bare labels in a dropdown is harder to scan than one with icons. */
+function iconLabel(icon: IconName, text: string): ReactNode {
+  return (
+    <span className="rich-text-menu-icon-item">
+      {icons[icon]}
+      {text}
+    </span>
+  );
+}
+
 /** The current block format, as one id — a heading and a code block can never
  * both hold the cursor, so the dropdown shows a single value. */
 function currentBlockFormat(editor: Editor): BlockFormatId {
@@ -327,6 +339,21 @@ export function RichTextToolbar({
   const fontFamilyId =
     FONT_FAMILIES.find((font) => font.value === state.fontFamily)?.id ?? "custom";
 
+  // Whether any control tucked into the overflow menu is currently engaged —
+  // shown on the trigger itself so an applied-but-hidden format is still
+  // visible at a glance, the same way the color/highlight/align triggers
+  // used to light up on their own.
+  const overflowActive =
+    state.strike ||
+    state.code ||
+    state.taskList ||
+    state.align !== "left" ||
+    Boolean(state.fontFamily) ||
+    Boolean(state.fontSize) ||
+    Boolean(state.color) ||
+    Boolean(state.highlight) ||
+    state.inTable;
+
   function openLinkMenu() {
     setLinkDraft(state.linkHref);
   }
@@ -382,54 +409,6 @@ export function RichTextToolbar({
         }
       </ToolbarMenu>
 
-      <ToolbarMenu
-        label={t(`richText.font.${fontFamilyId}`)}
-        title={t("richText.font.menu")}
-        className="wide"
-      >
-        {(close) => (
-          <>
-            {FONT_FAMILIES.map((font) => (
-              <MenuItem
-                key={font.id}
-                label={
-                  <span style={font.value ? { fontFamily: font.value } : undefined}>
-                    {t(`richText.font.${font.id}`)}
-                  </span>
-                }
-                isActive={fontFamilyId === font.id}
-                onClick={() => {
-                  const chain = editor.chain().focus();
-                  if (font.value) chain.setFontFamily(font.value).run();
-                  else chain.unsetFontFamily().run();
-                  close();
-                }}
-              />
-            ))}
-            <span className="rich-text-menu-separator" />
-            <div className="rich-text-menu-caption">{t("richText.font.size")}</div>
-            {FONT_SIZES.map((size) => (
-              <MenuItem
-                key={size}
-                label={size}
-                isActive={state.fontSize === size}
-                onClick={() => {
-                  editor.chain().focus().setFontSize(size).run();
-                  close();
-                }}
-              />
-            ))}
-            <MenuItem
-              label={t("richText.font.sizeReset")}
-              onClick={() => {
-                editor.chain().focus().unsetFontSize().run();
-                close();
-              }}
-            />
-          </>
-        )}
-      </ToolbarMenu>
-
       <span className="rich-text-toolbar-divider" />
 
       <ToolbarButton
@@ -450,89 +429,8 @@ export function RichTextToolbar({
         isActive={state.underline}
         onClick={() => editor.chain().focus().toggleUnderline().run()}
       />
-      <ToolbarButton
-        icon="strike"
-        title={t("richText.strike")}
-        isActive={state.strike}
-        onClick={() => editor.chain().focus().toggleStrike().run()}
-      />
-      <ToolbarButton
-        icon="code"
-        title={t("richText.inlineCode")}
-        isActive={state.code}
-        onClick={() => editor.chain().focus().toggleCode().run()}
-      />
-
-      <ToolbarMenu
-        icon="color"
-        title={t("richText.textColor")}
-        isActive={Boolean(state.color)}
-      >
-        {(close) => (
-          <ColorGrid
-            colors={TEXT_COLORS}
-            current={state.color}
-            resetLabel={t("richText.colorReset")}
-            onPick={(color) => {
-              editor.chain().focus().setColor(color).run();
-              close();
-            }}
-            onReset={() => {
-              editor.chain().focus().unsetColor().run();
-              close();
-            }}
-          />
-        )}
-      </ToolbarMenu>
-
-      <ToolbarMenu
-        icon="highlight"
-        title={t("richText.highlight")}
-        isActive={Boolean(state.highlight)}
-      >
-        {(close) => (
-          <ColorGrid
-            colors={HIGHLIGHT_COLORS}
-            current={state.highlight}
-            resetLabel={t("richText.highlightReset")}
-            onPick={(color) => {
-              editor.chain().focus().setHighlight({ color }).run();
-              close();
-            }}
-            onReset={() => {
-              editor.chain().focus().unsetHighlight().run();
-              close();
-            }}
-          />
-        )}
-      </ToolbarMenu>
 
       <span className="rich-text-toolbar-divider" />
-
-      <ToolbarMenu
-        icon={ALIGN_ICONS[state.align]}
-        title={t("richText.align.menu")}
-        isActive={state.align !== "left"}
-      >
-        {(close) =>
-          TEXT_ALIGNMENTS.map((alignment) => (
-            <MenuItem
-              key={alignment}
-              label={
-                <span className="rich-text-menu-icon-item">
-                  {icons[ALIGN_ICONS[alignment]]}
-                  {t(`richText.align.${alignment}`)}
-                </span>
-              }
-              isActive={state.align === alignment}
-              onClick={() => {
-                editor.chain().focus().setTextAlign(alignment).run();
-                close();
-              }}
-            />
-          ))
-        }
-      </ToolbarMenu>
 
       <ToolbarButton
         icon="bulletList"
@@ -545,28 +443,6 @@ export function RichTextToolbar({
         title={t("richText.orderedList")}
         isActive={state.orderedList}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
-      />
-      <ToolbarButton
-        icon="taskList"
-        title={t("richText.taskList")}
-        isActive={state.taskList}
-        onClick={() => editor.chain().focus().toggleTaskList().run()}
-      />
-      <ToolbarButton
-        icon="outdent"
-        title={t("richText.outdent")}
-        disabled={!state.listItemType}
-        onClick={() =>
-          editor.chain().focus().liftListItem(state.listItemType ?? "listItem").run()
-        }
-      />
-      <ToolbarButton
-        icon="indent"
-        title={t("richText.indent")}
-        disabled={!state.listItemType}
-        onClick={() =>
-          editor.chain().focus().sinkListItem(state.listItemType ?? "listItem").run()
-        }
       />
 
       <span className="rich-text-toolbar-divider" />
@@ -619,17 +495,129 @@ export function RichTextToolbar({
         onClick={onInsertImage}
       />
 
-      <ToolbarMenu icon="table" title={t("richText.table.menu")} isActive={state.inTable}>
-        {(close) => (
+      <span className="rich-text-toolbar-divider" />
+
+      {/* Everything below is reached less often than the controls above —
+          grouped here instead of spread across the bar so the toolbar's
+          width stops growing with every formatting feature it picks up.
+          Items intentionally don't close this menu on click (same as the
+          table actions below always did): several are typically applied in
+          a row (e.g. font, then size, then colour). */}
+      <ToolbarMenu
+        icon="more"
+        title={t("richText.more.menu")}
+        isActive={overflowActive}
+        className="wide"
+      >
+        {() => (
           <>
             <MenuItem
-              label={t("richText.table.insert")}
-              onClick={() => {
-                editor.chain().focus().insertTable(DEFAULT_TABLE).run();
-                close();
-              }}
+              label={iconLabel("strike", t("richText.strike"))}
+              isActive={state.strike}
+              onClick={() => editor.chain().focus().toggleStrike().run()}
             />
+            <MenuItem
+              label={iconLabel("code", t("richText.inlineCode"))}
+              isActive={state.code}
+              onClick={() => editor.chain().focus().toggleCode().run()}
+            />
+            <MenuItem
+              label={iconLabel("taskList", t("richText.taskList"))}
+              isActive={state.taskList}
+              onClick={() => editor.chain().focus().toggleTaskList().run()}
+            />
+            <MenuItem
+              label={iconLabel("outdent", t("richText.outdent"))}
+              disabled={!state.listItemType}
+              onClick={() =>
+                editor.chain().focus().liftListItem(state.listItemType ?? "listItem").run()
+              }
+            />
+            <MenuItem
+              label={iconLabel("indent", t("richText.indent"))}
+              disabled={!state.listItemType}
+              onClick={() =>
+                editor.chain().focus().sinkListItem(state.listItemType ?? "listItem").run()
+              }
+            />
+            <MenuItem
+              label={iconLabel("hr", t("richText.horizontalRule"))}
+              onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            />
+            <MenuItem
+              label={iconLabel("clear", t("richText.clearFormatting"))}
+              onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
+            />
+
             <span className="rich-text-menu-separator" />
+            <div className="rich-text-menu-caption">{t("richText.align.menu")}</div>
+            {TEXT_ALIGNMENTS.map((alignment) => (
+              <MenuItem
+                key={alignment}
+                label={iconLabel(ALIGN_ICONS[alignment], t(`richText.align.${alignment}`))}
+                isActive={state.align === alignment}
+                onClick={() => editor.chain().focus().setTextAlign(alignment).run()}
+              />
+            ))}
+
+            <span className="rich-text-menu-separator" />
+            <div className="rich-text-menu-caption">{t("richText.font.menu")}</div>
+            {FONT_FAMILIES.map((font) => (
+              <MenuItem
+                key={font.id}
+                label={
+                  <span style={font.value ? { fontFamily: font.value } : undefined}>
+                    {t(`richText.font.${font.id}`)}
+                  </span>
+                }
+                isActive={fontFamilyId === font.id}
+                onClick={() => {
+                  const chain = editor.chain().focus();
+                  if (font.value) chain.setFontFamily(font.value).run();
+                  else chain.unsetFontFamily().run();
+                }}
+              />
+            ))}
+            <div className="rich-text-menu-caption">{t("richText.font.size")}</div>
+            {FONT_SIZES.map((size) => (
+              <MenuItem
+                key={size}
+                label={size}
+                isActive={state.fontSize === size}
+                onClick={() => editor.chain().focus().setFontSize(size).run()}
+              />
+            ))}
+            <MenuItem
+              label={t("richText.font.sizeReset")}
+              onClick={() => editor.chain().focus().unsetFontSize().run()}
+            />
+
+            <span className="rich-text-menu-separator" />
+            <div className="rich-text-menu-caption">{t("richText.textColor")}</div>
+            <ColorGrid
+              colors={TEXT_COLORS}
+              current={state.color}
+              resetLabel={t("richText.colorReset")}
+              onPick={(color) => editor.chain().focus().setColor(color).run()}
+              onReset={() => editor.chain().focus().unsetColor().run()}
+            />
+
+            <span className="rich-text-menu-separator" />
+            <div className="rich-text-menu-caption">{t("richText.highlight")}</div>
+            <ColorGrid
+              colors={HIGHLIGHT_COLORS}
+              current={state.highlight}
+              resetLabel={t("richText.highlightReset")}
+              onPick={(color) => editor.chain().focus().setHighlight({ color }).run()}
+              onReset={() => editor.chain().focus().unsetHighlight().run()}
+            />
+
+            <span className="rich-text-menu-separator" />
+            <div className="rich-text-menu-caption">{t("richText.table.menu")}</div>
+            <MenuItem
+              label={t("richText.table.insert")}
+              onClick={() => editor.chain().focus().insertTable(DEFAULT_TABLE).run()}
+            />
             <MenuItem
               label={t("richText.table.addRowAfter")}
               disabled={!state.inTable}
@@ -660,32 +648,14 @@ export function RichTextToolbar({
               disabled={!state.inTable}
               onClick={() => editor.chain().focus().mergeOrSplit().run()}
             />
-            <span className="rich-text-menu-separator" />
             <MenuItem
               label={t("richText.table.delete")}
               disabled={!state.inTable}
-              onClick={() => {
-                editor.chain().focus().deleteTable().run();
-                close();
-              }}
+              onClick={() => editor.chain().focus().deleteTable().run()}
             />
           </>
         )}
       </ToolbarMenu>
-
-      <ToolbarButton
-        icon="hr"
-        title={t("richText.horizontalRule")}
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-      />
-
-      <span className="rich-text-toolbar-divider" />
-
-      <ToolbarButton
-        icon="clear"
-        title={t("richText.clearFormatting")}
-        onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
-      />
     </div>
   );
 }
