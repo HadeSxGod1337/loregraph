@@ -290,16 +290,26 @@
     "newTitle": "Новая сущность",
     "editTitle": "Редактирование сущности",
     "backToList": "Сущности",
+    "sectionsNavLabel": "Разделы",
+    "sectionBasics": "Основное",
+    "sectionContent": "Содержимое",
     "typeLabel": "Тип",
     "titleLabel": "Название",
     "iconLabel": "Иконка",
     "otherFiles": "Прочие файлы",
     "unsavedChanges": "Есть несохранённые изменения",
+    "saving": "Сохранение…",
+    "allSaved": "Все изменения сохранены",
     "savedToast": "Сущность сохранена",
     "createdToast": "Сущность создана",
     "deletedToast": "Сущность удалена",
+    "iconUploadFailedToast": "Сущность создана, но иконку загрузить не удалось — попробуй задать её ещё раз",
+    "previewLabel": "Превью карточки",
+    "previewUntitled": "Без названия",
     "deleteConfirmTitle": "Удалить сущность?",
     "deleteConfirmBody": "«{{title}}» и все её поля и связи будут удалены навсегда.",
+    "dangerHeading": "Опасная зона",
+    "dangerHint": "Необратимые действия с этой сущностью.",
     "templateChip": "Шаблон: {{name}}",
     "templateReadOnlyHint": "раскладка листа — только для чтения, менять её можно в конструкторе шаблона",
     "editTemplate": "Изменить шаблон"
@@ -378,10 +388,14 @@
     "heading": "Вложения"
   },
   "icon": {
-    "saveFirst": "Сначала сохрани сущность, чтобы задать иконку.",
     "noIcon": "нет иконки",
     "cropTitle": "Обрезка изображения",
-    "cropZoom": "Масштаб"
+    "cropZoom": "Масштаб",
+    "cropModeLabel": "Режим обрезки",
+    "cropModeFill": "Заполнить",
+    "cropModeFit": "Вписать",
+    "cropModeFillHint": "Обрезает изображение под рамку — перетаскивай и меняй масштаб, чтобы выбрать нужную часть.",
+    "cropModeFitHint": "Сохраняет изображение целиком, с полями под рамку — ничего не обрезается."
   },
   "richText": {
     "insertImage": "Вставить изображение",
@@ -447,6 +461,9 @@
       "toggleHeaderRow": "Строка заголовка",
       "mergeOrSplit": "Объединить / разделить",
       "delete": "Удалить таблицу"
+    },
+    "more": {
+      "menu": "Ещё форматирование"
     }
   },
   "entityLink": {

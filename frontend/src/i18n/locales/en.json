@@ -281,16 +281,26 @@
     "newTitle": "New Entity",
     "editTitle": "Edit Entity",
     "backToList": "Entities",
+    "sectionsNavLabel": "Sections",
+    "sectionBasics": "Basics",
+    "sectionContent": "Content",
     "typeLabel": "Type",
     "titleLabel": "Title",
     "iconLabel": "Icon",
     "otherFiles": "Other files",
     "unsavedChanges": "Unsaved changes",
+    "saving": "Saving…",
+    "allSaved": "All changes saved",
     "savedToast": "Entity saved",
     "createdToast": "Entity created",
     "deletedToast": "Entity deleted",
+    "iconUploadFailedToast": "Entity created, but the icon failed to upload — try setting it again",
+    "previewLabel": "Card preview",
+    "previewUntitled": "Untitled",
     "deleteConfirmTitle": "Delete entity?",
     "deleteConfirmBody": "\"{{title}}\" and all of its fields and relationships will be deleted forever.",
+    "dangerHeading": "Danger zone",
+    "dangerHint": "Irreversible actions on this entity.",
     "templateChip": "Template: {{name}}",
     "templateReadOnlyHint": "sheet layout is read-only here — edit it in the template designer",
     "editTemplate": "Edit template"
@@ -369,10 +379,14 @@
     "heading": "Attachments"
   },
   "icon": {
-    "saveFirst": "Save the entity first to set an icon.",
     "noIcon": "no icon",
     "cropTitle": "Crop image",
-    "cropZoom": "Zoom"
+    "cropZoom": "Zoom",
+    "cropModeLabel": "Crop mode",
+    "cropModeFill": "Fill",
+    "cropModeFit": "Fit",
+    "cropModeFillHint": "Crops the image to fill the frame — drag and zoom to choose what's kept.",
+    "cropModeFitHint": "Keeps the whole image, padded to fit the frame — nothing gets cropped off."
   },
   "richText": {
     "insertImage": "Insert image",
@@ -438,6 +452,9 @@
       "toggleHeaderRow": "Toggle header row",
       "mergeOrSplit": "Merge / split cells",
       "delete": "Delete table"
+    },
+    "more": {
+      "menu": "More formatting"
     }
   },
   "entityLink": {
