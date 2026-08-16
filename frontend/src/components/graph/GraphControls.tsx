@@ -36,6 +36,13 @@ interface GraphControlsProps {
   onCenterView: () => void;
   onLockedChange: (locked: boolean) => void;
   onGridEnabledChange: (enabled: boolean) => void;
+  /** Whether the current view has any hierarchy branch to collapse at all —
+   * hides both kebab actions below when the project doesn't use hierarchy
+   * edge types, same spirit as EntityListPage only offering its collapse
+   * toggle once `allFolders.length > 0`. */
+  hasHierarchyBranches: boolean;
+  onCollapseAllHierarchy: () => void;
+  onExpandAllHierarchy: () => void;
 }
 
 /** Horizontal dock anchored at the bottom of the canvas, next to the create
@@ -58,6 +65,9 @@ export function GraphControls({
   onCenterView,
   onLockedChange,
   onGridEnabledChange,
+  hasHierarchyBranches,
+  onCollapseAllHierarchy,
+  onExpandAllHierarchy,
 }: GraphControlsProps) {
   const { t } = useTranslation();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -194,6 +204,12 @@ export function GraphControls({
             label: locked ? t("graph.unlockPositions") : t("graph.lockPositions"),
             onClick: () => onLockedChange(!locked),
           },
+          ...(hasHierarchyBranches
+            ? [
+                { label: t("graph.collapseAllHierarchy"), onClick: onCollapseAllHierarchy },
+                { label: t("graph.expandAllHierarchy"), onClick: onExpandAllHierarchy },
+              ]
+            : []),
         ]}
       />
     </div>
