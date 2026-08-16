@@ -2243,6 +2243,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: default;
+  transition: opacity 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+/* Edge touches whatever's currently focal (hovered node, selection, or the
+   active root) — see computeEdgeEmphasis in floatingEdgeUtils.ts. Also the
+   escape hatch that keeps a label visible under .react-flow-lod, below. */
+.graph-edge-label-emphasized {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Transient spotlight: a node elsewhere is hovered and this edge isn't part
+   of it. Never combined with -emphasized (see computeEdgeEmphasis). */
+.graph-edge-label-dimmed {
+  opacity: 0.35;
 }
 
 /* --- Player access --------------------------------------------------------- */
@@ -2791,6 +2806,21 @@
 
 .react-flow-lod .entity-node-title {
   font-size: 11px;
+}
+
+/* Edge labels are the other big source of visual noise at scale — hundreds
+   of small pills stacking up across the canvas — and unlike node preview
+   fields they're illegible at LOD zoom anyway. Hidden by default, except for
+   whatever's incident to the current hover/selection/root focus
+   (.graph-edge-label-emphasized): that's exactly the relationship someone
+   zoomed out is trying to inspect, so it stays legible instead of also
+   disappearing. */
+.react-flow-lod .graph-edge-label {
+  display: none;
+}
+
+.react-flow-lod .graph-edge-label-emphasized {
+  display: block;
 }
 
 /* handle dots are only needed while dragging a connection — hide them at
