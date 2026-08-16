@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useBlocker, useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import type { EntityField, EntityTemplate, FieldType, FieldValue } from "../api/types";
 import { DEFAULT_ENTITY_TYPES } from "../api/types";
+import { attachmentsApi } from "../api/attachments";
+import { entitiesApi } from "../api/entities";
 import { AttachmentUploader } from "../components/entity/AttachmentUploader";
 import { CharacterSheetEmbed } from "../components/entity/CharacterSheetEmbed";
+import { EntityCardPreview } from "../components/entity/EntityCardPreview";
 import { EntityPlayerAccessPanel } from "../components/entity/EntityPlayerAccessPanel";
 import { FieldEditor } from "../components/entity/FieldEditor";
 import { SheetRenderer } from "../components/sheet/SheetRenderer";
@@ -35,6 +39,7 @@ export function EntityEditPage() {
   const isNew = id === undefined;
   const navigate = useNavigate();
   const toast = useToast();
+  const queryClient = useQueryClient();
 
   const { data: entity, isLoading } = useEntity(projectId!, id);
   const createEntity = useCreateEntity(projectId!);
@@ -45,6 +50,11 @@ export function EntityEditPage() {
   const [title, setTitle] = useState("");
   const [fields, setFields] = useState<EntityField[]>([]);
   const [templateId, setTemplateId] = useState<string | null>(null);
+  // Picked and cropped before the entity exists — the attachment store has
+  // nowhere to upload it to yet, so it's held here and only becomes a real
+  // attachment once handleSave's create branch has an entity id to hang it
+  // off. See IconPicker's staged mode.
+  const [pendingIconFile, setPendingIconFile] = useState<File | null>(null);
   // Keys the current template selection provisionally added — dropped if the
   // template is deselected before saving (see syncTemplateFields).
   const [templateAddedKeys, setTemplateAddedKeys] = useState<string[]>([]);
@@ -126,7 +136,20 @@ export function EntityEditPage() {
     const data = { type, title, fields, template_id: templateId };
     if (isNew) {
       createEntity.mutate(data, {
-        onSuccess: (created) => {
+        onSuccess: async (created) => {
+          if (pendingIconFile) {
+            try {
+              const attachment = await attachmentsApi.upload(created.id, pendingIconFile);
+              await entitiesApi.setIcon(projectId!, created.id, attachment.id);
+              void queryClient.invalidateQueries({ queryKey: ["entities", projectId] });
+              void queryClient.invalidateQueries({ queryKey: ["subgraph", projectId] });
+            } catch {
+              // The entity itself was created fine — only the icon step
+              // failed, so say so specifically rather than implying the
+              // whole save needs retrying.
+              toast(t("entityEdit.iconUploadFailedToast"), "error");
+            }
+          }
           toast(t("entityEdit.createdToast"));
           skipBlockerRef.current = true;
           navigate(`/projects/${projectId}/entities/${created.id}`);
@@ -245,7 +268,22 @@ export function EntityEditPage() {
         </label>
 
         <label>{t("entityEdit.iconLabel")}</label>
-        <IconPicker projectId={projectId!} entityId={id} icon={entity?.icon ?? null} />
+        <IconPicker
+          projectId={projectId!}
+          entityId={id}
+          icon={entity?.icon ?? null}
+          stagedIcon={pendingIconFile}
+          onStagedIconChange={setPendingIconFile}
+        />
+
+        {isNew && (
+          <EntityCardPreview
+            type={type}
+            title={title}
+            fields={fields}
+            iconFile={pendingIconFile}
+          />
+        )}
       </section>
 
       <section id="entity-edit-content" className="entity-edit-section">

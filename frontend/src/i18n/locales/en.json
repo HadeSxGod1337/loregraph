@@ -294,6 +294,9 @@
     "savedToast": "Entity saved",
     "createdToast": "Entity created",
     "deletedToast": "Entity deleted",
+    "iconUploadFailedToast": "Entity created, but the icon failed to upload — try setting it again",
+    "previewLabel": "Card preview",
+    "previewUntitled": "Untitled",
     "deleteConfirmTitle": "Delete entity?",
     "deleteConfirmBody": "\"{{title}}\" and all of its fields and relationships will be deleted forever.",
     "dangerHeading": "Danger zone",
@@ -376,7 +379,6 @@
     "heading": "Attachments"
   },
   "icon": {
-    "saveFirst": "Save the entity first to set an icon.",
     "noIcon": "no icon",
     "cropTitle": "Crop image",
     "cropZoom": "Zoom"

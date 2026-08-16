@@ -303,6 +303,9 @@
     "savedToast": "Сущность сохранена",
     "createdToast": "Сущность создана",
     "deletedToast": "Сущность удалена",
+    "iconUploadFailedToast": "Сущность создана, но иконку загрузить не удалось — попробуй задать её ещё раз",
+    "previewLabel": "Превью карточки",
+    "previewUntitled": "Без названия",
     "deleteConfirmTitle": "Удалить сущность?",
     "deleteConfirmBody": "«{{title}}» и все её поля и связи будут удалены навсегда.",
     "dangerHeading": "Опасная зона",
@@ -385,7 +388,6 @@
     "heading": "Вложения"
   },
   "icon": {
-    "saveFirst": "Сначала сохрани сущность, чтобы задать иконку.",
     "noIcon": "нет иконки",
     "cropTitle": "Обрезка изображения",
     "cropZoom": "Масштаб"

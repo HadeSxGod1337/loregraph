@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { API_URL } from "../../api/client";
 import type { Entity } from "../../api/types";
+import { entityCardSubtitle } from "../../lib/entityCard";
 import { typeColor, typeSoftBackground } from "../../lib/typeColor";
 import { Icon } from "../ui/Icon";
 
@@ -135,34 +136,7 @@ function EntityAvatar({ entity }: { entity: Entity }) {
 
 function EntitySubtitle({ entity }: { entity: Entity }) {
   const { t } = useTranslation();
-  const text = entitySubtitle(entity, t);
+  const text = entityCardSubtitle(entity.fields, t);
   if (!text) return null;
   return <span className="entity-list-sub">{text}</span>;
-}
-
-/** Second line of a row: the first short text field marked for the graph
- * card (the entity's own "tagline"), else a field count. */
-function entitySubtitle(
-  entity: Entity,
-  t: (key: string, options?: Record<string, unknown>) => string,
-): string {
-  const preview = entity.fields.find(
-    (field) =>
-      field.show_on_card &&
-      field.field_type === "text" &&
-      typeof field.value === "string" &&
-      field.value.trim() !== "",
-  );
-  if (preview) return preview.value as string;
-  const firstText = entity.fields.find(
-    (field) =>
-      field.field_type === "text" &&
-      typeof field.value === "string" &&
-      field.value.trim() !== "",
-  );
-  if (firstText) return firstText.value as string;
-  if (entity.fields.length > 0) {
-    return t("entities.fieldCount", { count: entity.fields.length });
-  }
-  return "";
 }
