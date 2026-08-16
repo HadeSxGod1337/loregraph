@@ -2886,7 +2886,10 @@
 
 .react-flow-lod .entity-node-icon-slot,
 .react-flow-lod .entity-type-badge,
-.react-flow-lod .entity-node-preview {
+.react-flow-lod .entity-node-preview,
+/* Illegible and unclickable at this size — same treatment as the rest of
+   the card's fine detail, not worth keeping around as visual noise. */
+.react-flow-lod .entity-node-collapse-toggle {
   display: none;
 }
 
@@ -3002,6 +3005,66 @@
 .entity-node-preview-item b {
   color: var(--text-muted);
   font-weight: 600;
+}
+
+/* Collapse/expand control for a hierarchy branch — same disclosure-chevron
+   language as .entity-tree-chevron on the Entities page (rotate in place,
+   .is-open resets it), packaged as a small standalone tab since a canvas
+   card has no row for it to sit at the start of. Bottom-left corner is clear
+   of the icon slot (top-right), the revealed marker (top-left, see Player
+   access below) and both connection handles (top/bottom-center). Absolutely
+   positioned *inside* .entity-node's box (not overhanging via a negative
+   offset, unlike a first attempt at this) so it never adds to the node's
+   measured bounds that FloatingEdge/minimap/fitView compute from, AND stays
+   inside .entity-node's own clip-path — that clip only cuts the top-right
+   corner, but a clip-path clips all descendant painting to its polygon, so
+   anything overhanging any edge would be silently unclickable there. */
+.entity-node-collapse-toggle {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 5px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background-color 0.12s;
+}
+
+.entity-node-collapse-toggle svg {
+  transform: rotate(-90deg);
+  transition: transform 0.12s;
+}
+
+.entity-node-collapse-toggle.is-open svg {
+  transform: rotate(0deg);
+}
+
+.entity-node-collapse-toggle:hover,
+.entity-node-collapse-toggle:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Collapsed *and* actually hiding something (the count only renders then) —
+   worth calling out at a glance, so a branch worth reopening doesn't read
+   the same as an idle, nothing-to-see-here chevron. */
+.entity-node-collapse-toggle:has(.entity-node-collapse-count) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.entity-node-collapse-count {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 /* entity detail panel — positioned relative to .graph-canvas-area (its
