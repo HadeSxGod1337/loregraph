@@ -12,6 +12,7 @@ import {
   useAgentConfig,
   useAgentSessions,
 } from "../../hooks/useAgent";
+import { useAutoGrowTextarea } from "../../hooks/useAutoGrowTextarea";
 import { useEntities } from "../../hooks/useEntities";
 import { useFileDrop } from "../../hooks/useFileDrop";
 import { useFilePaste } from "../../hooks/useFilePaste";
@@ -19,6 +20,7 @@ import { translateEvent, translateWarning } from "../../i18n/eventText";
 import { typeColor, typeSoftBackground } from "../../lib/typeColor";
 import { Icon } from "../ui/Icon";
 import { Markdown } from "../ui/Markdown";
+import { composerAvailability, isSubmitKeypress } from "./composerState";
 import { DraftPreviewDrawer } from "./DraftPreviewDrawer";
 
 interface AssistantPanelProps {
@@ -85,11 +87,12 @@ function SessionPicker({ projectId, chat }: { projectId: string; chat: AgentChat
       {chat.threadId && (
         <button
           type="button"
-          className="assistant-new-session-button"
+          className="icon-button icon-button-accent"
           onClick={chat.reset}
           title={t("assistant.newConversation")}
+          aria-label={t("assistant.newConversation")}
         >
-          {t("assistant.newConversationButton")}
+          <Icon name="plus" size={15} />
         </button>
       )}
     </div>
@@ -186,6 +189,12 @@ function Transcript({
   );
 }
 
+// Auto-grow bounds for the composer textarea: starts at ~2 lines (matching
+// the old fixed rows={2}) and grows to ~7 before scrolling internally, so a
+// long paste never pushes Send off the bottom of the panel.
+const COMPOSER_MIN_HEIGHT = 52;
+const COMPOSER_MAX_HEIGHT = 200;
+
 function ChatInput({
   chat,
   entities,
@@ -200,15 +209,17 @@ function ChatInput({
   const [anchorId, setAnchorId] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // While a draft awaits review, new messages are rejected by the backend —
   // block them in the UI too, with an explanation.
   const reviewPending = chat.pendingReview !== null;
-  const blocked = chat.busy || reviewPending;
+  const { blocked, canSend } = composerAvailability({ text, busy: chat.busy, reviewPending });
+  useAutoGrowTextarea(textareaRef, text, COMPOSER_MIN_HEIGHT, COMPOSER_MAX_HEIGHT);
 
   function submit() {
+    if (!canSend) return;
     const trimmed = text.trim();
-    if (!trimmed || blocked) return;
     setText("");
     setFiles([]);
     void chat.send(trimmed, anchorId || null, files);
@@ -272,6 +283,8 @@ function ChatInput({
         </div>
       )}
       <textarea
+        ref={textareaRef}
+        className="assistant-composer-input"
         rows={2}
         placeholder={
           reviewPending
@@ -282,7 +295,7 @@ function ChatInput({
         disabled={blocked}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
+          if (isSubmitKeypress(e.key, e.shiftKey)) {
             e.preventDefault();
             submit();
           }
@@ -323,7 +336,7 @@ function ChatInput({
         <button
           type="button"
           className="assistant-send-button"
-          disabled={!text.trim() || blocked}
+          disabled={!canSend}
           onClick={submit}
         >
           {chat.busy && <span className="spinner" aria-hidden="true" />}

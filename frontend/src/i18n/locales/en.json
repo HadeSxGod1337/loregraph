@@ -616,7 +616,6 @@
     },
     "historyPlaceholder": "— conversation history —",
     "newConversation": "New conversation",
-    "newConversationButton": "+ New",
     "emptyInviteEmptyWorld": "Your world is empty. Describe it in a couple of sentences — the assistant will propose starting lore: locations, factions, characters and their connections. Nothing becomes canon without your approval. You can also just ask questions.",
     "emptyInviteHasWorld": "Ask about the world, ask it to expand a part of it, or add new lore — the assistant answers grounded in existing canon and proposes drafts for review.",
     "removeFileTitle": "Remove file",
