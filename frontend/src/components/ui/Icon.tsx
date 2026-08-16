@@ -17,6 +17,7 @@ export type IconName =
   | "eye-off"
   | "filter"
   | "folder"
+  | "grid"
   | "grip"
   | "help"
   | "layers"
@@ -103,6 +104,14 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   folder: <path d="M3 7a2 2 0 0 1 2-2h4.2l1.6 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />,
+  grid: (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </>
+  ),
   // Classic 2x3 drag-grip dots — reads as "grab me", unlike the horizontal
   // "more" ellipsis it replaces (which reads as an overflow menu).
   grip: (

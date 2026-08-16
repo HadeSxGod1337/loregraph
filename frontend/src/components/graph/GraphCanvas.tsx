@@ -1,5 +1,6 @@
 import {
   Background,
+  BackgroundVariant,
   MarkerType,
   MiniMap,
   ReactFlow,
@@ -36,6 +37,9 @@ const POSITION_SAVE_DEBOUNCE_MS = 500;
 // React Flow's own default (0.5) doesn't let a large "All entities" world
 // zoom out far enough to see everything at once.
 const MIN_ZOOM = 0.05;
+// Shared by the background pattern and snapGrid — grid lines are only a
+// useful reference for where nodes will snap if both use the same spacing.
+const GRID_SIZE = 22;
 
 function minimapNodeColor(node: FlowNode<EntityNodeData>): string {
   return typeColor(node.data.entityType);
@@ -82,6 +86,9 @@ interface GraphCanvasProps {
    * positions" toggle, replacing the interactivity lock that used to live on
    * React Flow's default <Controls/>. */
   locked: boolean;
+  /** Toolbar's grid toggle — swaps the background to a line grid and snaps
+   * dragged nodes to it (see GRID_SIZE). */
+  gridEnabled: boolean;
   onNodeSelect: (entityId: string) => void;
   onNodeSetRoot: (entityId: string) => void;
   onConnectNodes: (sourceId: string, targetId: string) => void;
@@ -188,6 +195,7 @@ function GraphCanvasInner({
   focusRequest,
   actionRequest,
   locked,
+  gridEnabled,
   onNodeSelect,
   onNodeSetRoot,
   onConnectNodes,
@@ -396,8 +404,19 @@ function GraphCanvasInner({
             nodesDraggable={!locked}
             nodesConnectable={!locked}
             elementsSelectable={!locked}
+            // Grid toggle — snapping only kicks in on the next manual drag;
+            // it never retroactively moves nodes that are already placed
+            // (auto-layout's continuous coordinates included), so flipping
+            // this on mid-session doesn't rearrange anything by itself.
+            snapToGrid={gridEnabled}
+            snapGrid={[GRID_SIZE, GRID_SIZE]}
           >
-            <Background color="var(--border)" gap={22} size={1} />
+            <Background
+              color="var(--border)"
+              gap={GRID_SIZE}
+              size={1}
+              variant={gridEnabled ? BackgroundVariant.Lines : BackgroundVariant.Dots}
+            />
             <MiniMap pannable zoomable nodeColor={minimapNodeColor} nodeStrokeWidth={0} />
           </ReactFlow>
           {confirmingReset && (

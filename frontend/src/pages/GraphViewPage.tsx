@@ -44,6 +44,7 @@ export function GraphViewPage() {
   const [focusRequest, setFocusRequest] = useState<CameraFocusRequest | null>(null);
   const [actionRequest, setActionRequest] = useState<GraphActionRequest | null>(null);
   const [locked, setLocked] = useState(false);
+  const [gridEnabled, setGridEnabled] = useState(false);
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   // Newly created entities that aren't yet connected to the graph via edges.
@@ -76,6 +77,7 @@ export function GraphViewPage() {
     setViewMode("all");
     setLargeWorldNoticeDismissed(false);
     setLocked(false);
+    setGridEnabled(false);
   }, [projectId]);
 
   // If the current root was deleted, fall back to auto-picking a new one.
@@ -249,6 +251,7 @@ export function GraphViewPage() {
             focusRequest={focusRequest}
             actionRequest={actionRequest}
             locked={locked}
+            gridEnabled={gridEnabled}
             onNodeSelect={setSelectedEntityId}
             onNodeSetRoot={changeRoot}
             onConnectNodes={(sourceId, targetId) => setPendingConnection({ sourceId, targetId })}
@@ -269,6 +272,7 @@ export function GraphViewPage() {
             availableEdgeTypes={availableEdgeTypes}
             viewMode={viewMode}
             locked={locked}
+            gridEnabled={gridEnabled}
             onRootChange={changeRoot}
             onDepthChange={setDepth}
             onEdgeTypesChange={setEdgeTypes}
@@ -276,6 +280,7 @@ export function GraphViewPage() {
             onAction={dispatchGraphAction}
             onCenterView={centerView}
             onLockedChange={setLocked}
+            onGridEnabledChange={setGridEnabled}
           />
 
           {(viewMode === "all" || rootId) && (

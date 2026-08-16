@@ -333,6 +333,8 @@
     "zoomOut": "Zoom out",
     "fitView": "Fit view",
     "centerView": "Center view",
+    "grid": "Grid",
+    "gridTitle": "Toggle grid & snap-to-grid",
     "moreActions": "More actions",
     "lockPositions": "Lock node positions",
     "unlockPositions": "Unlock node positions",

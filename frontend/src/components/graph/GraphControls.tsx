@@ -22,6 +22,8 @@ interface GraphControlsProps {
   viewMode: GraphViewMode;
   /** See GraphCanvasProps — freezes dragging/connecting/selecting. */
   locked: boolean;
+  /** See GraphCanvasProps — grid background + snap-to-grid. */
+  gridEnabled: boolean;
   onRootChange: (rootId: string) => void;
   onDepthChange: (depth: number) => void;
   onEdgeTypesChange: (types: string[]) => void;
@@ -33,6 +35,7 @@ interface GraphControlsProps {
    * detail panel's own "focus camera" button (see GraphViewPage). */
   onCenterView: () => void;
   onLockedChange: (locked: boolean) => void;
+  onGridEnabledChange: (enabled: boolean) => void;
 }
 
 /** Horizontal dock anchored at the bottom of the canvas, next to the create
@@ -46,6 +49,7 @@ export function GraphControls({
   availableEdgeTypes,
   viewMode,
   locked,
+  gridEnabled,
   onRootChange,
   onDepthChange,
   onEdgeTypesChange,
@@ -53,6 +57,7 @@ export function GraphControls({
   onAction,
   onCenterView,
   onLockedChange,
+  onGridEnabledChange,
 }: GraphControlsProps) {
   const { t } = useTranslation();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -167,6 +172,17 @@ export function GraphControls({
         onClick={onCenterView}
       >
         <Icon name="expand" size={14} />
+      </button>
+
+      <button
+        type="button"
+        className="graph-dock-icon-btn"
+        title={t("graph.gridTitle")}
+        aria-label={t("graph.grid")}
+        aria-pressed={gridEnabled}
+        onClick={() => onGridEnabledChange(!gridEnabled)}
+      >
+        <Icon name="grid" size={14} />
       </button>
 
       <KebabMenu
