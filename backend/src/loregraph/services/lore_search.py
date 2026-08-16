@@ -19,6 +19,8 @@ direction ("егоров" vs "егор") buys most of what stemming would, in ev
 script, with no language table.
 """
 
+import asyncio
+import logging
 from dataclasses import dataclass
 
 from loregraph.schemas.entity import EntityOut
@@ -29,6 +31,8 @@ from loregraph.storage.vectorstore.hybrid_search import (
     reciprocal_rank_fusion,
     tokenize,
 )
+
+logger = logging.getLogger(__name__)
 
 # Below this, a token is too generic for prefix agreement to mean anything —
 # "а"/"of" would match half the world and drown the real hits.
@@ -59,6 +63,61 @@ def _matches_lexically(entity: EntityOut, query_tokens: set[str], needle: str) -
         if len(token) >= MIN_LEXICAL_TOKEN_CHARS
         for query_token in query_tokens
     )
+
+
+def _exact_title_ids(entities: list[EntityOut], query: str) -> list[str]:
+    """Ids of entities whose title IS the query, case-folded — an obvious
+    exact-name hit. Surfaced ahead of the fused ranking so a poor embedding
+    rank can never bury the very entity the game master named (the priority
+    order is exact title → lexical → dense, not "whatever the embedder liked").
+    Several ids means several namesakes: the caller shows them all, and the
+    assistant asks which one when context can't tell them apart."""
+    needle = query.strip().casefold()
+    if not needle:
+        return []
+    return [
+        entity.id for entity in entities if entity.title.strip().casefold() == needle
+    ]
+
+
+async def _dense_ranking(
+    vector_index: VectorIndex | None,
+    project_id: str,
+    query: str,
+    *,
+    limit: int,
+    entity_type: str | None,
+    by_id: dict[str, EntityOut],
+) -> list[str]:
+    """The dense (embedding) contour, degrading to empty on operational failure.
+
+    Dense retrieval is best-effort here: if the embedding provider or the vector
+    store is down, the lexical contour must still answer and the failure must
+    not be read as "no such lore exists". The embedder and Chroma raise their
+    own unrelated exception types (none in loregraph's domain hierarchy), so the
+    catch is deliberately broad — but it re-raises cancellation and logs a
+    traceback, so a real bug is observable rather than silently swallowed. Same
+    degradation contract as retrieve_context's external grounding."""
+    if vector_index is None:
+        return []
+    try:
+        # Over-fetched when a type filter is on: filtering after retrieval would
+        # otherwise silently return fewer than `limit` dense hits.
+        chunks = await vector_index.query(
+            project_id, query, k=limit * 2 if entity_type else limit
+        )
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.warning(
+            "Dense retrieval failed for project %s; using lexical results only.",
+            project_id,
+            exc_info=True,
+        )
+        return []
+    # Ids absent from by_id are either another project's or a stale index entry;
+    # the SQL side is the source of truth, so they are dropped.
+    return [chunk.entity_id for chunk in chunks if chunk.entity_id in by_id][:limit]
 
 
 def _lexical_ranking(entities: list[EntityOut], query: str) -> list[str]:
@@ -98,22 +157,22 @@ async def search_lore(
     by_id = {entity.id: entity for entity in entities}
 
     lexical_ids = _lexical_ranking(entities, query)
-
-    dense_ids: list[str] = []
-    if vector_index is not None:
-        # Over-fetched when a type filter is on: filtering after retrieval
-        # would otherwise silently return fewer than `limit` dense hits.
-        chunks = await vector_index.query(
-            project_id, query, k=limit * 2 if entity_type else limit
-        )
-        # Ids absent from by_id are either another project's or a stale index
-        # entry; the SQL side is the source of truth, so they are dropped.
-        dense_ids = [chunk.entity_id for chunk in chunks if chunk.entity_id in by_id][
-            :limit
-        ]
+    dense_ids = await _dense_ranking(
+        vector_index,
+        project_id,
+        query,
+        limit=limit,
+        entity_type=entity_type,
+        by_id=by_id,
+    )
 
     fused = reciprocal_rank_fusion([dense_ids, lexical_ids])
+    # Exact-title hits jump the queue: whatever the embedder ranked, the entity
+    # the game master named by its exact title comes first. dict.fromkeys keeps
+    # first occurrence, so an exact hit already in `fused` is only promoted, not
+    # duplicated, and `total` still counts distinct matches.
+    ordered = list(dict.fromkeys([*_exact_title_ids(entities, query), *fused]))
     return LoreSearchResult(
-        entities=[by_id[entity_id] for entity_id in fused[:limit]],
-        total=len(fused),
+        entities=[by_id[entity_id] for entity_id in ordered[:limit]],
+        total=len(ordered),
     )

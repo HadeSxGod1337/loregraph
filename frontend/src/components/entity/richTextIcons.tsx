@@ -178,6 +178,13 @@ export const icons = {
       <path d="M4 6.5 8 10.5l4-4" />
     </Icon>
   ),
+  more: (
+    <Icon>
+      <circle cx="3.2" cy="8" r="1.15" fill="currentColor" stroke="none" />
+      <circle cx="8" cy="8" r="1.15" fill="currentColor" stroke="none" />
+      <circle cx="12.8" cy="8" r="1.15" fill="currentColor" stroke="none" />
+    </Icon>
+  ),
 } as const;
 
 export type IconName = keyof typeof icons;

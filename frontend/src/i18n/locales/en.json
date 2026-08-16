@@ -281,16 +281,26 @@
     "newTitle": "New Entity",
     "editTitle": "Edit Entity",
     "backToList": "Entities",
+    "sectionsNavLabel": "Sections",
+    "sectionBasics": "Basics",
+    "sectionContent": "Content",
     "typeLabel": "Type",
     "titleLabel": "Title",
     "iconLabel": "Icon",
     "otherFiles": "Other files",
     "unsavedChanges": "Unsaved changes",
+    "saving": "Saving…",
+    "allSaved": "All changes saved",
     "savedToast": "Entity saved",
     "createdToast": "Entity created",
     "deletedToast": "Entity deleted",
+    "iconUploadFailedToast": "Entity created, but the icon failed to upload — try setting it again",
+    "previewLabel": "Card preview",
+    "previewUntitled": "Untitled",
     "deleteConfirmTitle": "Delete entity?",
     "deleteConfirmBody": "\"{{title}}\" and all of its fields and relationships will be deleted forever.",
+    "dangerHeading": "Danger zone",
+    "dangerHint": "Irreversible actions on this entity.",
     "templateChip": "Template: {{name}}",
     "templateReadOnlyHint": "sheet layout is read-only here — edit it in the template designer",
     "editTemplate": "Edit template"
@@ -328,6 +338,16 @@
     "edgeTypesLabel": "Edge types",
     "edgeTypesAll": "all types",
     "edgeTypesSelected": "{{count}} selected",
+    "zoomGroup": "Zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fitView": "Fit view",
+    "centerView": "Center view",
+    "grid": "Grid",
+    "gridTitle": "Toggle grid & snap-to-grid",
+    "moreActions": "More actions",
+    "lockPositions": "Lock node positions",
+    "unlockPositions": "Unlock node positions",
     "resetLayout": "Reset layout",
     "resetLayoutConfirmTitle": "Reset layout?",
     "resetLayoutConfirmBody": "Every manually placed node in view will be rearranged. This can't be undone.",
@@ -369,10 +389,14 @@
     "heading": "Attachments"
   },
   "icon": {
-    "saveFirst": "Save the entity first to set an icon.",
     "noIcon": "no icon",
     "cropTitle": "Crop image",
-    "cropZoom": "Zoom"
+    "cropZoom": "Zoom",
+    "cropModeLabel": "Crop mode",
+    "cropModeFill": "Fill",
+    "cropModeFit": "Fit",
+    "cropModeFillHint": "Crops the image to fill the frame — drag and zoom to choose what's kept.",
+    "cropModeFitHint": "Shows the whole image. Empty space is filled with a blurred background from the image."
   },
   "richText": {
     "insertImage": "Insert image",
@@ -438,6 +462,9 @@
       "toggleHeaderRow": "Toggle header row",
       "mergeOrSplit": "Merge / split cells",
       "delete": "Delete table"
+    },
+    "more": {
+      "menu": "More formatting"
     }
   },
   "entityLink": {
@@ -565,6 +592,7 @@
       "check_duplicates_draft": "🧭 Checking for duplicates…",
       "verify_grounding": "✔️ Verifying facts…",
       "commit": "💾 Writing to the world…",
+      "brainstorm": "💡 Brainstorming ideas…",
       "fallback": "⚙️ {{node}}…"
     },
     "status": {
@@ -663,7 +691,9 @@
     "edit_failed": "Edit failed: {{reason}}",
     "relationships_committed": "Done — {{created}} relationships created, {{updated}} changed, {{removed}} removed.",
     "relationships_failed": "Relationship step stopped: {{reason}}",
-    "changes_committed": "Done — {{created}} created ({{created_titles}}), {{patched}} edited ({{patched_titles}}), and relationship ops ({{rel_created}} created, {{rel_updated}} changed, {{rel_deleted}} removed)."
+    "changes_committed": "Done — {{created}} created ({{created_titles}}), {{patched}} edited ({{patched_titles}}), and relationship ops ({{rel_created}} created, {{rel_updated}} changed, {{rel_deleted}} removed).",
+    "review_stale": "Proposal not applied — the world changed since this was reviewed. Nothing was written; re-run the request against the current world.",
+    "brainstorm_empty": "No ideas this time — try rephrasing the request."
   },
   "integrations": {
     "heading": "Integrations",

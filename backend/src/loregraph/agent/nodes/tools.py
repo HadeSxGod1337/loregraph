@@ -9,8 +9,10 @@ from loregraph.agent.mcp_tools import McpToolProvider
 from loregraph.agent.skills.registry import (
     GRAPH_DEPTH_MAX,
     LIST_ENTITIES_LIMIT,
+    RELATIONSHIPS_PAGE_LIMIT,
     SEARCH_K_DEFAULT,
     SEARCH_K_MAX,
+    pipeline_entry_node,
 )
 from loregraph.agent.state import AgentState
 from loregraph.connectors.live import LiveSourceProvider
@@ -77,6 +79,19 @@ async def run_tools(
     assert isinstance(last, AIMessage)
     results: list[ToolMessage] = []
     for call in last.tool_calls:
+        if pipeline_entry_node(call["name"]) is not None:
+            # A branching skill (propose_changes / brainstorm_lore) bundled with
+            # read calls this turn: route_after_assistant sent us here to run the
+            # reads FIRST. Defer the pipeline honestly so the model reissues it
+            # next turn with the ids the reads just produced — never begin it on
+            # context it asked for but never received (§read-before-pipeline).
+            results.append(
+                ToolMessage(
+                    _deferred_pipeline_message(call["name"]),
+                    tool_call_id=call["id"] or "",
+                )
+            )
+            continue
         match call["name"]:
             case "search_lore":
                 content = await _search_lore(
@@ -109,6 +124,16 @@ async def run_tools(
                     state.project_id,
                     str(call["args"].get("entity_id", "")),
                     _optional_int(call["args"].get("depth")) or 1,
+                )
+            case "list_relationships":
+                content = await _list_relationships(
+                    entity_store,
+                    edge_store,
+                    state.project_id,
+                    str(call["args"].get("entity_id", "")),
+                    direction=_optional_str(call["args"].get("direction")),
+                    type_filter=_optional_str(call["args"].get("type")),
+                    cursor=_optional_int(call["args"].get("cursor")),
                 )
             case "search_knowledge_base":
                 content = await _search_knowledge_base(
@@ -364,6 +389,124 @@ async def _entity_graph(
         note = _truncation_note(shown, total, f"{hint}; lower the depth")
         if note:
             lines.append(note)
+    return "\n".join(lines)
+
+
+def _deferred_pipeline_message(name: str) -> str:
+    """Told to a branching skill call that the router deferred so read tools in
+    the same turn could run first — every tool call still gets an answer, and
+    this one says plainly it did NOT start."""
+    return (
+        f"'{name}' was not started this turn — the read tools you called ran "
+        "first. Use their results above, then call it again with the ids you "
+        "found."
+    )
+
+
+def _direction_matches(edge: EdgeOut, entity_id: str, direction: str | None) -> bool:
+    if direction == "outgoing":
+        return edge.source_entity_id == entity_id
+    if direction == "incoming":
+        return edge.target_entity_id == entity_id
+    return True
+
+
+def _direction_marker(edge: EdgeOut, entity_id: str) -> str:
+    """out / in / self, from the queried entity's point of view — so the model
+    can tell an edge pointing AT it from one pointing away, which the raw
+    source→target line alone leaves it to work out."""
+    is_out = edge.source_entity_id == entity_id
+    is_in = edge.target_entity_id == entity_id
+    if is_out and is_in:
+        return "self"
+    return "out" if is_out else "in"
+
+
+def _rel_filter_desc(direction: str | None, type_filter: str | None) -> str:
+    parts = []
+    if direction:
+        parts.append(direction)
+    if type_filter:
+        parts.append(f"type={type_filter!r}")
+    return ", ".join(parts)
+
+
+async def _list_relationships(
+    entity_store: EntityStore,
+    edge_store: EdgeStore,
+    project_id: str,
+    entity_id: str,
+    *,
+    direction: str | None,
+    type_filter: str | None,
+    cursor: int | None,
+) -> str:
+    """Complete, paged enumeration of one entity's relationships.
+
+    Unlike get_entity_details/get_entity_graph, which cap and stop, this reports
+    the EXACT total, separates incoming from outgoing, and hands back a cursor
+    so "show me all of X's connections" is actually completable on a hub entity
+    with hundreds of edges — never a truncated first page silently read as the
+    whole picture."""
+    entities = await entity_store.get_many([entity_id])
+    if not entities or entities[0].project_id != project_id:
+        return f"Entity not found: {entity_id}"
+    entity = entities[0]
+
+    normalized = (direction or "").strip().lower() or None
+    if normalized not in (None, "incoming", "outgoing"):
+        return (
+            f"Unknown direction {direction!r}: use 'incoming', 'outgoing', or "
+            "omit for both."
+        )
+
+    edges = await edge_store.list_for_entity(entity_id)
+    filtered = [
+        edge
+        for edge in edges
+        if _direction_matches(edge, entity_id, normalized)
+        and (type_filter is None or edge.type == type_filter)
+    ]
+    # Deterministic order so a cursor addresses the same slice across calls.
+    filtered.sort(key=lambda edge: edge.id)
+    total = len(filtered)
+    desc = _rel_filter_desc(normalized, type_filter)
+    if total == 0:
+        suffix = f" matching {desc}" if desc else ""
+        return f"{entity.title} ({entity_id}) has no relationships{suffix}."
+
+    start = max(cursor or 0, 0)
+    page = filtered[start : start + RELATIONSHIPS_PAGE_LIMIT]
+    if not page:
+        return (
+            f"No relationships at cursor {start}: {entity.title} ({entity_id}) "
+            f"has {total} in total. Use a cursor between 0 and {total - 1}."
+        )
+
+    header = f"{entity.title} ({entity_id}) has {total} relationship(s)"
+    if desc:
+        header += f" matching {desc}"
+    if normalized is None:
+        out_total = sum(1 for e in filtered if e.source_entity_id == entity_id)
+        in_total = sum(1 for e in filtered if e.target_entity_id == entity_id)
+        header += f": {out_total} outgoing, {in_total} incoming."
+    else:
+        header += "."
+
+    title_by_id = await _titles_for_edges(entity_store, page, entity)
+    lines = [header]
+    lines.extend(
+        f"[{_direction_marker(edge, entity_id)}] {relationship_line(edge, title_by_id)}"
+        for edge in page
+    )
+    end = start + len(page)
+    if end < total:
+        lines.append(
+            f"(showing {start + 1}–{end} of {total} — call again with "
+            f"cursor={end} for the next page.)"
+        )
+    else:
+        lines.append(f"(showing {start + 1}–{end} of {total} — this is all of them.)")
     return "\n".join(lines)
 
 

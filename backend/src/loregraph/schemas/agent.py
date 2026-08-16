@@ -158,6 +158,43 @@ class LoreDraft(BaseModel):
     relationships: list[DraftRelationship] = Field(default_factory=list)
 
 
+class BrainstormIdea(BaseModel):
+    """One creative possibility produced by the brainstorm skill — an option
+    for the game master to consider, NOT a change to the world. Nothing here
+    is ever written to canon; turning an idea into world content is a separate,
+    explicit propose_changes call the game master asks for."""
+
+    title: str = Field(description="Short, evocative name for the idea.")
+    concept: str = Field(
+        description="One or two sentences capturing the core of the idea."
+    )
+    hook: str = Field(
+        default="",
+        description="Why it matters at the table: a tension, secret, "
+        "consequence, moral dilemma, reversal, or concrete plot hook.",
+    )
+    ties_to_canon: list[str] = Field(
+        default_factory=list,
+        description="Ids of existing entities (from the provided lore) this "
+        "idea builds on or interacts with — empty when it stands alone.",
+    )
+
+
+class BrainstormResult(BaseModel):
+    """The output of the brainstorm skill: a set of creative possibilities the
+    game master can pick from. It is deliberately NOT a LoreDraft — there is no
+    review, no commit, and no write path out of it. The node renders it into a
+    normal assistant chat message; an idea only becomes canon if the game
+    master then asks to add it (a fresh propose_changes)."""
+
+    ideas: list[BrainstormIdea] = Field(default_factory=list)
+    note: str = Field(
+        default="",
+        description="Optional one-line framing or a follow-up offer, in the "
+        "game master's language (e.g. 'скажи, какой развить').",
+    )
+
+
 class EntityEditDraft(BaseModel):
     """What the agent proposes when editing an existing entity. Contains the
     full new state of the entity so the DM can review it as a diff against

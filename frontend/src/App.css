@@ -1221,10 +1221,29 @@
   font-size: 12px;
 }
 
-.icon-picker-placeholder {
+/* Same row markup as the real entity list (.entity-list-item and friends,
+   defined with the rest of the entity list rules further down) — inert
+   instead of a link, so it can't be mistaken for one. */
+.entity-card-preview {
+  margin: 12px 0 4px;
+}
+
+.entity-card-preview-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
-  font-size: 13px;
-  margin-bottom: 16px;
+  margin-bottom: 6px;
+}
+
+.entity-card-preview-row.entity-list-item {
+  cursor: default;
+}
+
+.entity-card-preview-row.entity-list-item:hover {
+  border-color: var(--border);
 }
 
 .attachments-details {
@@ -1237,8 +1256,58 @@
   cursor: pointer;
 }
 
-/* Sticky action bar: save is always reachable, delete is pushed to the far
-   edge so the two are never adjacent click targets. */
+/* Jump nav for the long edit form — only rendered once there is more than
+   Basics/Content to jump to (see EntityEditPage). Sticky at the top so it
+   stays reachable while the sticky Save bar bookends the bottom. */
+.entity-edit-toc {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 -24px 16px;
+  padding: 10px 24px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Plain divider between logical groups, not a boxed card — the page should
+   still read as one document, not a stack of widgets. */
+.entity-edit-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.entity-edit-section:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.entity-edit-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+}
+
+/* The danger zone opts out of the plain-divider treatment above for the
+   same red-bordered card used on the project settings page — it should read
+   as visually set apart, not just another section. */
+.entity-edit-page .danger-zone {
+  margin-top: 20px;
+}
+
+.entity-edit-page [id^="entity-edit-"] {
+  scroll-margin-top: 56px;
+}
+
+/* Save is always reachable at the bottom; the danger zone lives in its own
+   card further up the page instead of sharing this bar (see .danger-zone). */
 .entity-edit-actions {
   position: sticky;
   bottom: 0;
@@ -1249,10 +1318,6 @@
   padding: 12px 24px;
   background: var(--bg);
   border-top: 1px solid var(--border);
-}
-
-.entity-edit-actions .spacer {
-  flex: 1;
 }
 
 .dirty-hint {
@@ -2151,6 +2216,38 @@
   background: var(--bg-subtle);
 }
 
+/* Zoom out / fit / zoom in, grouped as one segmented cluster rather than
+   three separate pills — reads as a single "camera" control the way the
+   view-mode toggle reads as a single switch. Tighter than the base
+   .segmented button padding since these hold an icon only, no label. */
+.graph-zoom-cluster button {
+  padding: 6px 10px;
+}
+
+/* Standalone icon-only dock buttons (center view, and later grid/snap) —
+   same pill/border language as .graph-dock-trigger-btn, without the
+   label+chevron layout that button assumes. */
+.graph-dock-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text);
+  padding: 7px;
+  border-radius: var(--radius-pill);
+}
+
+.graph-dock-icon-btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.graph-dock-icon-btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .graph-canvas {
   flex: 1;
   min-height: 0;
@@ -2189,24 +2286,6 @@
   color: var(--text-muted);
 }
 
-.graph-reset-layout-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 13px;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-}
-
-.graph-reset-layout-button:hover {
-  background: var(--bg-subtle);
-}
-
 /* React Flow's own theming hook — controls both the edge line and the
    arrowhead marker consistently (see @xyflow/react/dist/style.css). The
    library ships a `.dark` class variant of these tokens, but this app
@@ -2243,6 +2322,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: default;
+  transition: opacity 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+/* Edge touches whatever's currently focal (hovered node, selection, or the
+   active root) — see computeEdgeEmphasis in floatingEdgeUtils.ts. Also the
+   escape hatch that keeps a label visible under .react-flow-lod, below. */
+.graph-edge-label-emphasized {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Transient spotlight: a node elsewhere is hovered and this edge isn't part
+   of it. Never combined with -emphasized (see computeEdgeEmphasis). */
+.graph-edge-label-dimmed {
+  opacity: 0.35;
 }
 
 /* --- Player access --------------------------------------------------------- */
@@ -2360,6 +2454,13 @@
   font-size: 12px;
   color: var(--text-muted);
   margin: 0;
+}
+
+.player-access-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 /* --- Player view (/play/:token) -------------------------------------------- */
@@ -2791,6 +2892,21 @@
 
 .react-flow-lod .entity-node-title {
   font-size: 11px;
+}
+
+/* Edge labels are the other big source of visual noise at scale — hundreds
+   of small pills stacking up across the canvas — and unlike node preview
+   fields they're illegible at LOD zoom anyway. Hidden by default, except for
+   whatever's incident to the current hover/selection/root focus
+   (.graph-edge-label-emphasized): that's exactly the relationship someone
+   zoomed out is trying to inspect, so it stays legible instead of also
+   disappearing. */
+.react-flow-lod .graph-edge-label {
+  display: none;
+}
+
+.react-flow-lod .graph-edge-label-emphasized {
+  display: block;
 }
 
 /* handle dots are only needed while dragging a connection — hide them at
@@ -4492,6 +4608,43 @@
   accent-color: var(--accent);
 }
 
+.image-crop-mode {
+  align-self: flex-start;
+}
+
+/* Same box fitImageToBlob paints its canvas with — two stacked copies of the
+   same image reproduce its blurred-cover-background-plus-sharp-contain-
+   foreground composite, so this preview is what the export actually looks
+   like. `background` below is only a loading-state fallback: both images
+   cover the box completely once loaded. */
+.image-crop-fit-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2;
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+
+.image-crop-fit-preview-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Scaled past `cover` so the blur's soft edge clears the frame instead of
+     bleeding in from it — same overscan idea as fitImageToBlob's canvas. */
+  transform: scale(1.15);
+  filter: blur(20px);
+}
+
+.image-crop-fit-preview-fg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* ---------- Toasts ---------- */
 
 .toast-region {
@@ -4628,6 +4781,13 @@
   padding: 4px;
   display: flex;
   flex-direction: column;
+}
+
+/* Trigger sits at the bottom of its container (the graph dock) — open
+   upward instead of off-screen. */
+.kebab-menu.upward .kebab-menu-list {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .kebab-menu-list button {

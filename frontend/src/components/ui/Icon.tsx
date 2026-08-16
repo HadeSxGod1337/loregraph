@@ -17,9 +17,11 @@ export type IconName =
   | "eye-off"
   | "filter"
   | "folder"
+  | "grid"
   | "grip"
   | "help"
   | "layers"
+  | "maximize"
   | "monitor"
   | "moon"
   | "more"
@@ -40,7 +42,9 @@ export type IconName =
   | "trash"
   | "upload"
   | "users"
-  | "x";
+  | "x"
+  | "zoom-in"
+  | "zoom-out";
 
 /* Lucide-style 24×24 stroke paths — inherit color via currentColor so every
  * icon follows the active theme, unlike the emoji they replace. */
@@ -100,6 +104,14 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   folder: <path d="M3 7a2 2 0 0 1 2-2h4.2l1.6 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />,
+  grid: (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </>
+  ),
   // Classic 2x3 drag-grip dots — reads as "grab me", unlike the horizontal
   // "more" ellipsis it replaces (which reads as an overflow menu).
   grip: (
@@ -123,6 +135,17 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M12 3 3 8l9 5 9-5-9-5Z" />
       <path d="m3 15 9 5 9-5" />
+    </>
+  ),
+  // Four independent corner brackets — "fit to view", distinct from
+  // "expand"'s arrows-from-center glyph (that one means "focus on this one
+  // entity" elsewhere in the app; this one means "fit everything on screen").
+  maximize: (
+    <>
+      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+      <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+      <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+      <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
     </>
   ),
   monitor: (
@@ -246,6 +269,22 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   x: <path d="M18 6 6 18M6 6l12 12" />,
+  // Same circle+handle geometry as "search" for visual family resemblance.
+  "zoom-in": (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+      <path d="M11 8v6" />
+      <path d="M8 11h6" />
+    </>
+  ),
+  "zoom-out": (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+      <path d="M8 11h6" />
+    </>
+  ),
   eye: (
     <>
       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />

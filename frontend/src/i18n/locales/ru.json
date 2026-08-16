@@ -290,16 +290,26 @@
     "newTitle": "Новая сущность",
     "editTitle": "Редактирование сущности",
     "backToList": "Сущности",
+    "sectionsNavLabel": "Разделы",
+    "sectionBasics": "Основное",
+    "sectionContent": "Содержимое",
     "typeLabel": "Тип",
     "titleLabel": "Название",
     "iconLabel": "Иконка",
     "otherFiles": "Прочие файлы",
     "unsavedChanges": "Есть несохранённые изменения",
+    "saving": "Сохранение…",
+    "allSaved": "Все изменения сохранены",
     "savedToast": "Сущность сохранена",
     "createdToast": "Сущность создана",
     "deletedToast": "Сущность удалена",
+    "iconUploadFailedToast": "Сущность создана, но иконку загрузить не удалось — попробуй задать её ещё раз",
+    "previewLabel": "Превью карточки",
+    "previewUntitled": "Без названия",
     "deleteConfirmTitle": "Удалить сущность?",
     "deleteConfirmBody": "«{{title}}» и все её поля и связи будут удалены навсегда.",
+    "dangerHeading": "Опасная зона",
+    "dangerHint": "Необратимые действия с этой сущностью.",
     "templateChip": "Шаблон: {{name}}",
     "templateReadOnlyHint": "раскладка листа — только для чтения, менять её можно в конструкторе шаблона",
     "editTemplate": "Изменить шаблон"
@@ -337,6 +347,16 @@
     "edgeTypesLabel": "Типы связей",
     "edgeTypesAll": "все типы",
     "edgeTypesSelected": "выбрано: {{count}}",
+    "zoomGroup": "Масштаб",
+    "zoomIn": "Приблизить",
+    "zoomOut": "Отдалить",
+    "fitView": "Вписать в экран",
+    "centerView": "Центрировать вид",
+    "grid": "Сетка",
+    "gridTitle": "Сетка и привязка узлов",
+    "moreActions": "Другие действия",
+    "lockPositions": "Закрепить позиции узлов",
+    "unlockPositions": "Открепить позиции узлов",
     "resetLayout": "Сбросить раскладку",
     "resetLayoutConfirmTitle": "Сбросить раскладку?",
     "resetLayoutConfirmBody": "Все вручную расставленные узлы в текущем виде будут переставлены заново. Это нельзя отменить.",
@@ -378,10 +398,14 @@
     "heading": "Вложения"
   },
   "icon": {
-    "saveFirst": "Сначала сохрани сущность, чтобы задать иконку.",
     "noIcon": "нет иконки",
     "cropTitle": "Обрезка изображения",
-    "cropZoom": "Масштаб"
+    "cropZoom": "Масштаб",
+    "cropModeLabel": "Режим обрезки",
+    "cropModeFill": "Заполнить",
+    "cropModeFit": "Вписать",
+    "cropModeFillHint": "Обрезает изображение под рамку — перетаскивай и меняй масштаб, чтобы выбрать нужную часть.",
+    "cropModeFitHint": "Показывает изображение целиком. Свободное пространство заполняется фоном из изображения."
   },
   "richText": {
     "insertImage": "Вставить изображение",
@@ -447,6 +471,9 @@
       "toggleHeaderRow": "Строка заголовка",
       "mergeOrSplit": "Объединить / разделить",
       "delete": "Удалить таблицу"
+    },
+    "more": {
+      "menu": "Ещё форматирование"
     }
   },
   "entityLink": {
@@ -588,6 +615,7 @@
       "check_duplicates_draft": "🧭 Проверяю дубликаты…",
       "verify_grounding": "✔️ Проверяю факты…",
       "commit": "💾 Записываю в мир…",
+      "brainstorm": "💡 Придумываю идеи…",
       "fallback": "⚙️ {{node}}…"
     },
     "status": {
@@ -690,7 +718,9 @@
     "edit_failed": "Ошибка редактирования: {{reason}}",
     "relationships_committed": "Готово — связей создано: {{created}}, изменено: {{updated}}, убрано: {{removed}}.",
     "relationships_failed": "Работа со связями остановлена: {{reason}}",
-    "changes_committed": "Готово — создано {{created}} ({{created_titles}}), изменено {{patched}} ({{patched_titles}}), связи ({{rel_created}} создано, {{rel_updated}} изменено, {{rel_deleted}} удалено)."
+    "changes_committed": "Готово — создано {{created}} ({{created_titles}}), изменено {{patched}} ({{patched_titles}}), связи ({{rel_created}} создано, {{rel_updated}} изменено, {{rel_deleted}} удалено).",
+    "review_stale": "Предложение не применено — мир изменился с момента ревью. Ничего не записано; повтори запрос заново.",
+    "brainstorm_empty": "Пока не получилось придумать идеи — попробуй переформулировать запрос."
   },
   "integrations": {
     "heading": "Интеграции",

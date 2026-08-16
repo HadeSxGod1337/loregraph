@@ -77,6 +77,18 @@ _EGORS = [
     _entity("npc_egor_3", "npc", "Егор", summary="Высокопоставленный правитель."),
 ]
 _MIRA = _entity("npc_mira", "npc", "Мира Кузнец", role="кузнец")
+_ORDER = _entity(
+    "fac_order",
+    "faction",
+    "Орден Серебряного Пламени",
+    creed="Орден паладинов, выжигающий скверну огнём.",
+)
+_ASHEN = _entity(
+    "fac_ashen",
+    "faction",
+    "Пепельный культ",
+    summary="Культ, поклоняющийся тлению; давние враги Ордена.",
+)
 
 
 CASES: list[ToolChoiceCase] = [
@@ -140,14 +152,65 @@ CASES: list[ToolChoiceCase] = [
         expected_target_titles=frozenset({"Мира Кузнец"}),
     ),
     ToolChoiceCase(
-        case_id="create_new_entity_stays_propose_ru",
-        # A genuinely new thing is the same tool now, but must carry NO target
-        # (it is a creation, not an edit) — the control that the assistant
-        # doesn't staple an unrelated existing entity onto a fresh creation.
+        case_id="brainstorm_smuggler_network_ru",
+        # The behavior change this feature is about: "придумай …" with no "add"
+        # is a request for IDEAS, not a database mutation. It used to route to
+        # propose_changes; it must now brainstorm, writing nothing.
         question="Придумай контрабандистскую сеть в порту",
+        acceptable_tools=frozenset({"brainstorm_lore"}),
+        entities=[_MIRA],
+    ),
+    ToolChoiceCase(
+        case_id="brainstorm_options_to_choose_ru",
+        # "Give me options, I'll pick" is pure brainstorm — no proposal until
+        # the game master chooses one on a later turn.
+        question="Предложи пять вариантов злодея, я потом выберу",
+        acceptable_tools=frozenset({"brainstorm_lore"}),
+        entities=[_MIRA],
+    ),
+    ToolChoiceCase(
+        case_id="brainstorm_enemy_for_order_ru",
+        # Creative request that should build on existing canon (the Order) but
+        # still NOT mutate: brainstorm an enemy, grounded in a real faction.
+        question="Придумай врага для Ордена Серебряного Пламени",
+        acceptable_tools=frozenset({"brainstorm_lore"}),
+        entities=[_ORDER, _MIRA],
+    ),
+    ToolChoiceCase(
+        case_id="create_new_entity_with_add_is_propose_ru",
+        # Same creative prompt as the brainstorm case, but "и добавь …" makes it
+        # a mutation — propose_changes, carrying NO existing target (a pure
+        # creation, not an edit of something that exists).
+        question="Придумай контрабандистскую сеть в порту и добавь её в мир",
         acceptable_tools=frozenset({"propose_changes"}),
         entities=[_MIRA],
         expected_target_titles=frozenset(),
+    ),
+    ToolChoiceCase(
+        case_id="create_explicit_is_propose_ru",
+        question="Создай контрабандистскую сеть в порту",
+        acceptable_tools=frozenset({"propose_changes"}),
+        entities=[_MIRA],
+        expected_target_titles=frozenset(),
+    ),
+    ToolChoiceCase(
+        case_id="add_enemy_for_order_is_propose_ru",
+        # Creative + mutation grounded in an existing entity: invent an enemy
+        # AND add it, connecting it to the Order — propose_changes must name the
+        # Order as the existing target so the new enemy links to the real one.
+        question="Придумай врага для Ордена Серебряного Пламени и добавь его",
+        acceptable_tools=frozenset({"propose_changes"}),
+        entities=[_ORDER, _MIRA],
+        expected_target_titles=frozenset({"Орден Серебряного Пламени"}),
+    ),
+    ToolChoiceCase(
+        case_id="enemy_of_order_is_graph_ru",
+        # The read counterpart to the two Order cases above: a FACT question is
+        # answered from the graph, never invented.
+        question="Кто враг Ордена Серебряного Пламени?",
+        acceptable_tools=frozenset({"get_entity_graph", "get_entity_details"}),
+        entities=[_ORDER, _ASHEN],
+        edges=[_edge("edge_order_enemy", "fac_order", "fac_ashen", "enemy_of")],
     ),
     ToolChoiceCase(
         case_id="open_question_stays_semantic_ru",

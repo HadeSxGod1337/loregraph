@@ -68,6 +68,17 @@ class FakeVectorIndex:
         ]
 
 
+class RaisingVectorIndex:
+    """A dense side that fails on every query — for the degradation contract:
+    an embedding-provider or vector-store outage must not defeat the lexical
+    contour or be read as "no such lore"."""
+
+    async def query(
+        self, project_id: str, text: str, k: int = 5
+    ) -> list[RetrievedChunk]:
+        raise RuntimeError("embedding provider is unavailable")
+
+
 async def _search(
     entities: list[EntityOut],
     query: str,
@@ -187,6 +198,60 @@ async def test_other_projects_entities_are_never_searched() -> None:
     ranked = await _search([mine, theirs], "Егор")
 
     assert ranked == ["npc_mine"]
+
+
+@pytest.mark.asyncio
+async def test_dense_failure_degrades_to_lexical_not_empty() -> None:
+    """The regression for retrieval degradation: a dense-side outage must leave
+    the lexical contour still finding the named entity, not fail the search and
+    let the assistant conclude the lore isn't there."""
+    entities = [
+        _entity("npc_egor", "npc", "Егор", bio="Молодой маг-артефактор."),
+        _entity("npc_other", "npc", "Мира", bio="Кузнец."),
+    ]
+
+    result = await search_lore(
+        vector_index=RaisingVectorIndex(),  # type: ignore[arg-type]
+        entity_store=FakeEntityStore(entities),  # type: ignore[arg-type]
+        project_id=PROJECT_ID,
+        query="Егор",
+        limit=5,
+    )
+
+    assert [entity.id for entity in result.entities] == ["npc_egor"]
+
+
+@pytest.mark.asyncio
+async def test_exact_title_ranks_first_over_a_poor_dense_rank() -> None:
+    """An obvious exact-name hit must never be buried by the embedder: even when
+    dense ranks the named entity dead last, it comes back first."""
+    entities = [
+        _entity("npc_a", "npc", "Мира Кузнец", bio="Кузнец."),
+        _entity("npc_egor", "npc", "Егор", bio="Маг."),
+        _entity("npc_b", "npc", "Виктор", bio="Торговец."),
+    ]
+
+    ranked = await _search(
+        entities, "Егор", dense=["npc_a", "npc_b", "npc_egor"], limit=3
+    )
+
+    assert ranked[0] == "npc_egor"
+
+
+@pytest.mark.asyncio
+async def test_exact_name_surfaces_every_namesake_for_disambiguation() -> None:
+    """When several entities share the queried name, all of them surface up
+    front — that is what lets the assistant SEE the ambiguity and ask which one
+    rather than silently picking the embedder's favourite."""
+    entities = [
+        _entity("egor_mage", "npc", "Егор", summary="Маг."),
+        _entity("egor_ruler", "npc", "Егор", summary="Правитель."),
+        _entity("npc_mira", "npc", "Мира", summary="Кузнец."),
+    ]
+
+    ranked = await _search(entities, "Егор", dense=["npc_mira"], limit=5)
+
+    assert set(ranked[:2]) == {"egor_mage", "egor_ruler"}
 
 
 @pytest.mark.asyncio

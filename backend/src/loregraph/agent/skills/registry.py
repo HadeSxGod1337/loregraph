@@ -19,8 +19,12 @@ model. Two equally valid ways to invoke a skill:
 - "read": inline in the `tools` node (agent/nodes/tools.py) — a plain
   function call against the project's stores, no graph branch of its own.
 - "propose": a short pipeline ending in one `human_review` interrupt
-  (propose_lore, edit_entity) — `entry_node` is where both entry points
-  land.
+  (propose_changes) — `entry_node` is where both entry points land.
+- "creative": a non-mutating pipeline that generates ideas on the creative
+  tier and answers in chat, with NO review and NO write path
+  (brainstorm_lore). Has an `entry_node` like a propose skill, but its branch
+  ends at END, never at commit — the invariant that keeps brainstormed ideas
+  from becoming canon by accident.
 - "job": a longer, possibly multi-batch pipeline with its own phases
   (reserved for the bulk-import/generate_bulk skills — not implemented yet).
 """
@@ -30,7 +34,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-SkillKind = Literal["read", "propose", "job"]
+SkillKind = Literal["read", "propose", "job", "creative"]
 
 # Bounds the model is allowed to steer, so they live next to the schemas that
 # advertise them rather than inside the executor: a number quoted in a tool
@@ -46,6 +50,11 @@ LIST_ENTITIES_LIMIT = 200
 # Depth 2 already pulls in neighbours-of-neighbours; 3 explodes on a dense
 # campaign graph and buries the answer it was asked for.
 GRAPH_DEPTH_MAX = 2
+# One page of list_relationships. Unlike get_entity_details/get_entity_graph,
+# which cap and stop, this tool pages: a hub entity with hundreds of edges is
+# retrievable in full by following the cursor, so the number only has to keep a
+# single page cheap, not bound the whole answer.
+RELATIONSHIPS_PAGE_LIMIT = 40
 
 
 @dataclass(frozen=True)
@@ -131,6 +140,34 @@ class get_entity_graph(BaseModel):
     )
 
 
+class list_relationships(BaseModel):
+    """List ALL of one entity's relationships, page by page — the tool for
+    "show me every connection X has" when it has more than a handful.
+    get_entity_graph and get_entity_details show only the first slice of a busy
+    entity's edges and stop; this one reports the EXACT total, separates
+    incoming from outgoing, and hands back a `next_cursor` so the rest can
+    actually be fetched. To read them all, keep calling it with the cursor from
+    the previous page until it says there are no more. Filter by direction or
+    type to narrow a large graph."""
+
+    entity_id: str = Field(description="Id of the entity whose relationships to list.")
+    direction: str | None = Field(
+        default=None,
+        description="Optional: 'incoming' (edges pointing AT this entity), "
+        "'outgoing' (edges FROM it), or omit for both.",
+    )
+    type: str | None = Field(
+        default=None,
+        description="Optional: only relationships of this snake_case type, "
+        "e.g. 'ally_of'. Omit for every type.",
+    )
+    cursor: int | None = Field(
+        default=None,
+        description="Pass the next_cursor from a previous page to continue; "
+        "omit for the first page.",
+    )
+
+
 class search_knowledge_base(BaseModel):
     """Semantic search over the project's uploaded reference documents
     (rulebooks, setting bibles) — NOT world canon. Use it when the game
@@ -171,6 +208,45 @@ class propose_changes(BaseModel):
         "subject of this change — the ones to edit, or to connect. Get them "
         "from search_lore / list_entities / get_entity_details first. Leave "
         "empty only when the request is purely about brand-new content.",
+    )
+
+
+class brainstorm_lore(BaseModel):
+    """Brainstorm creative possibilities for the world WITHOUT changing
+    anything. Use it when the game master wants ideas, options, or inspiration
+    rather than a concrete edit: "придумай врага для Ордена", "накидай пять
+    идей для локации", "как развить этот конфликт", "предложи повороты",
+    "surprise me". You invent freely here — that is the whole point — but the
+    result is a set of OPTIONS shown in chat, not canon: nothing is written.
+
+    Two things separate this from propose_changes:
+    - This never touches the world. propose_changes creates/edits/links things
+      (through the game master's review). If the request ALSO says to add,
+      create, record, or enter the result — "…и добавь", "…и создай его",
+      "запиши", "внеси в мир" — that is a mutation: use propose_changes, not
+      this. Mutation intent always wins.
+    - Look up relevant canon FIRST (search_lore / get_entity_details /
+      get_entity_graph) when the ideas should build on something that exists
+      ("враг для Ордена Серебряного Пламени" → resolve the Order, brainstorm
+      against its goals/allies/enemies), and pass those ids in
+      target_entity_ids. Never answer "there is no enemy in canon" — the game
+      master asked you to invent one."""
+
+    topic: str = Field(
+        description="What to brainstorm, in the game master's language — the "
+        "creative prompt, carrying any constraints they gave (tone, kind, "
+        "scale)."
+    )
+    target_entity_ids: list[str] = Field(
+        default_factory=list,
+        description="Ids of existing entities the ideas should build on or "
+        "play against (an Order to invent an enemy for, a location to develop). "
+        "Get them from a read tool first; empty for a blank-slate prompt.",
+    )
+    count: int | None = Field(
+        default=None,
+        description="How many ideas, when the game master named a number "
+        "('пять идей' → 5). Omit to let you choose a useful few.",
     )
 
 
@@ -238,6 +314,12 @@ SKILLS: dict[str, SkillManifest] = {
             kind="read",
         ),
         SkillManifest(
+            name="list_relationships",
+            description=list_relationships.__doc__ or "",
+            input_schema=list_relationships,
+            kind="read",
+        ),
+        SkillManifest(
             name="search_knowledge_base",
             description=search_knowledge_base.__doc__ or "",
             input_schema=search_knowledge_base,
@@ -257,6 +339,13 @@ SKILLS: dict[str, SkillManifest] = {
             entry_node="begin_changes",
         ),
         SkillManifest(
+            name="brainstorm_lore",
+            description=brainstorm_lore.__doc__ or "",
+            input_schema=brainstorm_lore,
+            kind="creative",
+            entry_node="brainstorm",
+        ),
+        SkillManifest(
             name="import_document",
             description=import_document.__doc__ or "",
             input_schema=import_document,
@@ -269,9 +358,11 @@ SKILLS: dict[str, SkillManifest] = {
     )
 }
 
-# Base tool set bound on every chat turn — order matches the pre-registry
-# ASSISTANT_TOOLS list (agent/nodes/assistant.py) so prompt/cache behavior is
-# unchanged. query_external_source is deliberately excluded: it is only
+# Base tool set bound on every chat turn. The leading names keep the
+# pre-registry ASSISTANT_TOOLS order so the cached prompt prefix is unchanged;
+# genuinely new capabilities (list_relationships, brainstorm_lore) are appended
+# rather than interleaved, so they extend the tool set without moving the
+# stable prefix. query_external_source is deliberately excluded: it is only
 # bound when the project actually has live connections (see
 # agent/nodes/assistant.py::assistant), a runtime/project concern this
 # module doesn't know about.
@@ -282,6 +373,8 @@ _BASE_CHAT_TOOL_NAMES = (
     "propose_changes",
     "list_entities",
     "get_entity_graph",
+    "list_relationships",
+    "brainstorm_lore",
 )
 
 
@@ -289,11 +382,22 @@ def base_chat_tool_schemas() -> list[type[BaseModel]]:
     return [SKILLS[name].input_schema for name in _BASE_CHAT_TOOL_NAMES]
 
 
-def entry_node_for(tool_call_name: str) -> str | None:
-    """Node to route into for a "propose"/"job" skill invoked by name (a
-    chat tool call or a direct skill_kickoff) — None for read skills/unknown
-    names, meaning "not a dispatchable skill, handle as a read tool"."""
+def pipeline_entry_node(tool_call_name: str) -> str | None:
+    """Node to route into for a skill that runs on its OWN subgraph branch
+    rather than inline in the `tools` node — the write pipeline
+    (propose_changes) and the creative one (brainstorm_lore), reached by a chat
+    tool call or a direct skill_kickoff. None for read skills/unknown names,
+    meaning "not a branching skill, handle it as a read tool"."""
     manifest = SKILLS.get(tool_call_name)
-    if manifest is not None and manifest.kind in ("propose", "job"):
+    if manifest is not None and manifest.kind in ("propose", "job", "creative"):
         return manifest.entry_node
     return None
+
+
+def is_write_skill(tool_call_name: str) -> bool:
+    """True only for skills that MUTATE canon (through review) — the write
+    pipeline. brainstorm_lore is a branching skill (it has an entry node) but
+    NOT a write one: it never reaches human_review or commit, so the "only one
+    proposal per turn" rule must not apply to it."""
+    manifest = SKILLS.get(tool_call_name)
+    return manifest is not None and manifest.kind in ("propose", "job")
