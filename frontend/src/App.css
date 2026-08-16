@@ -3537,13 +3537,34 @@
 
 /* ---------- AI Assistant ---------- */
 
+/* Full-bleed, like .graph-view-page — fills .layout-content's height instead
+   of growing with its content, so AssistantPanel's own flex:1 transcript is
+   the only thing that scrolls (see "Assistant chat" below). The reading
+   column is capped by max-width/margin, same recipe as .entity-edit-page,
+   just taller instead of document-scrolled.
+   .app-shell only sets min-height: 100svh (a floor, for pages that are
+   meant to document-scroll) — flex:1/min-height:0 alone still lets a tall
+   transcript inflate the whole shell past the viewport instead of scrolling
+   internally. The max-height below (viewport minus .app-topbar's fixed
+   52px) is the actual ceiling that forces AssistantPanel's own chain to
+   shrink-and-scroll instead. Graph drawer doesn't need this: it's sized by
+   position:absolute top/bottom against .graph-canvas-area, which content
+   can't inflate the way normal flow can. */
 .assistant-page {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 24px 16px 64px;
+  flex: 1;
+  min-height: 0;
+  max-height: calc(100svh - 52px);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 20px 16px;
+  gap: 14px;
+}
+
+.assistant-header {
+  flex: none;
 }
 
 .assistant-header h1 {
