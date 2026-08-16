@@ -4564,6 +4564,27 @@
   accent-color: var(--accent);
 }
 
+.image-crop-mode {
+  align-self: flex-start;
+}
+
+/* Same box (aspect ratio, background) fitImageToBlob paints its canvas with
+   — `object-fit: contain` on the img reproduces its scale-to-fit-and-center
+   math, so this preview is what the export actually looks like. */
+.image-crop-fit-preview {
+  width: 100%;
+  aspect-ratio: 2;
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  background: #fff;
+}
+
+.image-crop-fit-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* ---------- Toasts ---------- */
 
 .toast-region {

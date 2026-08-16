@@ -381,7 +381,12 @@
   "icon": {
     "noIcon": "no icon",
     "cropTitle": "Crop image",
-    "cropZoom": "Zoom"
+    "cropZoom": "Zoom",
+    "cropModeLabel": "Crop mode",
+    "cropModeFill": "Fill",
+    "cropModeFit": "Fit",
+    "cropModeFillHint": "Crops the image to fill the frame — drag and zoom to choose what's kept.",
+    "cropModeFitHint": "Keeps the whole image, padded to fit the frame — nothing gets cropped off."
   },
   "richText": {
     "insertImage": "Insert image",
