@@ -11,7 +11,12 @@ import { EntityNavigationContext } from "../components/EntityNavigationContext";
 import { EdgeEditPopover } from "../components/graph/EdgeEditPopover";
 import { EdgeQuickForm } from "../components/graph/EdgeQuickForm";
 import { EntityDetailPanel } from "../components/graph/EntityDetailPanel";
-import { GraphCanvas, type CameraFocusRequest } from "../components/graph/GraphCanvas";
+import {
+  GraphCanvas,
+  type CameraFocusRequest,
+  type GraphActionRequest,
+  type GraphActionType,
+} from "../components/graph/GraphCanvas";
 import { GraphControls, type GraphViewMode } from "../components/graph/GraphControls";
 import { GraphCreateEntityButton } from "../components/graph/GraphCreateEntityButton";
 import { useEntities } from "../hooks/useEntities";
@@ -37,6 +42,8 @@ export function GraphViewPage() {
   const [largeWorldNoticeDismissed, setLargeWorldNoticeDismissed] = useState(false);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [focusRequest, setFocusRequest] = useState<CameraFocusRequest | null>(null);
+  const [actionRequest, setActionRequest] = useState<GraphActionRequest | null>(null);
+  const [locked, setLocked] = useState(false);
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   // Newly created entities that aren't yet connected to the graph via edges.
@@ -68,6 +75,7 @@ export function GraphViewPage() {
     setTempEntities([]);
     setViewMode("all");
     setLargeWorldNoticeDismissed(false);
+    setLocked(false);
   }, [projectId]);
 
   // If the current root was deleted, fall back to auto-picking a new one.
@@ -107,6 +115,20 @@ export function GraphViewPage() {
   // asks to re-focus the entity they're already centered on.
   function focusCameraOn(id: string) {
     setFocusRequest({ entityId: id, nonce: Date.now() });
+  }
+
+  // Toolbar zoom/fit/reset-layout buttons — see GraphActionRequest.
+  function dispatchGraphAction(type: GraphActionType) {
+    setActionRequest({ type, nonce: Date.now() });
+  }
+
+  // Toolbar "center view" — whatever's selected is more useful to re-center
+  // on than the root/active entity once something's actually being looked
+  // at, falling back to root when nothing is selected. No-ops on an empty
+  // canvas (neither is set yet).
+  function centerView() {
+    const target = selectedEntityId ?? rootId;
+    if (target) focusCameraOn(target);
   }
 
   const availableEdgeTypes = useMemo(
@@ -225,6 +247,8 @@ export function GraphViewPage() {
             viewMode={viewMode}
             selectedEntityId={selectedEntityId}
             focusRequest={focusRequest}
+            actionRequest={actionRequest}
+            locked={locked}
             onNodeSelect={setSelectedEntityId}
             onNodeSetRoot={changeRoot}
             onConnectNodes={(sourceId, targetId) => setPendingConnection({ sourceId, targetId })}
@@ -244,10 +268,14 @@ export function GraphViewPage() {
             edgeTypes={edgeTypes}
             availableEdgeTypes={availableEdgeTypes}
             viewMode={viewMode}
+            locked={locked}
             onRootChange={changeRoot}
             onDepthChange={setDepth}
             onEdgeTypesChange={setEdgeTypes}
             onViewModeChange={setViewMode}
+            onAction={dispatchGraphAction}
+            onCenterView={centerView}
+            onLockedChange={setLocked}
           />
 
           {(viewMode === "all" || rootId) && (

@@ -1,9 +1,7 @@
 import {
   Background,
-  Controls,
   MarkerType,
   MiniMap,
-  Panel,
   ReactFlow,
   ReactFlowProvider,
   useNodesState,
@@ -20,7 +18,6 @@ import { API_URL } from "../../api/client";
 import { entitiesApi, type PositionEntry } from "../../api/entities";
 import type { Edge, Entity } from "../../api/types";
 import { useDebouncedCallback } from "../../hooks/useDebouncedCallback";
-import { Icon } from "../ui/Icon";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { typeColor } from "../../lib/typeColor";
 import { ActiveRootContext } from "./ActiveRootContext";
@@ -57,6 +54,17 @@ export interface CameraFocusRequest {
   nonce: number;
 }
 
+/** One-shot camera/layout commands dispatched from the consolidated toolbar
+ * (GraphControls) — a sibling component outside the ReactFlowProvider, so it
+ * can't call useReactFlow() itself. Mirrors the focusRequest pattern above
+ * rather than introducing a second way to reach into the canvas. */
+export type GraphActionType = "zoomIn" | "zoomOut" | "fitView" | "resetLayout";
+
+export interface GraphActionRequest {
+  type: GraphActionType;
+  nonce: number;
+}
+
 interface GraphCanvasProps {
   projectId: string;
   nodes: Entity[];
@@ -69,6 +77,11 @@ interface GraphCanvasProps {
    * entity without changing root (see EntityDetailPanel's "focus camera"
    * button). */
   focusRequest: CameraFocusRequest | null;
+  actionRequest: GraphActionRequest | null;
+  /** Freezes dragging/connecting/selecting nodes — the toolbar's "lock
+   * positions" toggle, replacing the interactivity lock that used to live on
+   * React Flow's default <Controls/>. */
+  locked: boolean;
   onNodeSelect: (entityId: string) => void;
   onNodeSetRoot: (entityId: string) => void;
   onConnectNodes: (sourceId: string, targetId: string) => void;
@@ -173,6 +186,8 @@ function GraphCanvasInner({
   viewMode,
   selectedEntityId,
   focusRequest,
+  actionRequest,
+  locked,
   onNodeSelect,
   onNodeSetRoot,
   onConnectNodes,
@@ -180,7 +195,7 @@ function GraphCanvasInner({
   onPaneClick,
 }: GraphCanvasProps) {
   const { t } = useTranslation();
-  const { fitView } = useReactFlow();
+  const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { flowNodes, setFlowNodes, onNodesChange } = useSyncedFlowNodes(nodes, edges);
   // Read inside the root/depth fit effect below without making it a
   // dependency — switching Focused/All alone must not retrigger that effect
@@ -305,6 +320,29 @@ function GraphCanvasInner({
     return () => cancelAnimationFrame(raf);
   }, [focusRequest, fitView]);
 
+  // Zoom/fit/reset-layout buttons live in the toolbar (GraphControls),
+  // outside the ReactFlowProvider, so they can't call useReactFlow()
+  // directly — see the GraphActionRequest comment above. "resetLayout" only
+  // opens the same confirm dialog the effect below already guards; the
+  // actual layout recompute stays gated behind that confirmation either way.
+  useEffect(() => {
+    if (!actionRequest) return;
+    switch (actionRequest.type) {
+      case "zoomIn":
+        zoomIn({ duration: 200 });
+        break;
+      case "zoomOut":
+        zoomOut({ duration: 200 });
+        break;
+      case "fitView":
+        fitView({ duration: 300, padding: 0.2 });
+        break;
+      case "resetLayout":
+        setConfirmingReset(true);
+        break;
+    }
+  }, [actionRequest, zoomIn, zoomOut, fitView]);
+
   // Tracked once here (not per-node) and applied as a single class toggle —
   // see the .react-flow-lod rules in App.css.
   const zoomLevel = useStore((s) => s.transform[2]);
@@ -352,21 +390,15 @@ function GraphCanvasInner({
             // entities" mode can put hundreds of nodes on canvas at once.
             onlyRenderVisibleElements
             minZoom={MIN_ZOOM}
+            // "Lock positions" toolbar toggle — same trio React Flow's own
+            // default <Controls/> interactivity lock used to drive, now
+            // surfaced through GraphControls instead (see `locked` above).
+            nodesDraggable={!locked}
+            nodesConnectable={!locked}
+            elementsSelectable={!locked}
           >
             <Background color="var(--border)" gap={22} size={1} />
-            <Controls />
             <MiniMap pannable zoomable nodeColor={minimapNodeColor} nodeStrokeWidth={0} />
-            <Panel position="top-right">
-              <button
-                type="button"
-                className="graph-reset-layout-button"
-                onClick={() => setConfirmingReset(true)}
-                title={t("graph.resetLayout")}
-              >
-                <Icon name="refresh" size={14} />
-                {t("graph.resetLayout")}
-              </button>
-            </Panel>
           </ReactFlow>
           {confirmingReset && (
             <ConfirmDialog

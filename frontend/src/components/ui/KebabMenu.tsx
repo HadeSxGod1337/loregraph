@@ -9,8 +9,19 @@ export interface KebabMenuItem {
 }
 
 /** "⋯" menu for secondary row actions — keeps destructive operations out of
- * the always-visible surface of a card. */
-export function KebabMenu({ label, items }: { label: string; items: KebabMenuItem[] }) {
+ * the always-visible surface of a card. `placement` defaults to opening
+ * downward (the original, still-used-elsewhere behavior); pass "up" for
+ * triggers that sit at the bottom of their container, like the graph dock,
+ * where a downward menu would open off-screen. */
+export function KebabMenu({
+  label,
+  items,
+  placement = "down",
+}: {
+  label: string;
+  items: KebabMenuItem[];
+  placement?: "down" | "up";
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -33,7 +44,7 @@ export function KebabMenu({ label, items }: { label: string; items: KebabMenuIte
   }, [open]);
 
   return (
-    <div className="kebab-menu" ref={rootRef}>
+    <div className={placement === "up" ? "kebab-menu upward" : "kebab-menu"} ref={rootRef}>
       <button
         type="button"
         className="icon-button"
