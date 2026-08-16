@@ -90,15 +90,56 @@ export function computeFitLayout(
   };
 }
 
+export interface CoverLayout {
+  drawWidth: number;
+  drawHeight: number;
+  dx: number;
+  dy: number;
+}
+
+/** Where a source image lands when scaled to fully cover a target box
+ * (the `object-fit: cover` algorithm): scaled up just enough that both
+ * edges meet or exceed the box, then centered — whichever axis doesn't
+ * land exactly overhangs symmetrically. `overscan` inflates that scale a
+ * little further, for callers that go on to blur the result and want the
+ * (now-transparent-edged) overhang to clear the visible frame instead of
+ * bleeding a soft edge in from the box's own boundary. Pure geometry, same
+ * rationale as computeFitLayout: no DOM, cheap to unit test directly. */
+export function computeCoverLayout(
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+  overscan: number = 1,
+): CoverLayout {
+  const scale = Math.max(targetWidth / sourceWidth, targetHeight / sourceHeight) * overscan;
+  const drawWidth = Math.round(sourceWidth * scale);
+  const drawHeight = Math.round(sourceHeight * scale);
+  return {
+    drawWidth,
+    drawHeight,
+    dx: Math.round((targetWidth - drawWidth) / 2),
+    dy: Math.round((targetHeight - drawHeight) / 2),
+  };
+}
+
+// Beyond the minimum needed to cover the frame, so the blur's soft
+// (partly-transparent) edge sits outside the visible canvas on every side
+// rather than right at the frame boundary — see computeCoverLayout.
+const BACKGROUND_COVER_OVERSCAN = 1.15;
+// Fraction of the frame's shorter edge, so the background reads as
+// consistently "blurred" whether the export is a tiny test fixture or a
+// full-size photo capped by FIT_MAX_LONG_EDGE.
+const BACKGROUND_BLUR_FRACTION = 0.08;
+const BACKGROUND_BLUR_MIN_PX = 4;
+
 /** The "Fit" counterpart to cropImageToBlob: the whole source is kept, laid
- * out by computeFitLayout and padded to `aspect` with a flat background
- * instead of cropped — for logos and icons where losing any of the source
- * isn't acceptable. */
-export async function fitImageToBlob(
-  imageSrc: string,
-  aspect: number,
-  background: string,
-): Promise<Blob> {
+ * out by computeFitLayout and never cropped — for logos and icons where
+ * losing any of the source isn't acceptable. The padding needed to reach
+ * `aspect` is filled with a blurred, cover-scaled copy of the same image
+ * instead of a flat matte, so it reads as part of the photo (and never as a
+ * stray white/transparent bar) in both light and dark themes. */
+export async function fitImageToBlob(imageSrc: string, aspect: number): Promise<Blob> {
   const image = await loadImage(imageSrc);
   const layout = computeFitLayout(image.naturalWidth, image.naturalHeight, aspect);
   const canvas = document.createElement("canvas");
@@ -107,8 +148,23 @@ export async function fitImageToBlob(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context unavailable");
 
-  ctx.fillStyle = background;
-  ctx.fillRect(0, 0, layout.canvasWidth, layout.canvasHeight);
+  const cover = computeCoverLayout(
+    image.naturalWidth,
+    image.naturalHeight,
+    layout.canvasWidth,
+    layout.canvasHeight,
+    BACKGROUND_COVER_OVERSCAN,
+  );
+  const blurPx = Math.max(
+    Math.round(Math.min(layout.canvasWidth, layout.canvasHeight) * BACKGROUND_BLUR_FRACTION),
+    BACKGROUND_BLUR_MIN_PX,
+  );
+  ctx.filter = `blur(${blurPx}px)`;
+  ctx.drawImage(image, cover.dx, cover.dy, cover.drawWidth, cover.drawHeight);
+  ctx.filter = "none";
+
+  // The real, uncropped source on top of its own blurred backdrop — never
+  // scaled beyond computeFitLayout's own (rare, cap-driven) downscale.
   ctx.drawImage(image, layout.dx, layout.dy, layout.drawWidth, layout.drawHeight);
 
   return new Promise((resolve, reject) => {

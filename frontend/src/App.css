@@ -4612,18 +4612,34 @@
   align-self: flex-start;
 }
 
-/* Same box (aspect ratio, background) fitImageToBlob paints its canvas with
-   — `object-fit: contain` on the img reproduces its scale-to-fit-and-center
-   math, so this preview is what the export actually looks like. */
+/* Same box fitImageToBlob paints its canvas with — two stacked copies of the
+   same image reproduce its blurred-cover-background-plus-sharp-contain-
+   foreground composite, so this preview is what the export actually looks
+   like. `background` below is only a loading-state fallback: both images
+   cover the box completely once loaded. */
 .image-crop-fit-preview {
+  position: relative;
   width: 100%;
   aspect-ratio: 2;
   border-radius: var(--radius-control);
   overflow: hidden;
-  background: #fff;
+  background: var(--bg-subtle);
 }
 
-.image-crop-fit-preview img {
+.image-crop-fit-preview-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Scaled past `cover` so the blur's soft edge clears the frame instead of
+     bleeding in from it — same overscan idea as fitImageToBlob's canvas. */
+  transform: scale(1.15);
+  filter: blur(20px);
+}
+
+.image-crop-fit-preview-fg {
+  position: relative;
   width: 100%;
   height: 100%;
   object-fit: contain;

@@ -20,12 +20,6 @@ const ICON_CROP_ASPECT = 2;
 
 type CropMode = "fill" | "fit";
 
-// Baked into the exported file for Fit mode (there's no per-pixel
-// transparency once it's a JPEG), so it has to be a fixed value rather than
-// the current theme's surface colour — a matte sampled in dark mode would
-// look wrong the moment the DM switches back to light.
-const FIT_BACKGROUND = "#ffffff";
-
 /** One crop, applied once at upload time — the resulting file is what's
  * stored and shown everywhere (list thumbnail, graph node, detail panel
  * portrait). Fill crops the source to the frame like before; Fit keeps the
@@ -50,7 +44,7 @@ export function ImageCropModal({ imageSrc, onCropped, onCancel }: ImageCropModal
       const blob =
         mode === "fill"
           ? await cropImageToBlob(imageSrc, croppedAreaPixels!)
-          : await fitImageToBlob(imageSrc, ICON_CROP_ASPECT, FIT_BACKGROUND);
+          : await fitImageToBlob(imageSrc, ICON_CROP_ASPECT);
       onCropped(blob);
     } finally {
       setSaving(false);
@@ -120,12 +114,13 @@ export function ImageCropModal({ imageSrc, onCropped, onCancel }: ImageCropModal
             </label>
           </>
         ) : (
-          // CSS `object-fit: contain` on a box of the same aspect ratio and
-          // background as fitImageToBlob's canvas — same scale-to-fit-and-
-          // center math the browser already implements, so this preview and
-          // the exported file end up proportioned identically.
+          // Mirrors fitImageToBlob's canvas: a blurred, cover-scaled copy of
+          // the same image behind an object-fit: contain copy on top — CSS
+          // approximation of the same two-layer composite the export bakes
+          // into the file, so this preview reads the same as the result.
           <div className="image-crop-fit-preview">
-            <img src={imageSrc} alt="" />
+            <img className="image-crop-fit-preview-bg" src={imageSrc} alt="" aria-hidden="true" />
+            <img className="image-crop-fit-preview-fg" src={imageSrc} alt="" />
           </div>
         )}
 

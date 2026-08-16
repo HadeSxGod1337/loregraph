@@ -396,7 +396,7 @@
     "cropModeFill": "Fill",
     "cropModeFit": "Fit",
     "cropModeFillHint": "Crops the image to fill the frame — drag and zoom to choose what's kept.",
-    "cropModeFitHint": "Keeps the whole image, padded to fit the frame — nothing gets cropped off."
+    "cropModeFitHint": "Shows the whole image. Empty space is filled with a blurred background from the image."
   },
   "richText": {
     "insertImage": "Insert image",
