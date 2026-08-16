@@ -208,6 +208,83 @@ export function pathKey(path: string[]): string {
   return path.join("/");
 }
 
+export interface HierarchyVisibility {
+  visibleIds: Set<string>;
+  /** Collapsed id → how many of its hierarchy descendants ended up hidden as
+   * a result (i.e. not reachable through any other open path either). Omits
+   * ids that hide nothing, so a "+N" badge can just check `.get(id)`. */
+  hiddenDescendantCount: Map<string, number>;
+}
+
+/** Which entities are on screen, given which ids the graph view has
+ * collapsed.
+ *
+ * Reuses `buildForest` rather than walking `childrenOf` directly: the forest
+ * already has one node per (entity, position) pair, so an entity with two
+ * parents shows up as two independent branches (see the "two folders" case
+ * in buildForest's own tests). Walking it top-down and tracking "is a
+ * collapsed id somewhere above me on *this* path" gets multi-parent
+ * semantics for free — an entity is visible the moment any one of its
+ * positions reaches it without crossing a collapsed ancestor, exactly the
+ * "union of open paths" rule the graph view needs. Collapsing a node never
+ * hides the node itself, only what's under it. */
+export function computeHierarchyVisibility(
+  entities: Entity[],
+  index: HierarchyIndex,
+  collapsedIds: ReadonlySet<string>,
+): HierarchyVisibility {
+  const forest = buildForest(entities, index);
+  const visibleIds = new Set<string>();
+
+  const walk = (node: TreeNode, hiddenByAncestor: boolean) => {
+    if (!hiddenByAncestor) visibleIds.add(node.entity.id);
+    const hiddenBelow = hiddenByAncestor || collapsedIds.has(node.entity.id);
+    node.children.forEach((child) => walk(child, hiddenBelow));
+  };
+  forest.forEach((root) => walk(root, false));
+
+  const hiddenDescendantCount = new Map<string, number>();
+  for (const id of collapsedIds) {
+    const hidden = countHiddenDescendants(index, id, visibleIds);
+    if (hidden > 0) hiddenDescendantCount.set(id, hidden);
+  }
+
+  return { visibleIds, hiddenDescendantCount };
+}
+
+/** `id`'s hierarchy descendants — its own `childrenOf`, transitively, which
+ * is the same flat parent→child graph regardless of which of `id`'s own
+ * positions this count is attached to — that are not visible through any
+ * path at all. Same depth/cycle guard as `buildForest`. */
+function countHiddenDescendants(
+  index: HierarchyIndex,
+  id: string,
+  visibleIds: ReadonlySet<string>,
+): number {
+  const seen = new Set<string>();
+  const queue: { id: string; depth: number }[] = [{ id, depth: 0 }];
+  let hidden = 0;
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current.depth >= MAX_DEPTH) continue;
+    for (const child of index.childrenOf.get(current.id) ?? []) {
+      if (seen.has(child) || child === id) continue;
+      seen.add(child);
+      if (!visibleIds.has(child)) hidden++;
+      queue.push({ id: child, depth: current.depth + 1 });
+    }
+  }
+  return hidden;
+}
+
+/** Ordinary graph edges with both ends on screen — an edge touching a node
+ * hidden by a collapsed branch has nowhere to draw itself. */
+export function filterVisibleEdges(edges: Edge[], visibleIds: ReadonlySet<string>): Edge[] {
+  return edges.filter(
+    (edge) => visibleIds.has(edge.source_entity_id) && visibleIds.has(edge.target_entity_id),
+  );
+}
+
 /** Would linking `childId` under `parentId` create a loop? Used by drag and
  * drop, which is the only place in the UI that can create such an edge. */
 export function wouldCycle(
