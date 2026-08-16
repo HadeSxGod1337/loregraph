@@ -2216,6 +2216,38 @@
   background: var(--bg-subtle);
 }
 
+/* Zoom out / fit / zoom in, grouped as one segmented cluster rather than
+   three separate pills — reads as a single "camera" control the way the
+   view-mode toggle reads as a single switch. Tighter than the base
+   .segmented button padding since these hold an icon only, no label. */
+.graph-zoom-cluster button {
+  padding: 6px 10px;
+}
+
+/* Standalone icon-only dock buttons (center view, and later grid/snap) —
+   same pill/border language as .graph-dock-trigger-btn, without the
+   label+chevron layout that button assumes. */
+.graph-dock-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text);
+  padding: 7px;
+  border-radius: var(--radius-pill);
+}
+
+.graph-dock-icon-btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.graph-dock-icon-btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .graph-canvas {
   flex: 1;
   min-height: 0;
@@ -2254,24 +2286,6 @@
   color: var(--text-muted);
 }
 
-.graph-reset-layout-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 13px;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-}
-
-.graph-reset-layout-button:hover {
-  background: var(--bg-subtle);
-}
-
 /* React Flow's own theming hook — controls both the edge line and the
    arrowhead marker consistently (see @xyflow/react/dist/style.css). The
    library ships a `.dark` class variant of these tokens, but this app
@@ -2308,6 +2322,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: default;
+  transition: opacity 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+/* Edge touches whatever's currently focal (hovered node, selection, or the
+   active root) — see computeEdgeEmphasis in floatingEdgeUtils.ts. Also the
+   escape hatch that keeps a label visible under .react-flow-lod, below. */
+.graph-edge-label-emphasized {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Transient spotlight: a node elsewhere is hovered and this edge isn't part
+   of it. Never combined with -emphasized (see computeEdgeEmphasis). */
+.graph-edge-label-dimmed {
+  opacity: 0.35;
 }
 
 /* --- Player access --------------------------------------------------------- */
@@ -2863,6 +2892,21 @@
 
 .react-flow-lod .entity-node-title {
   font-size: 11px;
+}
+
+/* Edge labels are the other big source of visual noise at scale — hundreds
+   of small pills stacking up across the canvas — and unlike node preview
+   fields they're illegible at LOD zoom anyway. Hidden by default, except for
+   whatever's incident to the current hover/selection/root focus
+   (.graph-edge-label-emphasized): that's exactly the relationship someone
+   zoomed out is trying to inspect, so it stays legible instead of also
+   disappearing. */
+.react-flow-lod .graph-edge-label {
+  display: none;
+}
+
+.react-flow-lod .graph-edge-label-emphasized {
+  display: block;
 }
 
 /* handle dots are only needed while dragging a connection — hide them at
@@ -4721,6 +4765,13 @@
   padding: 4px;
   display: flex;
   flex-direction: column;
+}
+
+/* Trigger sits at the bottom of its container (the graph dock) — open
+   upward instead of off-screen. */
+.kebab-menu.upward .kebab-menu-list {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .kebab-menu-list button {

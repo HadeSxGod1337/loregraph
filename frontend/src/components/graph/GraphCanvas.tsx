@@ -1,9 +1,8 @@
 import {
   Background,
-  Controls,
+  BackgroundVariant,
   MarkerType,
   MiniMap,
-  Panel,
   ReactFlow,
   ReactFlowProvider,
   useNodesState,
@@ -20,14 +19,15 @@ import { API_URL } from "../../api/client";
 import { entitiesApi, type PositionEntry } from "../../api/entities";
 import type { Edge, Entity } from "../../api/types";
 import { useDebouncedCallback } from "../../hooks/useDebouncedCallback";
-import { Icon } from "../ui/Icon";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { typeColor } from "../../lib/typeColor";
 import { ActiveRootContext } from "./ActiveRootContext";
 import { EntityNode, type EntityNodeData } from "./EntityNode";
 import { FloatingEdge } from "./FloatingEdge";
 import { edgeGroupOffsets } from "./floatingEdgeUtils";
+import { HoveredEntityContext } from "./HoveredEntityContext";
 import { computeForceLayout } from "./layout";
+import { nextLodState } from "./lod";
 import { getPreviewFields } from "./previewFields";
 import { SelectedEntityContext } from "./SelectedEntityContext";
 
@@ -37,12 +37,9 @@ const POSITION_SAVE_DEBOUNCE_MS = 500;
 // React Flow's own default (0.5) doesn't let a large "All entities" world
 // zoom out far enough to see everything at once.
 const MIN_ZOOM = 0.05;
-// Below this zoom, card details (icon, badge, preview fields) are too small
-// to read anyway — simplifying them to plain pills is what keeps panning
-// smooth with hundreds of nodes on screen. Two thresholds (not one) add a
-// dead zone so hovering right at the boundary doesn't flip back and forth.
-const LOD_ENTER_ZOOM = 0.35;
-const LOD_EXIT_ZOOM = 0.45;
+// Shared by the background pattern and snapGrid — grid lines are only a
+// useful reference for where nodes will snap if both use the same spacing.
+const GRID_SIZE = 22;
 
 function minimapNodeColor(node: FlowNode<EntityNodeData>): string {
   return typeColor(node.data.entityType);
@@ -61,6 +58,17 @@ export interface CameraFocusRequest {
   nonce: number;
 }
 
+/** One-shot camera/layout commands dispatched from the consolidated toolbar
+ * (GraphControls) — a sibling component outside the ReactFlowProvider, so it
+ * can't call useReactFlow() itself. Mirrors the focusRequest pattern above
+ * rather than introducing a second way to reach into the canvas. */
+export type GraphActionType = "zoomIn" | "zoomOut" | "fitView" | "resetLayout";
+
+export interface GraphActionRequest {
+  type: GraphActionType;
+  nonce: number;
+}
+
 interface GraphCanvasProps {
   projectId: string;
   nodes: Entity[];
@@ -73,6 +81,14 @@ interface GraphCanvasProps {
    * entity without changing root (see EntityDetailPanel's "focus camera"
    * button). */
   focusRequest: CameraFocusRequest | null;
+  actionRequest: GraphActionRequest | null;
+  /** Freezes dragging/connecting/selecting nodes — the toolbar's "lock
+   * positions" toggle, replacing the interactivity lock that used to live on
+   * React Flow's default <Controls/>. */
+  locked: boolean;
+  /** Toolbar's grid toggle — swaps the background to a line grid and snaps
+   * dragged nodes to it (see GRID_SIZE). */
+  gridEnabled: boolean;
   onNodeSelect: (entityId: string) => void;
   onNodeSetRoot: (entityId: string) => void;
   onConnectNodes: (sourceId: string, targetId: string) => void;
@@ -177,6 +193,9 @@ function GraphCanvasInner({
   viewMode,
   selectedEntityId,
   focusRequest,
+  actionRequest,
+  locked,
+  gridEnabled,
   onNodeSelect,
   onNodeSetRoot,
   onConnectNodes,
@@ -184,7 +203,7 @@ function GraphCanvasInner({
   onPaneClick,
 }: GraphCanvasProps) {
   const { t } = useTranslation();
-  const { fitView } = useReactFlow();
+  const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { flowNodes, setFlowNodes, onNodesChange } = useSyncedFlowNodes(nodes, edges);
   // Read inside the root/depth fit effect below without making it a
   // dependency — switching Focused/All alone must not retrigger that effect
@@ -309,70 +328,110 @@ function GraphCanvasInner({
     return () => cancelAnimationFrame(raf);
   }, [focusRequest, fitView]);
 
+  // Zoom/fit/reset-layout buttons live in the toolbar (GraphControls),
+  // outside the ReactFlowProvider, so they can't call useReactFlow()
+  // directly — see the GraphActionRequest comment above. "resetLayout" only
+  // opens the same confirm dialog the effect below already guards; the
+  // actual layout recompute stays gated behind that confirmation either way.
+  useEffect(() => {
+    if (!actionRequest) return;
+    switch (actionRequest.type) {
+      case "zoomIn":
+        zoomIn({ duration: 200 });
+        break;
+      case "zoomOut":
+        zoomOut({ duration: 200 });
+        break;
+      case "fitView":
+        fitView({ duration: 300, padding: 0.2 });
+        break;
+      case "resetLayout":
+        setConfirmingReset(true);
+        break;
+    }
+  }, [actionRequest, zoomIn, zoomOut, fitView]);
+
   // Tracked once here (not per-node) and applied as a single class toggle —
-  // see the .react-flow-lod rules in App.css. Two thresholds add a small
-  // dead zone so hovering at the boundary doesn't flip back and forth.
+  // see the .react-flow-lod rules in App.css.
   const zoomLevel = useStore((s) => s.transform[2]);
   const [isLod, setIsLod] = useState(false);
   useEffect(() => {
-    setIsLod((prev) => {
-      if (prev && zoomLevel > LOD_EXIT_ZOOM) return false;
-      if (!prev && zoomLevel < LOD_ENTER_ZOOM) return true;
-      return prev;
-    });
+    setIsLod((prev) => nextLodState(prev, zoomLevel));
   }, [zoomLevel]);
+
+  // Which entity (if any) the pointer is currently over — read by
+  // FloatingEdge to spotlight that node's own relationships and fade the
+  // rest (see HoveredEntityContext). Node-granularity only: these are
+  // discrete enter/leave events at whatever rate the pointer crosses node
+  // boundaries, not a per-frame stream like drag, so re-rendering the edges
+  // that read this context is cheap even with hundreds of them on screen.
+  const [hoveredEntityId, setHoveredEntityId] = useState<string | null>(null);
+  const handleNodeMouseEnter = useCallback(
+    (_: React.MouseEvent, node: FlowNode<EntityNodeData>) => setHoveredEntityId(node.id),
+    [],
+  );
+  const handleNodeMouseLeave = useCallback(() => setHoveredEntityId(null), []);
 
   return (
     <SelectedEntityContext.Provider value={selectedEntityId}>
       <ActiveRootContext.Provider value={rootId}>
-        <ReactFlow
-          className={isLod ? "react-flow-lod" : undefined}
-          nodes={flowNodes}
-          edges={flowEdges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
-          onNodeClick={(_, node) => onNodeSelect(node.id)}
-          onNodeDoubleClick={(_, node) => onNodeSetRoot(node.id)}
-          onNodeDragStop={handleNodeDragStop}
-          onConnect={(c) => c.source && c.target && onConnectNodes(c.source, c.target)}
-          onEdgeClick={(_, edge) => onEdgeSelect(edge.id)}
-          onPaneClick={onPaneClick}
-          connectionRadius={120}
-          connectOnClick
-          defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
-          // Skips rendering nodes/edges outside the viewport — the "All
-          // entities" mode can put hundreds of nodes on canvas at once.
-          onlyRenderVisibleElements
-          minZoom={MIN_ZOOM}
-        >
-          <Background color="var(--border)" gap={22} size={1} />
-          <Controls />
-          <MiniMap pannable zoomable nodeColor={minimapNodeColor} nodeStrokeWidth={0} />
-          <Panel position="top-right">
-            <button
-              type="button"
-              className="graph-reset-layout-button"
-              onClick={() => setConfirmingReset(true)}
-              title={t("graph.resetLayout")}
-            >
-              <Icon name="refresh" size={14} />
-              {t("graph.resetLayout")}
-            </button>
-          </Panel>
-        </ReactFlow>
-        {confirmingReset && (
-          <ConfirmDialog
-            title={t("graph.resetLayoutConfirmTitle")}
-            body={t("graph.resetLayoutConfirmBody")}
-            confirmLabel={t("graph.resetLayout")}
-            onConfirm={() => {
-              setConfirmingReset(false);
-              void handleResetLayout();
-            }}
-            onCancel={() => setConfirmingReset(false)}
-          />
-        )}
+        <HoveredEntityContext.Provider value={hoveredEntityId}>
+          <ReactFlow
+            className={isLod ? "react-flow-lod" : undefined}
+            nodes={flowNodes}
+            edges={flowEdges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={onNodesChange}
+            onNodeClick={(_, node) => onNodeSelect(node.id)}
+            onNodeDoubleClick={(_, node) => onNodeSetRoot(node.id)}
+            onNodeDragStop={handleNodeDragStop}
+            onNodeMouseEnter={handleNodeMouseEnter}
+            onNodeMouseLeave={handleNodeMouseLeave}
+            onConnect={(c) => c.source && c.target && onConnectNodes(c.source, c.target)}
+            onEdgeClick={(_, edge) => onEdgeSelect(edge.id)}
+            onPaneClick={onPaneClick}
+            connectionRadius={120}
+            connectOnClick
+            defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
+            // Skips rendering nodes/edges outside the viewport — the "All
+            // entities" mode can put hundreds of nodes on canvas at once.
+            onlyRenderVisibleElements
+            minZoom={MIN_ZOOM}
+            // "Lock positions" toolbar toggle — same trio React Flow's own
+            // default <Controls/> interactivity lock used to drive, now
+            // surfaced through GraphControls instead (see `locked` above).
+            nodesDraggable={!locked}
+            nodesConnectable={!locked}
+            elementsSelectable={!locked}
+            // Grid toggle — snapping only kicks in on the next manual drag;
+            // it never retroactively moves nodes that are already placed
+            // (auto-layout's continuous coordinates included), so flipping
+            // this on mid-session doesn't rearrange anything by itself.
+            snapToGrid={gridEnabled}
+            snapGrid={[GRID_SIZE, GRID_SIZE]}
+          >
+            <Background
+              color="var(--border)"
+              gap={GRID_SIZE}
+              size={1}
+              variant={gridEnabled ? BackgroundVariant.Lines : BackgroundVariant.Dots}
+            />
+            <MiniMap pannable zoomable nodeColor={minimapNodeColor} nodeStrokeWidth={0} />
+          </ReactFlow>
+          {confirmingReset && (
+            <ConfirmDialog
+              title={t("graph.resetLayoutConfirmTitle")}
+              body={t("graph.resetLayoutConfirmBody")}
+              confirmLabel={t("graph.resetLayout")}
+              onConfirm={() => {
+                setConfirmingReset(false);
+                void handleResetLayout();
+              }}
+              onCancel={() => setConfirmingReset(false)}
+            />
+          )}
+        </HoveredEntityContext.Provider>
       </ActiveRootContext.Provider>
     </SelectedEntityContext.Provider>
   );
