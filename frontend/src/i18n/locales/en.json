@@ -639,7 +639,7 @@
     "removeFileTitle": "Remove file",
     "dropHint": "Drop to attach",
     "inputPlaceholderBlocked": "Finish reviewing the draft above first (approve / request changes / reject)",
-    "inputPlaceholderDefault": "Ask about the world or request new lore… (Enter to send)",
+    "inputPlaceholderDefault": "Ask about the world or suggest new lore…",
     "anchorWholeWorld": "whole world",
     "contextLabel": "Context",
     "anchorTitle": "Which entity to build around",

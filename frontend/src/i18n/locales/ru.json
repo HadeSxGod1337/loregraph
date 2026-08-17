@@ -662,7 +662,7 @@
     "removeFileTitle": "Убрать файл",
     "dropHint": "Отпусти, чтобы прикрепить",
     "inputPlaceholderBlocked": "Сначала заверши ревью черновика выше (принять / правки / отклонить)",
-    "inputPlaceholderDefault": "Спроси о мире или попроси новый лор… (Enter — отправить)",
+    "inputPlaceholderDefault": "Спроси о мире или предложи новый лор…",
     "anchorWholeWorld": "весь мир",
     "contextLabel": "Контекст",
     "anchorTitle": "Вокруг какой сущности строить",

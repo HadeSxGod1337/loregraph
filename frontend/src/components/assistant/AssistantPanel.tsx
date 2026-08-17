@@ -430,66 +430,68 @@ function ChatInput({
           ))}
         </div>
       )}
-      <textarea
-        ref={textareaRef}
-        className="assistant-composer-input"
-        rows={2}
-        placeholder={
-          reviewPending
-            ? t("assistant.inputPlaceholderBlocked")
-            : t("assistant.inputPlaceholderDefault")
-        }
-        value={text}
-        disabled={blocked}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (isSubmitKeypress(e.key, e.shiftKey)) {
-            e.preventDefault();
-            submit();
+      <div className="assistant-composer-surface">
+        <textarea
+          ref={textareaRef}
+          className="assistant-composer-input"
+          rows={2}
+          placeholder={
+            reviewPending
+              ? t("assistant.inputPlaceholderBlocked")
+              : t("assistant.inputPlaceholderDefault")
           }
-        }}
-      />
-      <div className="assistant-input-row">
-        {entities.length > 0 && (
-          <label className="assistant-context-label" title={t("assistant.anchorTitle")}>
-            {t("assistant.contextLabel")}:
-            <select value={anchorId} onChange={(e) => setAnchorId(e.target.value)}>
-              <option value="">{t("assistant.anchorWholeWorld")}</option>
-              {entities.map((entity) => (
-                <option key={entity.id} value={entity.id}>
-                  {entity.title}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <button
-          type="button"
-          className="icon-button"
+          value={text}
           disabled={blocked}
-          title={t("assistant.attachTitle")}
-          aria-label={t("assistant.attachTitle")}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Icon name="paperclip" />
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/jpeg,image/png,image/gif,image/webp,.pdf,.txt,.md,.markdown,.json,.csv,.tsv,.yaml,.yml,.log"
-          onChange={handleFilesPicked}
-          style={{ display: "none" }}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (isSubmitKeypress(e.key, e.shiftKey)) {
+              e.preventDefault();
+              submit();
+            }
+          }}
         />
-        <button
-          type="button"
-          className="assistant-send-button"
-          disabled={!canSend}
-          onClick={submit}
-        >
-          {chat.busy && <span className="spinner" aria-hidden="true" />}
-          {chat.busy ? t("assistant.sending") : t("assistant.sendButton")}
-        </button>
+        <div className="assistant-input-row">
+          {entities.length > 0 && (
+            <label className="assistant-context-label" title={t("assistant.anchorTitle")}>
+              {t("assistant.contextLabel")}:
+              <select value={anchorId} onChange={(e) => setAnchorId(e.target.value)}>
+                <option value="">{t("assistant.anchorWholeWorld")}</option>
+                {entities.map((entity) => (
+                  <option key={entity.id} value={entity.id}>
+                    {entity.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <button
+            type="button"
+            className="icon-button"
+            disabled={blocked}
+            title={t("assistant.attachTitle")}
+            aria-label={t("assistant.attachTitle")}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Icon name="paperclip" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/gif,image/webp,.pdf,.txt,.md,.markdown,.json,.csv,.tsv,.yaml,.yml,.log"
+            onChange={handleFilesPicked}
+            style={{ display: "none" }}
+          />
+          <button
+            type="button"
+            className="assistant-send-button"
+            disabled={!canSend}
+            onClick={submit}
+          >
+            {chat.busy && <span className="spinner" aria-hidden="true" />}
+            {chat.busy ? t("assistant.sending") : t("assistant.sendButton")}
+          </button>
+        </div>
       </div>
     </div>
   );

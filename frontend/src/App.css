@@ -4174,9 +4174,11 @@
 
 /* Scrollbars are styled globally in index.css. */
 
-/* Reads as one control cluster (history + new-conversation) instead of a
-   bare <select> floating above the transcript — the select itself goes
-   borderless so the two don't stack double chrome. */
+/* Reads as one control cluster (page title, history menu, new-conversation)
+   instead of a title floating above a bare <select> — the native select's
+   light browser-chrome popup never followed the app's dark theme, so the
+   history picker is a themed trigger + menu instead (see
+   .assistant-session-menu below). */
 .assistant-session-picker {
   flex: none;
   display: flex;
@@ -4460,10 +4462,35 @@
   pointer-events: none;
 }
 
+/* One unified input bar — textarea and controls share a single border
+   instead of each carrying their own, so attach/context/send don't read as
+   loose separate controls stacked under the textarea. */
+.assistant-composer-surface {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.12s;
+}
+
+.assistant-composer-surface:focus-within {
+  border-color: var(--accent);
+}
+
+.assistant-composer-surface textarea {
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+
 .assistant-input-row {
   display: flex;
   gap: 8px;
   align-items: center;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
 }
 
 .assistant-input-row select {
