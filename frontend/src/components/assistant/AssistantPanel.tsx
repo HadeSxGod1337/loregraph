@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import type { AgentReviewPayload, DraftEntity, LoreDraft } from "../../api/agent";
+import type { AgentReviewPayload, AgentSession, DraftEntity, LoreDraft } from "../../api/agent";
 import { ApiError, apiClient } from "../../api/client";
 import type { Edge, Entity } from "../../api/types";
 import {
@@ -12,30 +12,42 @@ import {
   useAgentConfig,
   useAgentSessions,
 } from "../../hooks/useAgent";
+import { useAutoGrowTextarea } from "../../hooks/useAutoGrowTextarea";
+import { useDismiss } from "../../hooks/useDismiss";
 import { useEntities } from "../../hooks/useEntities";
 import { useFileDrop } from "../../hooks/useFileDrop";
 import { useFilePaste } from "../../hooks/useFilePaste";
-import { translateEvent, translateWarning } from "../../i18n/eventText";
+import { eventTone, translateEvent, translateWarning } from "../../i18n/eventText";
 import { typeColor, typeSoftBackground } from "../../lib/typeColor";
 import { Icon } from "../ui/Icon";
 import { Markdown } from "../ui/Markdown";
+import { composerAvailability, isSubmitKeypress } from "./composerState";
 import { DraftPreviewDrawer } from "./DraftPreviewDrawer";
+import { moveMenuIndex, sessionStatusTone } from "./sessionMenu";
 
 interface AssistantPanelProps {
   projectId: string;
   /** Called with created entity ids after an approved commit — the graph
    * page uses it to focus the freshly generated web. */
   onCommitted?: (entityIds: string[]) => void;
+  /** Page-level callers pass their own title so it renders in the same row
+   * as the history picker instead of a separate heading block above it; the
+   * graph drawer omits it and keeps its own header (with a close button). */
+  heading?: string;
 }
 
 /** Conversational co-author: chat about the world (grounded answers), get
  * clarifying questions back, and review whole lore batches inline — with
  * per-stage progress and token streaming. */
-export function AssistantPanel({ projectId, onCommitted }: AssistantPanelProps) {
+export function AssistantPanel({ projectId, onCommitted, heading }: AssistantPanelProps) {
   const { t } = useTranslation();
   const { data: config, error: configError } = useAgentConfig();
   const { data: entities } = useEntities(projectId);
   const chat = useAgentChat(projectId, onCommitted);
+  // Owned here (not inside ChatInput) so the idle state's example prompts —
+  // rendered in the transcript, a sibling — can seed the composer too.
+  const [composerText, setComposerText] = useState("");
+  const [composerAnchorId, setComposerAnchorId] = useState("");
 
   if (configError instanceof ApiError && configError.status === 404) {
     return (
@@ -54,56 +66,164 @@ uv run uvicorn loregraph.main:app --reload`}</pre>
 
   return (
     <div className="assistant-panel">
-      <SessionPicker projectId={projectId} chat={chat} />
-      <Transcript chat={chat} entities={entities ?? []} projectId={projectId} />
-      <ChatInput chat={chat} entities={entities ?? []} projectId={projectId} />
+      <SessionPicker projectId={projectId} chat={chat} heading={heading} />
+      <Transcript
+        chat={chat}
+        entities={entities ?? []}
+        projectId={projectId}
+        onExamplePick={(instruction) => setComposerText(instruction)}
+      />
+      <ChatInput
+        chat={chat}
+        entities={entities ?? []}
+        projectId={projectId}
+        text={composerText}
+        setText={setComposerText}
+        anchorId={composerAnchorId}
+        setAnchorId={setComposerAnchorId}
+      />
     </div>
   );
 }
 
-function SessionPicker({ projectId, chat }: { projectId: string; chat: AgentChat }) {
+/** Themed replacement for a native <select> (its light, browser-chrome
+ * popup didn't follow the app's dark theme). Menu semantics rather than
+ * listbox: each entry is its own focusable button, matching KebabMenu
+ * elsewhere in this file's neighborhood — Arrow/Home/End roving is added on
+ * top since this one specifically replaces a control that had it natively. */
+function SessionPicker({
+  projectId,
+  chat,
+  heading,
+}: {
+  projectId: string;
+  chat: AgentChat;
+  heading?: string;
+}) {
   const { t } = useTranslation();
   const { data: sessions } = useAgentSessions(projectId);
   const recent = (sessions ?? []).filter((s) => s.title).slice(0, 8);
-  if (recent.length === 0 && !chat.threadId) return null;
+  const hasHistory = recent.length > 0 || chat.threadId !== null;
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useDismiss(open, rootRef, () => setOpen(false));
+
+  useEffect(() => {
+    if (open) menuRef.current?.querySelector<HTMLButtonElement>("[role='menuitem']")?.focus();
+  }, [open]);
+
+  if (!heading && !hasHistory) return null;
+
+  const current = recent.find((session) => session.thread_id === chat.threadId);
+
+  function focusMenuItem(key: "ArrowDown" | "ArrowUp" | "Home" | "End") {
+    const items = menuRef.current?.querySelectorAll<HTMLButtonElement>("[role='menuitem']");
+    if (!items || items.length === 0) return;
+    const from = Array.from(items).indexOf(document.activeElement as HTMLButtonElement);
+    items[moveMenuIndex(from, key, items.length)]?.focus();
+  }
+
   return (
-    <div className="assistant-session-picker">
-      <select
-        value={chat.threadId ?? ""}
-        onChange={(e) => {
-          if (e.target.value) void chat.openSession(e.target.value);
-        }}
-      >
-        <option value="">{t("assistant.historyPlaceholder")}</option>
-        {recent.map((session) => (
-          <option key={session.thread_id} value={session.thread_id}>
-            [{t(`assistant.status.${session.status}` as const)}]{" "}
-            {session.title.slice(0, 60)}
-          </option>
-        ))}
-      </select>
+    <div className="assistant-session-picker" ref={rootRef}>
+      {heading && <h1 className="assistant-session-heading">{heading}</h1>}
+      {hasHistory && (
+        <div className="assistant-session-trigger-wrap">
+          <button
+            type="button"
+            className="assistant-session-trigger"
+            aria-haspopup="menu"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown" && !open) {
+                e.preventDefault();
+                setOpen(true);
+              }
+            }}
+          >
+            {current && (
+              <span className={`assistant-session-status tone-${sessionStatusTone(current.status)}`}>
+                {t(`assistant.status.${current.status}` as const)}
+              </span>
+            )}
+            <span className="assistant-session-trigger-label">
+              {current ? current.title : t("assistant.historyPlaceholder")}
+            </span>
+            <Icon name="chevron-down" size={13} />
+          </button>
+          {open && (
+            <div
+              className="assistant-session-menu"
+              role="menu"
+              aria-label={t("assistant.historyPlaceholder")}
+              ref={menuRef}
+              onKeyDown={(e) => {
+                if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Home" && e.key !== "End")
+                  return;
+                e.preventDefault();
+                focusMenuItem(e.key);
+              }}
+            >
+              {recent.map((session: AgentSession) => (
+                <button
+                  key={session.thread_id}
+                  type="button"
+                  role="menuitem"
+                  aria-current={session.thread_id === chat.threadId || undefined}
+                  className="assistant-session-option"
+                  onClick={() => {
+                    setOpen(false);
+                    if (session.thread_id !== chat.threadId) void chat.openSession(session.thread_id);
+                  }}
+                >
+                  <span className={`assistant-session-status tone-${sessionStatusTone(session.status)}`}>
+                    {t(`assistant.status.${session.status}` as const)}
+                  </span>
+                  <span className="assistant-session-option-title" title={session.title}>
+                    {session.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {chat.threadId && (
         <button
           type="button"
-          className="assistant-new-session-button"
+          className="icon-button icon-button-accent"
           onClick={chat.reset}
           title={t("assistant.newConversation")}
+          aria-label={t("assistant.newConversation")}
         >
-          {t("assistant.newConversationButton")}
+          <Icon name="plus" size={15} />
         </button>
       )}
     </div>
   );
 }
 
+// Static conversation starters for the idle state — unlike SuggestionHints
+// (graph-hole-driven, only appears when applicable), these are always
+// available so a first-time chat never opens on a blank page.
+const EXAMPLE_PROMPT_KEYS = [
+  "addLore",
+  "weaveCharacter",
+  "checkConsistency",
+  "suggestLinks",
+] as const;
+
 function Transcript({
   chat,
   entities,
   projectId,
+  onExamplePick,
 }: {
   chat: AgentChat;
   entities: Entity[];
   projectId: string;
+  onExamplePick: (instruction: string) => void;
 }) {
   const { t } = useTranslation();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -117,41 +237,66 @@ function Transcript({
   return (
     <div className="assistant-transcript">
       {isEmpty && (
-        <p className="assistant-empty-invite">
-          {entities.length === 0
-            ? t("assistant.emptyInviteEmptyWorld")
-            : t("assistant.emptyInviteHasWorld")}
-        </p>
-      )}
-      {chat.messages.map((message, index) => (
-        <div
-          key={`${index}-${message.role}`}
-          className={`assistant-bubble assistant-bubble-${message.role}`}
-        >
-          {message.attachments.length > 0 && (
-            <div className="assistant-attachment-chips">
-              {message.attachments.map((filename) => (
-                <span key={filename} className="assistant-attachment-chip">
-                  <Icon name="paperclip" size={12} /> {filename}
-                </span>
-              ))}
-            </div>
-          )}
-          {message.event_code ? (
-            // Deterministic backend events are one translated sentence, not
-            // authored prose — nothing to format.
-            translateEvent(message.event_code, message.event_params ?? {}, message.text, t)
-          ) : message.role === "assistant" ? (
-            <Markdown className="markdown-view assistant-markdown">
-              {message.text}
-            </Markdown>
-          ) : (
-            // The DM's own text stays verbatim: what they typed is what they
-            // meant, asterisks and all.
-            message.text
-          )}
+        <div className="assistant-idle-state">
+          <p className="assistant-empty-invite">
+            <Icon name="sparkles" size={14} />
+            {entities.length === 0
+              ? t("assistant.emptyInviteEmptyWorld")
+              : t("assistant.emptyInviteHasWorld")}
+          </p>
+          <div className="assistant-hints">
+            {EXAMPLE_PROMPT_KEYS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                className="assistant-hint-chip"
+                onClick={() => onExamplePick(t(`assistant.examplePrompts.${key}.instruction`))}
+              >
+                {t(`assistant.examplePrompts.${key}.label`)}
+              </button>
+            ))}
+          </div>
         </div>
-      ))}
+      )}
+      {chat.messages.map((message, index) => {
+        if (message.event_code) {
+          // Deterministic backend events are one translated sentence, not
+          // authored prose — a compact system notice, not a speech bubble.
+          return (
+            <div
+              key={`${index}-event`}
+              className={`assistant-event-notice tone-${eventTone(message.event_code)}`}
+            >
+              {translateEvent(message.event_code, message.event_params ?? {}, message.text, t)}
+            </div>
+          );
+        }
+        return (
+          <div
+            key={`${index}-${message.role}`}
+            className={`assistant-bubble assistant-bubble-${message.role}`}
+          >
+            {message.attachments.length > 0 && (
+              <div className="assistant-attachment-chips">
+                {message.attachments.map((filename) => (
+                  <span key={filename} className="assistant-attachment-chip">
+                    <Icon name="paperclip" size={12} /> {filename}
+                  </span>
+                ))}
+              </div>
+            )}
+            {message.role === "assistant" ? (
+              <Markdown className="markdown-view assistant-markdown">
+                {message.text}
+              </Markdown>
+            ) : (
+              // The DM's own text stays verbatim: what they typed is what they
+              // meant, asterisks and all.
+              message.text
+            )}
+          </div>
+        );
+      })}
       {chat.statusNode && (
         <div className="assistant-status-line">
           {t([`assistant.stage.${chat.statusNode}`, "assistant.stage.fallback"], {
@@ -186,29 +331,43 @@ function Transcript({
   );
 }
 
+// Auto-grow bounds for the composer textarea: starts at ~2 lines (matching
+// the old fixed rows={2}) and grows to ~7 before scrolling internally, so a
+// long paste never pushes Send off the bottom of the panel.
+const COMPOSER_MIN_HEIGHT = 52;
+const COMPOSER_MAX_HEIGHT = 200;
+
 function ChatInput({
   chat,
   entities,
   projectId,
+  text,
+  setText,
+  anchorId,
+  setAnchorId,
 }: {
   chat: AgentChat;
   entities: Entity[];
   projectId: string;
+  text: string;
+  setText: (text: string) => void;
+  anchorId: string;
+  setAnchorId: (anchorId: string) => void;
 }) {
   const { t } = useTranslation();
-  const [text, setText] = useState("");
-  const [anchorId, setAnchorId] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // While a draft awaits review, new messages are rejected by the backend —
   // block them in the UI too, with an explanation.
   const reviewPending = chat.pendingReview !== null;
-  const blocked = chat.busy || reviewPending;
+  const { blocked, canSend } = composerAvailability({ text, busy: chat.busy, reviewPending });
+  useAutoGrowTextarea(textareaRef, text, COMPOSER_MIN_HEIGHT, COMPOSER_MAX_HEIGHT);
 
   function submit() {
+    if (!canSend) return;
     const trimmed = text.trim();
-    if (!trimmed || blocked) return;
     setText("");
     setFiles([]);
     void chat.send(trimmed, anchorId || null, files);
@@ -271,64 +430,68 @@ function ChatInput({
           ))}
         </div>
       )}
-      <textarea
-        rows={2}
-        placeholder={
-          reviewPending
-            ? t("assistant.inputPlaceholderBlocked")
-            : t("assistant.inputPlaceholderDefault")
-        }
-        value={text}
-        disabled={blocked}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            submit();
+      <div className="assistant-composer-surface">
+        <textarea
+          ref={textareaRef}
+          className="assistant-composer-input"
+          rows={2}
+          placeholder={
+            reviewPending
+              ? t("assistant.inputPlaceholderBlocked")
+              : t("assistant.inputPlaceholderDefault")
           }
-        }}
-      />
-      <div className="assistant-input-row">
-        {entities.length > 0 && (
-          <label className="assistant-context-label" title={t("assistant.anchorTitle")}>
-            {t("assistant.contextLabel")}:
-            <select value={anchorId} onChange={(e) => setAnchorId(e.target.value)}>
-              <option value="">{t("assistant.anchorWholeWorld")}</option>
-              {entities.map((entity) => (
-                <option key={entity.id} value={entity.id}>
-                  {entity.title}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <button
-          type="button"
-          className="icon-button"
+          value={text}
           disabled={blocked}
-          title={t("assistant.attachTitle")}
-          aria-label={t("assistant.attachTitle")}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Icon name="paperclip" />
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/jpeg,image/png,image/gif,image/webp,.pdf,.txt,.md,.markdown,.json,.csv,.tsv,.yaml,.yml,.log"
-          onChange={handleFilesPicked}
-          style={{ display: "none" }}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (isSubmitKeypress(e.key, e.shiftKey)) {
+              e.preventDefault();
+              submit();
+            }
+          }}
         />
-        <button
-          type="button"
-          className="assistant-send-button"
-          disabled={!text.trim() || blocked}
-          onClick={submit}
-        >
-          {chat.busy && <span className="spinner" aria-hidden="true" />}
-          {chat.busy ? t("assistant.sending") : t("assistant.sendButton")}
-        </button>
+        <div className="assistant-input-row">
+          {entities.length > 0 && (
+            <label className="assistant-context-label" title={t("assistant.anchorTitle")}>
+              {t("assistant.contextLabel")}:
+              <select value={anchorId} onChange={(e) => setAnchorId(e.target.value)}>
+                <option value="">{t("assistant.anchorWholeWorld")}</option>
+                {entities.map((entity) => (
+                  <option key={entity.id} value={entity.id}>
+                    {entity.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <button
+            type="button"
+            className="icon-button"
+            disabled={blocked}
+            title={t("assistant.attachTitle")}
+            aria-label={t("assistant.attachTitle")}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Icon name="paperclip" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/gif,image/webp,.pdf,.txt,.md,.markdown,.json,.csv,.tsv,.yaml,.yml,.log"
+            onChange={handleFilesPicked}
+            style={{ display: "none" }}
+          />
+          <button
+            type="button"
+            className="assistant-send-button"
+            disabled={!canSend}
+            onClick={submit}
+          >
+            {chat.busy && <span className="spinner" aria-hidden="true" />}
+            {chat.busy ? t("assistant.sending") : t("assistant.sendButton")}
+          </button>
+        </div>
       </div>
     </div>
   );
