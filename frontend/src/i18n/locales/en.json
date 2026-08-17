@@ -22,7 +22,8 @@
     "close": "Close",
     "undo": "Undo",
     "on": "on",
-    "off": "off"
+    "off": "off",
+    "openInNewTab": "Open in new tab"
   },
   "sheet": {
     "sheetTitle": "Sheet",
@@ -119,7 +120,8 @@
     "integrations": "Integrations",
     "help": "Help",
     "appSettings": "Settings",
-    "projectSettings": "Project settings"
+    "projectSettings": "Project settings",
+    "feedback": "Feedback"
   },
   "theme": {
     "light": "Light",
@@ -943,6 +945,14 @@
         "title": "Reindexing",
         "body": "Rebuilds the lore search vector index from the current entity state — useful after a bulk import."
       }
+    },
+    "support": {
+      "title": "Project & feedback",
+      "hubTitle": "Project Hub",
+      "hubDescription": "Roadmap, changelog and background on where Loregraph is headed.",
+      "feedbackTitle": "Leave feedback",
+      "feedbackDescription": "Report a bug or suggest an idea — goes straight to the person building this.",
+      "blockedMessage": "This page can't be embedded here — Notion is blocking the frame. Open it in a new tab instead."
     }
   },
   "appSettings": {

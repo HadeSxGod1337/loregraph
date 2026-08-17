@@ -286,6 +286,15 @@
   flex: none;
 }
 
+.sidebar-feedback-btn {
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .sidebar.collapsed .sidebar-nav-item {
   justify-content: center;
   padding: 8px;
@@ -4698,6 +4707,135 @@
   color: var(--accent, inherit);
 }
 
+/* ---------- External page overlay (Project Hub / feedback drawer) ----------
+   Notion's public pages send a frame-ancestors CSP that refuses embedding
+   from any outside origin, so .embed-overlay-fallback is the state most
+   users actually see — see useEmbedLoadStatus for how "blocked" is
+   inferred. */
+
+.embed-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 24px;
+}
+
+.embed-overlay {
+  display: flex;
+  flex-direction: column;
+  width: min(880px, 100%);
+  height: min(720px, calc(100vh - 48px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.embed-overlay-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.embed-overlay-head h2 {
+  margin: 0;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.embed-overlay-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.embed-overlay-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.embed-overlay-close:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.embed-overlay-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.embed-overlay-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  background: var(--surface);
+}
+
+.embed-overlay-iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.embed-overlay-iframe-hidden {
+  visibility: hidden;
+}
+
+.embed-overlay-fallback {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.embed-overlay-fallback svg {
+  color: var(--accent);
+}
+
+.embed-overlay-fallback p {
+  margin: 0;
+  max-width: 360px;
+  font-size: 13.5px;
+}
+
+@media (max-width: 640px) {
+  .embed-overlay {
+    height: calc(100vh - 32px);
+  }
+}
+
 /* react-easy-crop's <Cropper> absolutely-positions itself to fill its
    nearest positioned ancestor — this is that ancestor, matched to
    ICON_CROP_ASPECT (ImageCropModal.tsx) so the crop window's proportions
@@ -6296,6 +6434,69 @@ label.checkbox-wrapper.checkbox-with-hint {
   max-width: 480px;
   color: var(--text-muted);
   font-size: 14px;
+}
+
+.help-support-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 36px;
+}
+
+.help-support-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.help-support-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.help-support-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 280px;
+  max-width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.help-support-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.help-support-card svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.help-support-card strong {
+  display: block;
+  font-size: 13.5px;
+}
+
+.help-support-card-desc {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 .help-layout {

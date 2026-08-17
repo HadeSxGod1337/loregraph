@@ -9,6 +9,7 @@ import { useUpdateStatus } from "../../hooks/useUpdates";
 import { Icon, type IconName } from "../ui/Icon";
 import { CommandPalette } from "./CommandPalette";
 import { ProjectSwitcher } from "./ProjectSwitcher";
+import { SidebarFeedbackButton } from "./SidebarFeedbackButton";
 import { SidebarStatus } from "./SidebarStatus";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -198,6 +199,7 @@ export function Sidebar() {
             {!collapsed && <span className="sidebar-nav-label">{t("nav.help")}</span>}
           </NavLink>
         )}
+        <SidebarFeedbackButton collapsed={collapsed} />
         <ThemeToggle collapsed={collapsed} />
       </div>
 
