@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import type { AgentReviewPayload, DraftEntity, LoreDraft } from "../../api/agent";
+import type { AgentReviewPayload, AgentSession, DraftEntity, LoreDraft } from "../../api/agent";
 import { ApiError, apiClient } from "../../api/client";
 import type { Edge, Entity } from "../../api/types";
 import {
@@ -13,6 +13,7 @@ import {
   useAgentSessions,
 } from "../../hooks/useAgent";
 import { useAutoGrowTextarea } from "../../hooks/useAutoGrowTextarea";
+import { useDismiss } from "../../hooks/useDismiss";
 import { useEntities } from "../../hooks/useEntities";
 import { useFileDrop } from "../../hooks/useFileDrop";
 import { useFilePaste } from "../../hooks/useFilePaste";
@@ -22,18 +23,23 @@ import { Icon } from "../ui/Icon";
 import { Markdown } from "../ui/Markdown";
 import { composerAvailability, isSubmitKeypress } from "./composerState";
 import { DraftPreviewDrawer } from "./DraftPreviewDrawer";
+import { moveMenuIndex, sessionStatusTone } from "./sessionMenu";
 
 interface AssistantPanelProps {
   projectId: string;
   /** Called with created entity ids after an approved commit — the graph
    * page uses it to focus the freshly generated web. */
   onCommitted?: (entityIds: string[]) => void;
+  /** Page-level callers pass their own title so it renders in the same row
+   * as the history picker instead of a separate heading block above it; the
+   * graph drawer omits it and keeps its own header (with a close button). */
+  heading?: string;
 }
 
 /** Conversational co-author: chat about the world (grounded answers), get
  * clarifying questions back, and review whole lore batches inline — with
  * per-stage progress and token streaming. */
-export function AssistantPanel({ projectId, onCommitted }: AssistantPanelProps) {
+export function AssistantPanel({ projectId, onCommitted, heading }: AssistantPanelProps) {
   const { t } = useTranslation();
   const { data: config, error: configError } = useAgentConfig();
   const { data: entities } = useEntities(projectId);
@@ -56,34 +62,116 @@ uv run uvicorn loregraph.main:app --reload`}</pre>
 
   return (
     <div className="assistant-panel">
-      <SessionPicker projectId={projectId} chat={chat} />
+      <SessionPicker projectId={projectId} chat={chat} heading={heading} />
       <Transcript chat={chat} entities={entities ?? []} projectId={projectId} />
       <ChatInput chat={chat} entities={entities ?? []} projectId={projectId} />
     </div>
   );
 }
 
-function SessionPicker({ projectId, chat }: { projectId: string; chat: AgentChat }) {
+/** Themed replacement for a native <select> (its light, browser-chrome
+ * popup didn't follow the app's dark theme). Menu semantics rather than
+ * listbox: each entry is its own focusable button, matching KebabMenu
+ * elsewhere in this file's neighborhood — Arrow/Home/End roving is added on
+ * top since this one specifically replaces a control that had it natively. */
+function SessionPicker({
+  projectId,
+  chat,
+  heading,
+}: {
+  projectId: string;
+  chat: AgentChat;
+  heading?: string;
+}) {
   const { t } = useTranslation();
   const { data: sessions } = useAgentSessions(projectId);
   const recent = (sessions ?? []).filter((s) => s.title).slice(0, 8);
-  if (recent.length === 0 && !chat.threadId) return null;
+  const hasHistory = recent.length > 0 || chat.threadId !== null;
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useDismiss(open, rootRef, () => setOpen(false));
+
+  useEffect(() => {
+    if (open) menuRef.current?.querySelector<HTMLButtonElement>("[role='menuitem']")?.focus();
+  }, [open]);
+
+  if (!heading && !hasHistory) return null;
+
+  const current = recent.find((session) => session.thread_id === chat.threadId);
+
+  function focusMenuItem(key: "ArrowDown" | "ArrowUp" | "Home" | "End") {
+    const items = menuRef.current?.querySelectorAll<HTMLButtonElement>("[role='menuitem']");
+    if (!items || items.length === 0) return;
+    const from = Array.from(items).indexOf(document.activeElement as HTMLButtonElement);
+    items[moveMenuIndex(from, key, items.length)]?.focus();
+  }
+
   return (
-    <div className="assistant-session-picker">
-      <select
-        value={chat.threadId ?? ""}
-        onChange={(e) => {
-          if (e.target.value) void chat.openSession(e.target.value);
-        }}
-      >
-        <option value="">{t("assistant.historyPlaceholder")}</option>
-        {recent.map((session) => (
-          <option key={session.thread_id} value={session.thread_id}>
-            [{t(`assistant.status.${session.status}` as const)}]{" "}
-            {session.title.slice(0, 60)}
-          </option>
-        ))}
-      </select>
+    <div className="assistant-session-picker" ref={rootRef}>
+      {heading && <h1 className="assistant-session-heading">{heading}</h1>}
+      {hasHistory && (
+        <div className="assistant-session-trigger-wrap">
+          <button
+            type="button"
+            className="assistant-session-trigger"
+            aria-haspopup="menu"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown" && !open) {
+                e.preventDefault();
+                setOpen(true);
+              }
+            }}
+          >
+            {current && (
+              <span className={`assistant-session-status tone-${sessionStatusTone(current.status)}`}>
+                {t(`assistant.status.${current.status}` as const)}
+              </span>
+            )}
+            <span className="assistant-session-trigger-label">
+              {current ? current.title : t("assistant.historyPlaceholder")}
+            </span>
+            <Icon name="chevron-down" size={13} />
+          </button>
+          {open && (
+            <div
+              className="assistant-session-menu"
+              role="menu"
+              aria-label={t("assistant.historyPlaceholder")}
+              ref={menuRef}
+              onKeyDown={(e) => {
+                if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Home" && e.key !== "End")
+                  return;
+                e.preventDefault();
+                focusMenuItem(e.key);
+              }}
+            >
+              {recent.map((session: AgentSession) => (
+                <button
+                  key={session.thread_id}
+                  type="button"
+                  role="menuitem"
+                  aria-current={session.thread_id === chat.threadId || undefined}
+                  className="assistant-session-option"
+                  onClick={() => {
+                    setOpen(false);
+                    if (session.thread_id !== chat.threadId) void chat.openSession(session.thread_id);
+                  }}
+                >
+                  <span className={`assistant-session-status tone-${sessionStatusTone(session.status)}`}>
+                    {t(`assistant.status.${session.status}` as const)}
+                  </span>
+                  <span className="assistant-session-option-title" title={session.title}>
+                    {session.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {chat.threadId && (
         <button
           type="button"
