@@ -438,7 +438,7 @@
 /* Wider than the reading pages: this one holds a card grid, and 900 px of it
    on a 1800 px screen reads as one thin column with a void beside it. */
 .project-list-page {
-  max-width: 1180px;
+  max-width: 1400px;
   width: 100%;
   margin: 0 auto;
   padding: 24px;
@@ -620,26 +620,10 @@
   flex-shrink: 0;
 }
 
-.project-create-form {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  padding: 16px 18px;
+.create-project-form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-width: 420px;
-  margin-bottom: 16px;
-}
-
-.project-create-form h2 {
-  margin: 0 0 4px;
-  font-size: 15px;
-}
-
-.project-create-actions {
-  display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .entity-type-badge,

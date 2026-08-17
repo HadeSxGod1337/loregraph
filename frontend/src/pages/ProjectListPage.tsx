@@ -4,45 +4,29 @@ import { Link } from "react-router-dom";
 
 import { projectsApi } from "../api/projects";
 import type { Project } from "../api/types";
+import { CreateProjectDialog } from "../components/projects/CreateProjectDialog";
 import { Icon } from "../components/ui/Icon";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { KebabMenu } from "../components/ui/KebabMenu";
 import { SkeletonList } from "../components/ui/Skeleton";
 import { useToast } from "../components/ui/Toast";
-import {
-  useCreateProject,
-  useDeleteProject,
-  useImportProject,
-  useProjects,
-} from "../hooks/useProjects";
+import { useDeleteProject, useImportProject, useProjects } from "../hooks/useProjects";
 import { useLastProject } from "../hooks/useLastProject";
 import { translateApiError } from "../i18n/eventText";
+import { filterProjects } from "./projectFilter";
 
 export function ProjectListPage() {
   const { t } = useTranslation();
   const toast = useToast();
   const { data: projects, isLoading, error } = useProjects();
-  const createProject = useCreateProject();
   const importProject = useImportProject();
   const [creating, setCreating] = useState(false);
   const [query, setQuery] = useState("");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function handleCreate() {
-    if (!name.trim()) return;
-    createProject.mutate(
-      { name, description: description || null },
-      {
-        onSuccess: () => {
-          toast(t("projects.createdToast", { name: name.trim() }));
-          setName("");
-          setDescription("");
-          setCreating(false);
-        },
-      },
-    );
+  function handleCreated(name: string) {
+    toast(t("projects.createdToast", { name }));
+    setCreating(false);
   }
 
   async function handleExport(project: Project) {
@@ -73,65 +57,24 @@ export function ProjectListPage() {
   // The world you were in last is the one you almost always want again; it
   // gets its own card instead of being one row among eleven identical ones.
   const continueProject = projects?.find((p) => p.id === lastProjectId);
-  const rest = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return (projects ?? []).filter(
-      (p) =>
-        p.id !== continueProject?.id &&
-        (needle === "" || p.name.toLowerCase().includes(needle)),
-    );
-  }, [projects, continueProject, query]);
+  const rest = useMemo(
+    () => filterProjects(projects ?? [], continueProject?.id, query),
+    [projects, continueProject, query],
+  );
 
   const isEmpty = projects?.length === 0;
 
-  const createForm = (
-    <div className="project-create-form">
-      <h2>{t("projects.newProjectHeading")}</h2>
-      <input
-        autoFocus
-        placeholder={t("projects.namePlaceholder")}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") handleCreate();
-          if (e.key === "Escape") setCreating(false);
-        }}
-      />
-      <input
-        placeholder={t("projects.descriptionPlaceholder")}
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") handleCreate();
-          if (e.key === "Escape") setCreating(false);
-        }}
-      />
-      <div className="project-create-actions">
-        <button
-          type="button"
-          className="button-primary"
-          onClick={handleCreate}
-          disabled={!name.trim() || createProject.isPending}
-        >
-          {t("projects.createButton")}
-        </button>
-        <button type="button" className="button-ghost" onClick={() => setCreating(false)}>
-          {t("common.cancel")}
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="project-list-page">
-      <div className="project-list-header">
+      <header className="project-list-header">
         <div className="project-list-title">
           <h1>{t("projects.title")}</h1>
           {projects && projects.length > 0 && (
             <p className="field-hint">
-              {t("projects.summary", {
-                projects: projects.length,
-                entities: projects.reduce((sum, p) => sum + p.entity_count, 0),
+              {t("projects.projectsCount", { count: projects.length })}
+              {" · "}
+              {t("projects.entitiesCount", {
+                count: projects.reduce((sum, p) => sum + p.entity_count, 0),
               })}
             </p>
           )}
@@ -157,14 +100,12 @@ export function ProjectListPage() {
           onChange={(e) => void handleImportFile(e)}
           style={{ display: "none" }}
         />
-      </div>
+      </header>
 
       {error && <p className="error-text">{translateApiError(error, t)}</p>}
       {importProject.isError && (
         <p className="error-text">{translateApiError(importProject.error, t)}</p>
       )}
-
-      {creating && createForm}
 
       {isLoading && <SkeletonList rows={3} />}
 
@@ -177,7 +118,9 @@ export function ProjectListPage() {
             {continueProject.name.slice(0, 1).toUpperCase()}
           </span>
           <span className="project-continue-body">
-            <span className="project-continue-eyebrow">{t("projects.continue")}</span>
+            <span className="project-continue-eyebrow">
+              {t("projects.lastProjectLabel")}
+            </span>
             <span className="project-continue-name">{continueProject.name}</span>
             <span className="project-continue-stats">
               {t("projects.entitiesCount", { count: continueProject.entity_count })}
@@ -203,21 +146,23 @@ export function ProjectListPage() {
         </div>
       )}
 
-      <div className="project-list">
-        {rest.map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            onExport={() => void handleExport(project)}
-          />
-        ))}
-      </div>
+      {rest.length > 0 && (
+        <div className="project-list">
+          {rest.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              onExport={() => void handleExport(project)}
+            />
+          ))}
+        </div>
+      )}
 
       {projects && rest.length === 0 && query.trim() !== "" && (
         <p className="field-hint">{t("projects.noMatches", { query: query.trim() })}</p>
       )}
 
-      {isEmpty && !creating && (
+      {isEmpty && (
         <div className="empty-state">
           <p>
             <b>{t("projects.noProjects")}</b>
@@ -230,13 +175,20 @@ export function ProjectListPage() {
               onClick={() => setCreating(true)}
             >
               <Icon name="plus" />
-              {t("projects.newProjectButton")}
+              {t("projects.emptyCreateButton")}
             </button>
             <button type="button" onClick={() => fileInputRef.current?.click()}>
               {t("projects.importProject")}
             </button>
           </div>
         </div>
+      )}
+
+      {creating && (
+        <CreateProjectDialog
+          onClose={() => setCreating(false)}
+          onCreated={handleCreated}
+        />
       )}
     </div>
   );

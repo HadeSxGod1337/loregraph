@@ -227,6 +227,7 @@
     "importProject": "Импортировать",
     "noProjects": "Пока нет проектов.",
     "emptyBody": "Создай первый проект — или импортируй существующий из файла экспорта.",
+    "emptyCreateButton": "Создать проект",
     "newProjectButton": "Новый проект",
     "newProjectHeading": "Новый проект",
     "namePlaceholder": "Название",
@@ -251,11 +252,14 @@
     "edgesCount_few": "{{count}} связи",
     "edgesCount_many": "{{count}} связей",
     "edgesCount_other": "{{count}} связи",
-    "continue": "Продолжить",
+    "lastProjectLabel": "Последний проект",
     "openButton": "Открыть",
     "filterPlaceholder": "Фильтр по названию…",
     "noMatches": "Проект «{{query}}» не найден.",
-    "summary": "{{projects}} проектов · {{entities}} сущностей"
+    "projectsCount_one": "{{count}} проект",
+    "projectsCount_few": "{{count}} проекта",
+    "projectsCount_many": "{{count}} проектов",
+    "projectsCount_other": "{{count}} проекта"
   },
   "entities": {
     "title": "Сущности",
