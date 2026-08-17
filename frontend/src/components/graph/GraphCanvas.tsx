@@ -25,6 +25,7 @@ import { ActiveRootContext } from "./ActiveRootContext";
 import { EntityNode, type EntityNodeData } from "./EntityNode";
 import { FloatingEdge } from "./FloatingEdge";
 import { edgeGroupOffsets } from "./floatingEdgeUtils";
+import { HierarchyCollapseContext, type HierarchyCollapseState } from "./HierarchyCollapseContext";
 import { HoveredEntityContext } from "./HoveredEntityContext";
 import { computeForceLayout } from "./layout";
 import { nextLodState } from "./lod";
@@ -71,6 +72,11 @@ export interface GraphActionRequest {
 
 interface GraphCanvasProps {
   projectId: string;
+  /** Already run through hierarchy-collapse visibility by GraphViewPage — a
+   * node hidden by a collapsed branch simply isn't in this array (see
+   * computeHierarchyVisibility in lib/hierarchy.ts). GraphCanvas itself
+   * stays unaware hierarchy collapse exists: it just renders what it's
+   * given, same as before that layer existed. */
   nodes: Entity[];
   edges: Edge[];
   rootId: string;
@@ -89,6 +95,14 @@ interface GraphCanvasProps {
   /** Toolbar's grid toggle — swaps the background to a line grid and snaps
    * dragged nodes to it (see GRID_SIZE). */
   gridEnabled: boolean;
+  /** Entity ids with at least one hierarchy child among `nodes` — which of
+   * them get a collapse/expand chevron at all. Wider than `nodes` alone
+   * would suggest nothing: a collapsed parent stays in `nodes` (collapsing
+   * never hides the node itself), so this still needs to reach it. */
+  hierarchyParentIds: ReadonlySet<string>;
+  hierarchyCollapsedIds: ReadonlySet<string>;
+  hierarchyHiddenCounts: ReadonlyMap<string, number>;
+  onToggleHierarchyCollapse: (entityId: string) => void;
   onNodeSelect: (entityId: string) => void;
   onNodeSetRoot: (entityId: string) => void;
   onConnectNodes: (sourceId: string, targetId: string) => void;
@@ -196,6 +210,10 @@ function GraphCanvasInner({
   actionRequest,
   locked,
   gridEnabled,
+  hierarchyParentIds,
+  hierarchyCollapsedIds,
+  hierarchyHiddenCounts,
+  onToggleHierarchyCollapse,
   onNodeSelect,
   onNodeSetRoot,
   onConnectNodes,
@@ -372,65 +390,84 @@ function GraphCanvasInner({
   );
   const handleNodeMouseLeave = useCallback(() => setHoveredEntityId(null), []);
 
+  // New object identity on every render would defeat the point of reading
+  // this from context (see HierarchyCollapseContext) — every EntityNode
+  // would re-render on every unrelated GraphCanvasInner render, drag frames
+  // included. Memoized so it only changes when one of these four actually does.
+  const hierarchyCollapseState: HierarchyCollapseState = useMemo(
+    () => ({
+      parentIds: hierarchyParentIds,
+      collapsedIds: hierarchyCollapsedIds,
+      hiddenCounts: hierarchyHiddenCounts,
+      onToggle: onToggleHierarchyCollapse,
+    }),
+    [hierarchyParentIds, hierarchyCollapsedIds, hierarchyHiddenCounts, onToggleHierarchyCollapse],
+  );
+
   return (
     <SelectedEntityContext.Provider value={selectedEntityId}>
       <ActiveRootContext.Provider value={rootId}>
         <HoveredEntityContext.Provider value={hoveredEntityId}>
-          <ReactFlow
-            className={isLod ? "react-flow-lod" : undefined}
-            nodes={flowNodes}
-            edges={flowEdges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            onNodesChange={onNodesChange}
-            onNodeClick={(_, node) => onNodeSelect(node.id)}
-            onNodeDoubleClick={(_, node) => onNodeSetRoot(node.id)}
-            onNodeDragStop={handleNodeDragStop}
-            onNodeMouseEnter={handleNodeMouseEnter}
-            onNodeMouseLeave={handleNodeMouseLeave}
-            onConnect={(c) => c.source && c.target && onConnectNodes(c.source, c.target)}
-            onEdgeClick={(_, edge) => onEdgeSelect(edge.id)}
-            onPaneClick={onPaneClick}
-            connectionRadius={120}
-            connectOnClick
-            defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
-            // Skips rendering nodes/edges outside the viewport — the "All
-            // entities" mode can put hundreds of nodes on canvas at once.
-            onlyRenderVisibleElements
-            minZoom={MIN_ZOOM}
-            // "Lock positions" toolbar toggle — same trio React Flow's own
-            // default <Controls/> interactivity lock used to drive, now
-            // surfaced through GraphControls instead (see `locked` above).
-            nodesDraggable={!locked}
-            nodesConnectable={!locked}
-            elementsSelectable={!locked}
-            // Grid toggle — snapping only kicks in on the next manual drag;
-            // it never retroactively moves nodes that are already placed
-            // (auto-layout's continuous coordinates included), so flipping
-            // this on mid-session doesn't rearrange anything by itself.
-            snapToGrid={gridEnabled}
-            snapGrid={[GRID_SIZE, GRID_SIZE]}
-          >
-            <Background
-              color="var(--border)"
-              gap={GRID_SIZE}
-              size={1}
-              variant={gridEnabled ? BackgroundVariant.Lines : BackgroundVariant.Dots}
-            />
-            <MiniMap pannable zoomable nodeColor={minimapNodeColor} nodeStrokeWidth={0} />
-          </ReactFlow>
-          {confirmingReset && (
-            <ConfirmDialog
-              title={t("graph.resetLayoutConfirmTitle")}
-              body={t("graph.resetLayoutConfirmBody")}
-              confirmLabel={t("graph.resetLayout")}
-              onConfirm={() => {
-                setConfirmingReset(false);
-                void handleResetLayout();
-              }}
-              onCancel={() => setConfirmingReset(false)}
-            />
-          )}
+          <HierarchyCollapseContext.Provider value={hierarchyCollapseState}>
+            <ReactFlow
+              className={isLod ? "react-flow-lod" : undefined}
+              nodes={flowNodes}
+              edges={flowEdges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              onNodesChange={onNodesChange}
+              onNodeClick={(_, node) => onNodeSelect(node.id)}
+              onNodeDoubleClick={(_, node) => onNodeSetRoot(node.id)}
+              onNodeDragStop={handleNodeDragStop}
+              onNodeMouseEnter={handleNodeMouseEnter}
+              onNodeMouseLeave={handleNodeMouseLeave}
+              onConnect={(c) => c.source && c.target && onConnectNodes(c.source, c.target)}
+              onEdgeClick={(_, edge) => onEdgeSelect(edge.id)}
+              onPaneClick={onPaneClick}
+              connectionRadius={120}
+              connectOnClick
+              defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
+              // Skips rendering nodes/edges outside the viewport — the "All
+              // entities" mode can put hundreds of nodes on canvas at once.
+              onlyRenderVisibleElements
+              minZoom={MIN_ZOOM}
+              // "Lock positions" toolbar toggle — same trio React Flow's own
+              // default <Controls/> interactivity lock used to drive, now
+              // surfaced through GraphControls instead (see `locked` above).
+              // Collapse/expand is a plain DOM button inside EntityNode, not
+              // routed through any of these three — it stays clickable while
+              // locked, matching "lock is about layout/drag, not visibility".
+              nodesDraggable={!locked}
+              nodesConnectable={!locked}
+              elementsSelectable={!locked}
+              // Grid toggle — snapping only kicks in on the next manual drag;
+              // it never retroactively moves nodes that are already placed
+              // (auto-layout's continuous coordinates included), so flipping
+              // this on mid-session doesn't rearrange anything by itself.
+              snapToGrid={gridEnabled}
+              snapGrid={[GRID_SIZE, GRID_SIZE]}
+            >
+              <Background
+                color="var(--border)"
+                gap={GRID_SIZE}
+                size={1}
+                variant={gridEnabled ? BackgroundVariant.Lines : BackgroundVariant.Dots}
+              />
+              <MiniMap pannable zoomable nodeColor={minimapNodeColor} nodeStrokeWidth={0} />
+            </ReactFlow>
+            {confirmingReset && (
+              <ConfirmDialog
+                title={t("graph.resetLayoutConfirmTitle")}
+                body={t("graph.resetLayoutConfirmBody")}
+                confirmLabel={t("graph.resetLayout")}
+                onConfirm={() => {
+                  setConfirmingReset(false);
+                  void handleResetLayout();
+                }}
+                onCancel={() => setConfirmingReset(false)}
+              />
+            )}
+          </HierarchyCollapseContext.Provider>
         </HoveredEntityContext.Provider>
       </ActiveRootContext.Provider>
     </SelectedEntityContext.Provider>

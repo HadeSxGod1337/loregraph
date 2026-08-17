@@ -2886,7 +2886,10 @@
 
 .react-flow-lod .entity-node-icon-slot,
 .react-flow-lod .entity-type-badge,
-.react-flow-lod .entity-node-preview {
+.react-flow-lod .entity-node-preview,
+/* Illegible and unclickable at this size — same treatment as the rest of
+   the card's fine detail, not worth keeping around as visual noise. */
+.react-flow-lod .entity-node-collapse-toggle {
   display: none;
 }
 
@@ -3002,6 +3005,72 @@
 .entity-node-preview-item b {
   color: var(--text-muted);
   font-weight: 600;
+}
+
+/* Collapse/expand control for a hierarchy branch — same disclosure-chevron
+   concept as .entity-tree-chevron on the Entities page, packaged as a small
+   standalone control since a canvas card has no row for it to sit at the
+   start of. Bottom-right corner: clear of the revealed marker (top-left),
+   the icon slot (top-right) and both connection handles (top/bottom-center).
+   Was bottom-left in an earlier pass — moved because an incoming edge can
+   approach a card from any side (FloatingEdge routes from measured bounds,
+   not fixed handle positions), and a control sharing the edge's own corner
+   read as part of the connection instead of the card. Absolutely positioned
+   *inside* .entity-node's box (not overhanging past it) so it never adds to
+   the node's measured bounds that FloatingEdge/minimap/fitView compute
+   from, AND stays inside .entity-node's own clip-path — that clip only cuts
+   the top-right corner, but a clip-path clips all descendant painting to
+   its polygon, so anything overhanging any edge would be silently
+   unclickable there. No permanent border/shadow/fill at rest — the earlier
+   pill-with-shadow read as a floating chip near the card rather than part
+   of it; now it's just a muted glyph until something makes it worth noticing. */
+.entity-node-collapse-toggle {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 4px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s, border-color 0.12s, background-color 0.12s;
+}
+
+/* Collapsed is the state worth surfacing at a glance — always on. Expanded
+   stays out of the way, the same restraint as the connection handles right
+   next to it, until hover/selection/keyboard focus asks for it. */
+.entity-node-collapse-toggle.is-collapsed,
+.entity-node:hover .entity-node-collapse-toggle,
+.entity-node-selected .entity-node-collapse-toggle,
+.entity-node-collapse-toggle:focus-visible {
+  opacity: 1;
+}
+
+.entity-node-collapse-toggle:hover,
+.entity-node-collapse-toggle:focus-visible {
+  color: var(--accent);
+  background: var(--bg-subtle);
+}
+
+/* Collapsed *and* actually hiding something (the count only renders then) —
+   worth calling out with real color, so a branch worth reopening doesn't
+   read the same as an idle, nothing-to-see-here chevron. */
+.entity-node-collapse-toggle:has(.entity-node-collapse-count) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.entity-node-collapse-count {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 /* entity detail panel — positioned relative to .graph-canvas-area (its
@@ -4773,7 +4842,11 @@
   top: calc(100% + 4px);
   right: 0;
   z-index: 20;
-  min-width: 160px;
+  /* Wide enough for the longest current item ("Закрепить позиции узлов" /
+     "Lock node positions") plus its padding without wrapping to a second
+     line — 160px used to be too tight for that pair once the graph dock's
+     menu grew past its original two items. */
+  min-width: 220px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
@@ -4795,9 +4868,10 @@
   border: none;
   background: none;
   width: 100%;
-  padding: 7px 10px;
+  padding: 8px 12px;
   border-radius: 5px;
   font-weight: 400;
+  white-space: nowrap;
 }
 
 .kebab-menu-list button:hover:not(:disabled) {
@@ -4811,6 +4885,15 @@
 
 .kebab-menu-list button.danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+/* Between groups of items (e.g. layout actions vs. hierarchy actions) —
+ * plain rule, no label, matching the menu's own inset padding rather than
+ * running edge to edge. */
+.kebab-menu-separator {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border);
 }
 
 /* ---------- Entity list rows ---------- */

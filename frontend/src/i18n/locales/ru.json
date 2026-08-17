@@ -366,7 +366,15 @@
     "createEntityTitle": "Создать сущность на графе",
     "typeLabel": "Тип",
     "titleLabel": "Название",
-    "titlePlaceholder": "Имя сущности"
+    "titlePlaceholder": "Имя сущности",
+    "collapseBranch": "Свернуть ветку",
+    "expandBranch": "Раскрыть ветку",
+    "expandBranchHiddenCount_one": "Раскрыть ветку — скрыта {{count}} сущность",
+    "expandBranchHiddenCount_few": "Раскрыть ветку — скрыто {{count}} сущности",
+    "expandBranchHiddenCount_many": "Раскрыть ветку — скрыто {{count}} сущностей",
+    "expandBranchHiddenCount_other": "Раскрыть ветку — скрыто {{count}} сущностей",
+    "collapseAllHierarchy": "Свернуть все ветки",
+    "expandAllHierarchy": "Развернуть все"
   },
   "edges": {
     "linkToEntity": "— связать с сущностью —",

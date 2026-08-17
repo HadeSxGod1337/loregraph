@@ -1,8 +1,11 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { memo, type CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 
 import { typeColor, typeSoftBackground } from "../../lib/typeColor";
+import { Icon } from "../ui/Icon";
 import { useActiveRoot } from "./ActiveRootContext";
+import { useHierarchyCollapse } from "./HierarchyCollapseContext";
 import { useSelectedEntity } from "./SelectedEntityContext";
 
 export interface PreviewField {
@@ -32,6 +35,7 @@ export interface EntityNodeData extends Record<string, unknown> {
 // this node's own `id`/`data` didn't change — React Flow's own performance
 // guide calls this out explicitly for custom node/edge components.
 export const EntityNode = memo(function EntityNode({ id, data }: NodeProps) {
+  const { t } = useTranslation();
   const { label, entityType, iconUrl, previewFields, revealed } =
     data as EntityNodeData;
   const isSelected = useSelectedEntity() === id;
@@ -40,6 +44,17 @@ export const EntityNode = memo(function EntityNode({ id, data }: NodeProps) {
   // whole array (see GraphCanvas.tsx's useSyncedFlowNodes).
   const isRoot = useActiveRoot() === id;
   const color = typeColor(entityType);
+
+  const { parentIds, collapsedIds, hiddenCounts, onToggle } = useHierarchyCollapse();
+  const hasHierarchyChildren = parentIds.has(id);
+  const isCollapsed = collapsedIds.has(id);
+  const hiddenCount = hiddenCounts.get(id) ?? 0;
+  const collapseLabel =
+    isCollapsed
+      ? hiddenCount > 0
+        ? t("graph.expandBranchHiddenCount", { count: hiddenCount })
+        : t("graph.expandBranch")
+      : t("graph.collapseBranch");
 
   return (
     <div
@@ -67,6 +82,38 @@ export const EntityNode = memo(function EntityNode({ id, data }: NodeProps) {
         <div className="entity-node-icon-slot">
           <img className="entity-node-icon" src={iconUrl} alt="" />
         </div>
+      )}
+      {hasHierarchyChildren && (
+        // Bottom-right corner: away from both connection handles (top/bottom
+        // -center) and clear of an incoming edge's arrowhead, which can
+        // approach from any side (FloatingEdge routes from measured bounds,
+        // not fixed handle positions) — sitting at the card's own left edge
+        // used to read as part of whatever edge landed nearby instead of a
+        // card control. `nodrag`/`nopan` (React Flow's own escape hatch,
+        // same as Handle uses internally) keep a press-and-hold here from
+        // starting a card drag; stopPropagation on both click and dblclick
+        // keeps it from also reaching the pane's onNodeClick/onNodeDoubleClick
+        // (select / set-as-root) — this control only ever toggles hierarchy
+        // visibility. Icon is chosen directly (not a single glyph rotated by
+        // CSS) so "expanded shows chevron-down / collapsed shows
+        // chevron-right" is literal, not an equivalence to double-check.
+        <button
+          type="button"
+          className={`entity-node-collapse-toggle nodrag nopan${isCollapsed ? " is-collapsed" : ""}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle(id);
+          }}
+          onDoubleClick={(event) => event.stopPropagation()}
+          title={collapseLabel}
+          aria-label={collapseLabel}
+          aria-expanded={!isCollapsed}
+        >
+          <Icon name={isCollapsed ? "chevron-right" : "chevron-down"} size={12} />
+          {isCollapsed && hiddenCount > 0 && (
+            <span className="entity-node-collapse-count">{hiddenCount}</span>
+          )}
+        </button>
       )}
       <div className="entity-node-info">
         <span

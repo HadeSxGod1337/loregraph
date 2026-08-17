@@ -20,7 +20,10 @@ import {
 import { GraphControls, type GraphViewMode } from "../components/graph/GraphControls";
 import { GraphCreateEntityButton } from "../components/graph/GraphCreateEntityButton";
 import { useEntities } from "../hooks/useEntities";
+import { useGraphHierarchyCollapse } from "../hooks/useGraphHierarchyCollapse";
+import { useHierarchyConfig } from "../hooks/useHierarchyConfig";
 import { useSubgraph } from "../hooks/useSubgraph";
+import { buildHierarchy, computeHierarchyVisibility, filterVisibleEdges } from "../lib/hierarchy";
 
 interface PendingConnection {
   sourceId: string;
@@ -35,6 +38,11 @@ export function GraphViewPage() {
   const { t } = useTranslation();
   const { projectId } = useParams<{ projectId: string }>();
   const { data: entities } = useEntities(projectId!);
+  // Same containment vocabulary and pure forest utilities as the Entities
+  // list page (see lib/hierarchy.ts) — the graph reads the project's
+  // hierarchy edge types, it doesn't invent a second grouping model.
+  const { config: hierarchyConfig } = useHierarchyConfig(projectId!);
+  const graphCollapse = useGraphHierarchyCollapse(projectId!);
   const [rootId, setRootId] = useState("");
   const [depth, setDepth] = useState(2);
   const [edgeTypes, setEdgeTypes] = useState<string[]>([]);
@@ -162,12 +170,51 @@ export function GraphViewPage() {
     return (allEdges ?? []).filter((edge) => edgeTypes.includes(edge.type));
   }, [allEdges, edgeTypes]);
 
-  const visibleNodes = viewMode === "all" ? (entities ?? []) : focusedNodes;
-  const visibleEdges = viewMode === "all" ? allModeEdges : (subgraph?.edges ?? []);
+  // Memoized (not just a plain ternary) now that the hierarchy layer below
+  // depends on these in its own useMemo calls — `entities ?? []` would
+  // otherwise hand out a fresh empty array every render while loading.
+  const visibleNodes = useMemo(
+    () => (viewMode === "all" ? (entities ?? []) : focusedNodes),
+    [viewMode, entities, focusedNodes],
+  );
+  const visibleEdges = useMemo(
+    () => (viewMode === "all" ? allModeEdges : (subgraph?.edges ?? [])),
+    [viewMode, allModeEdges, subgraph],
+  );
   const isLargeWorld =
     viewMode === "all" && (entities?.length ?? 0) > LARGE_WORLD_NOTICE_THRESHOLD;
 
   const selectedEdge = visibleEdges.find((e) => e.id === selectedEdgeId) ?? null;
+
+  // Presentation layer on top of the current All/Focused result above, not a
+  // replacement for it: built from `visibleNodes`/`visibleEdges` exactly as
+  // they stand (so Focused mode's BFS/depth cutoff is respected — collapse
+  // never silently reaches past it), then handed to GraphCanvas as the
+  // node/edge arrays it actually renders. See lib/hierarchy.ts for why this
+  // reuses buildForest/buildHierarchy instead of a second grouping model.
+  const hierarchyIndex = useMemo(
+    () => buildHierarchy(visibleEdges, hierarchyConfig),
+    [visibleEdges, hierarchyConfig],
+  );
+  const hierarchyParentIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const node of visibleNodes) {
+      if (hierarchyIndex.childrenOf.has(node.id)) ids.add(node.id);
+    }
+    return ids;
+  }, [visibleNodes, hierarchyIndex]);
+  const hierarchyVisibility = useMemo(
+    () => computeHierarchyVisibility(visibleNodes, hierarchyIndex, graphCollapse.collapsedIds),
+    [visibleNodes, hierarchyIndex, graphCollapse.collapsedIds],
+  );
+  const canvasNodes = useMemo(
+    () => visibleNodes.filter((entity) => hierarchyVisibility.visibleIds.has(entity.id)),
+    [visibleNodes, hierarchyVisibility],
+  );
+  const canvasEdges = useMemo(
+    () => filterVisibleEdges(visibleEdges, hierarchyVisibility.visibleIds),
+    [visibleEdges, hierarchyVisibility],
+  );
 
   return (
     // On the graph page, "go to entity" re-points the detail panel instead of
@@ -242,8 +289,8 @@ export function GraphViewPage() {
         {(viewMode === "all" ? entities !== undefined : rootId && subgraph) && (
           <GraphCanvas
             projectId={projectId!}
-            nodes={visibleNodes}
-            edges={visibleEdges}
+            nodes={canvasNodes}
+            edges={canvasEdges}
             rootId={rootId}
             depth={depth}
             viewMode={viewMode}
@@ -252,6 +299,10 @@ export function GraphViewPage() {
             actionRequest={actionRequest}
             locked={locked}
             gridEnabled={gridEnabled}
+            hierarchyParentIds={hierarchyParentIds}
+            hierarchyCollapsedIds={graphCollapse.collapsedIds}
+            hierarchyHiddenCounts={hierarchyVisibility.hiddenDescendantCount}
+            onToggleHierarchyCollapse={graphCollapse.toggle}
             onNodeSelect={setSelectedEntityId}
             onNodeSetRoot={changeRoot}
             onConnectNodes={(sourceId, targetId) => setPendingConnection({ sourceId, targetId })}
@@ -281,6 +332,9 @@ export function GraphViewPage() {
             onCenterView={centerView}
             onLockedChange={setLocked}
             onGridEnabledChange={setGridEnabled}
+            hasHierarchyBranches={hierarchyParentIds.size > 0}
+            onCollapseAllHierarchy={() => graphCollapse.collapseAll(hierarchyParentIds)}
+            onExpandAllHierarchy={graphCollapse.expandAll}
           />
 
           {(viewMode === "all" || rootId) && (
