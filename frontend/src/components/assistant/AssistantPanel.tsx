@@ -17,7 +17,7 @@ import { useDismiss } from "../../hooks/useDismiss";
 import { useEntities } from "../../hooks/useEntities";
 import { useFileDrop } from "../../hooks/useFileDrop";
 import { useFilePaste } from "../../hooks/useFilePaste";
-import { translateEvent, translateWarning } from "../../i18n/eventText";
+import { eventTone, translateEvent, translateWarning } from "../../i18n/eventText";
 import { typeColor, typeSoftBackground } from "../../lib/typeColor";
 import { Icon } from "../ui/Icon";
 import { Markdown } from "../ui/Markdown";
@@ -44,6 +44,10 @@ export function AssistantPanel({ projectId, onCommitted, heading }: AssistantPan
   const { data: config, error: configError } = useAgentConfig();
   const { data: entities } = useEntities(projectId);
   const chat = useAgentChat(projectId, onCommitted);
+  // Owned here (not inside ChatInput) so the idle state's example prompts —
+  // rendered in the transcript, a sibling — can seed the composer too.
+  const [composerText, setComposerText] = useState("");
+  const [composerAnchorId, setComposerAnchorId] = useState("");
 
   if (configError instanceof ApiError && configError.status === 404) {
     return (
@@ -63,8 +67,21 @@ uv run uvicorn loregraph.main:app --reload`}</pre>
   return (
     <div className="assistant-panel">
       <SessionPicker projectId={projectId} chat={chat} heading={heading} />
-      <Transcript chat={chat} entities={entities ?? []} projectId={projectId} />
-      <ChatInput chat={chat} entities={entities ?? []} projectId={projectId} />
+      <Transcript
+        chat={chat}
+        entities={entities ?? []}
+        projectId={projectId}
+        onExamplePick={(instruction) => setComposerText(instruction)}
+      />
+      <ChatInput
+        chat={chat}
+        entities={entities ?? []}
+        projectId={projectId}
+        text={composerText}
+        setText={setComposerText}
+        anchorId={composerAnchorId}
+        setAnchorId={setComposerAnchorId}
+      />
     </div>
   );
 }
@@ -187,14 +204,26 @@ function SessionPicker({
   );
 }
 
+// Static conversation starters for the idle state — unlike SuggestionHints
+// (graph-hole-driven, only appears when applicable), these are always
+// available so a first-time chat never opens on a blank page.
+const EXAMPLE_PROMPT_KEYS = [
+  "addLore",
+  "weaveCharacter",
+  "checkConsistency",
+  "suggestLinks",
+] as const;
+
 function Transcript({
   chat,
   entities,
   projectId,
+  onExamplePick,
 }: {
   chat: AgentChat;
   entities: Entity[];
   projectId: string;
+  onExamplePick: (instruction: string) => void;
 }) {
   const { t } = useTranslation();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -208,41 +237,66 @@ function Transcript({
   return (
     <div className="assistant-transcript">
       {isEmpty && (
-        <p className="assistant-empty-invite">
-          {entities.length === 0
-            ? t("assistant.emptyInviteEmptyWorld")
-            : t("assistant.emptyInviteHasWorld")}
-        </p>
-      )}
-      {chat.messages.map((message, index) => (
-        <div
-          key={`${index}-${message.role}`}
-          className={`assistant-bubble assistant-bubble-${message.role}`}
-        >
-          {message.attachments.length > 0 && (
-            <div className="assistant-attachment-chips">
-              {message.attachments.map((filename) => (
-                <span key={filename} className="assistant-attachment-chip">
-                  <Icon name="paperclip" size={12} /> {filename}
-                </span>
-              ))}
-            </div>
-          )}
-          {message.event_code ? (
-            // Deterministic backend events are one translated sentence, not
-            // authored prose — nothing to format.
-            translateEvent(message.event_code, message.event_params ?? {}, message.text, t)
-          ) : message.role === "assistant" ? (
-            <Markdown className="markdown-view assistant-markdown">
-              {message.text}
-            </Markdown>
-          ) : (
-            // The DM's own text stays verbatim: what they typed is what they
-            // meant, asterisks and all.
-            message.text
-          )}
+        <div className="assistant-idle-state">
+          <p className="assistant-empty-invite">
+            <Icon name="sparkles" size={14} />
+            {entities.length === 0
+              ? t("assistant.emptyInviteEmptyWorld")
+              : t("assistant.emptyInviteHasWorld")}
+          </p>
+          <div className="assistant-hints">
+            {EXAMPLE_PROMPT_KEYS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                className="assistant-hint-chip"
+                onClick={() => onExamplePick(t(`assistant.examplePrompts.${key}.instruction`))}
+              >
+                {t(`assistant.examplePrompts.${key}.label`)}
+              </button>
+            ))}
+          </div>
         </div>
-      ))}
+      )}
+      {chat.messages.map((message, index) => {
+        if (message.event_code) {
+          // Deterministic backend events are one translated sentence, not
+          // authored prose — a compact system notice, not a speech bubble.
+          return (
+            <div
+              key={`${index}-event`}
+              className={`assistant-event-notice tone-${eventTone(message.event_code)}`}
+            >
+              {translateEvent(message.event_code, message.event_params ?? {}, message.text, t)}
+            </div>
+          );
+        }
+        return (
+          <div
+            key={`${index}-${message.role}`}
+            className={`assistant-bubble assistant-bubble-${message.role}`}
+          >
+            {message.attachments.length > 0 && (
+              <div className="assistant-attachment-chips">
+                {message.attachments.map((filename) => (
+                  <span key={filename} className="assistant-attachment-chip">
+                    <Icon name="paperclip" size={12} /> {filename}
+                  </span>
+                ))}
+              </div>
+            )}
+            {message.role === "assistant" ? (
+              <Markdown className="markdown-view assistant-markdown">
+                {message.text}
+              </Markdown>
+            ) : (
+              // The DM's own text stays verbatim: what they typed is what they
+              // meant, asterisks and all.
+              message.text
+            )}
+          </div>
+        );
+      })}
       {chat.statusNode && (
         <div className="assistant-status-line">
           {t([`assistant.stage.${chat.statusNode}`, "assistant.stage.fallback"], {
@@ -287,14 +341,20 @@ function ChatInput({
   chat,
   entities,
   projectId,
+  text,
+  setText,
+  anchorId,
+  setAnchorId,
 }: {
   chat: AgentChat;
   entities: Entity[];
   projectId: string;
+  text: string;
+  setText: (text: string) => void;
+  anchorId: string;
+  setAnchorId: (anchorId: string) => void;
 }) {
   const { t } = useTranslation();
-  const [text, setText] = useState("");
-  const [anchorId, setAnchorId] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);

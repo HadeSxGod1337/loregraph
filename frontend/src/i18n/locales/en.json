@@ -618,6 +618,24 @@
     "newConversation": "New conversation",
     "emptyInviteEmptyWorld": "Your world is empty. Describe it in a couple of sentences — the assistant will propose starting lore: locations, factions, characters and their connections. Nothing becomes canon without your approval. You can also just ask questions.",
     "emptyInviteHasWorld": "Ask about the world, ask it to expand a part of it, or add new lore — the assistant answers grounded in existing canon and proposes drafts for review.",
+    "examplePrompts": {
+      "addLore": {
+        "label": "Add new lore",
+        "instruction": "Come up with a new piece of lore for this world — a location, faction, NPC, or item, whichever fits best."
+      },
+      "weaveCharacter": {
+        "label": "Weave in a character",
+        "instruction": "Find a character with no connections in this world and weave them in — invent who and what they're tied to, and add the missing entities and relationships."
+      },
+      "checkConsistency": {
+        "label": "Check consistency",
+        "instruction": "Check the existing lore for inconsistencies and contradictions, and tell me what's worth fixing."
+      },
+      "suggestLinks": {
+        "label": "Suggest relationships",
+        "instruction": "Look over the world and suggest new relationships between existing entities that make sense but aren't captured yet."
+      }
+    },
     "removeFileTitle": "Remove file",
     "dropHint": "Drop to attach",
     "inputPlaceholderBlocked": "Finish reviewing the draft above first (approve / request changes / reject)",

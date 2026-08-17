@@ -3862,12 +3862,32 @@
   gap: 12px;
 }
 
+.assistant-idle-state {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* A compact, subdued notice rather than a solid accent-filled block — the
+   idle state also carries the example-prompt chips below it now, so the
+   invite text itself doesn't need to shout. */
 .assistant-empty-invite {
   margin: 0;
-  padding: 10px 12px;
-  background: var(--accent-soft);
-  border-radius: 8px;
-  color: var(--text);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+  font-size: 0.92em;
+}
+
+.assistant-empty-invite svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent);
 }
 
 .assistant-anchor {
@@ -4330,6 +4350,35 @@
   align-self: flex-start;
   background: var(--bg-subtle);
   border-bottom-left-radius: 4px;
+}
+
+/* Deterministic backend acks (commit/reject/budget notices) — a compact
+   centered pill instead of a speech bubble, so they read as system status
+   rather than something the agent "said". */
+.assistant-event-notice {
+  align-self: center;
+  max-width: 90%;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 0.85em;
+  text-align: center;
+}
+
+.assistant-event-notice.tone-success {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+}
+
+.assistant-event-notice.tone-danger {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.assistant-event-notice.tone-warning {
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
 }
 
 .assistant-attachment-chips {
