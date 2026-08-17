@@ -6,32 +6,35 @@ import { Icon } from "../ui/Icon";
 
 interface ExternalPageDrawerProps {
   title: string;
+  /** Canonical page — used for "open in a new tab" links only. */
   url: string;
+  /** Provider's dedicated embed route for the same page, loaded in the
+   * iframe. Kept separate from `url` because the two can behave
+   * differently: Notion's canonical page URL refuses third-party framing
+   * outright, its `/ebd/` route doesn't. */
+  embedUrl: string;
   /** The feedback form needs to submit; the read-only hub doesn't — sandbox
    * stays as narrow as the specific page actually requires. */
   allowForms?: boolean;
   onClose: () => void;
-  minEmbedMs?: number;
   maxWaitMs?: number;
 }
 
 /** A public page shown in-app without leaving Loregraph, for providers we
- * don't control and never proxy through the backend. Most third-party sites
- * (Notion's public pages included) send a frame-ancestors CSP that refuses
- * anyone else's origin, and browsers give no catchable error for that — only
- * a console message — so whether the embed actually rendered is inferred
- * from how quickly the frame settles (see useEmbedLoadStatus). Either way
- * "open in a new tab" stays one click away. */
+ * don't control and never proxy through the backend. "Open in a new tab"
+ * stays one click away regardless of whether the embed loads — both in the
+ * header and, once embedded, as a small link under the frame, since a
+ * third party's embed behavior isn't something to fully trust blind. */
 export function ExternalPageDrawer({
   title,
   url,
+  embedUrl,
   allowForms = false,
   onClose,
-  minEmbedMs,
   maxWaitMs,
 }: ExternalPageDrawerProps) {
   const { t } = useTranslation();
-  const { status, onIframeLoad } = useEmbedLoadStatus(url, { minEmbedMs, maxWaitMs });
+  const { status, onIframeLoad } = useEmbedLoadStatus(embedUrl, { maxWaitMs });
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -86,17 +89,27 @@ export function ExternalPageDrawer({
           )}
 
           {status !== "blocked" && (
-            <iframe
-              className={
-                "embed-overlay-iframe" +
-                (status === "loading" ? " embed-overlay-iframe-hidden" : "")
-              }
-              src={url}
-              title={title}
-              sandbox={sandbox}
-              referrerPolicy="no-referrer"
-              onLoad={onIframeLoad}
-            />
+            <div className="embed-overlay-frame-wrap">
+              <iframe
+                className={
+                  "embed-overlay-iframe" +
+                  (status === "loading" ? " embed-overlay-iframe-hidden" : "")
+                }
+                src={embedUrl}
+                title={title}
+                sandbox={sandbox}
+                referrerPolicy="no-referrer"
+                onLoad={onIframeLoad}
+              />
+              {status === "embedded" && (
+                <p className="embed-overlay-hint">
+                  {t("help.support.troubleLoading")}{" "}
+                  <a href={url} target="_blank" rel="noreferrer noopener">
+                    {t("common.openInNewTab")}
+                  </a>
+                </p>
+              )}
+            </div>
           )}
 
           {status === "blocked" && (

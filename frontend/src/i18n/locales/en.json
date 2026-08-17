@@ -952,7 +952,8 @@
       "hubDescription": "Roadmap, changelog and background on where Loregraph is headed.",
       "feedbackTitle": "Leave feedback",
       "feedbackDescription": "Report a bug or suggest an idea — goes straight to the person building this.",
-      "blockedMessage": "This page can't be embedded here — Notion is blocking the frame. Open it in a new tab instead."
+      "blockedMessage": "This page can't be embedded here — Notion is blocking the frame. Open it in a new tab instead.",
+      "troubleLoading": "Not loading?"
     }
   },
   "appSettings": {

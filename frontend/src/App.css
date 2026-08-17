@@ -4797,15 +4797,38 @@
   background: var(--surface);
 }
 
+.embed-overlay-frame-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .embed-overlay-iframe {
   display: block;
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   border: 0;
 }
 
 .embed-overlay-iframe-hidden {
   visibility: hidden;
+}
+
+.embed-overlay-hint {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.embed-overlay-hint a {
+  color: var(--accent);
 }
 
 .embed-overlay-fallback {

@@ -5,23 +5,25 @@ import { renderWithProviders } from "../../test/renderWithProviders";
 import { ExternalPageDrawer } from "./ExternalPageDrawer";
 
 const URL = "https://cuddly-wound-d01.notion.site/example";
+const EMBED_URL = "https://cuddly-wound-d01.notion.site/ebd/example";
 
 function getIframe() {
   return document.querySelector("iframe.embed-overlay-iframe") as HTMLIFrameElement | null;
 }
 
 describe("ExternalPageDrawer", () => {
-  it("shows a loading state and the title before the frame settles", () => {
+  it("shows a loading state and the title before the frame loads", () => {
     renderWithProviders(
-      <ExternalPageDrawer title="Project Hub" url={URL} onClose={vi.fn()} />,
+      <ExternalPageDrawer title="Project Hub" url={URL} embedUrl={EMBED_URL} onClose={vi.fn()} />,
     );
     expect(screen.getByRole("dialog", { name: "Project Hub" })).toBeInTheDocument();
     expect(screen.getByText("Загрузка...")).toBeInTheDocument();
+    expect(getIframe()).toHaveAttribute("src", EMBED_URL);
   });
 
-  it("points the persistent link at the real url with a safe rel", () => {
+  it("points the persistent header link at the canonical url with a safe rel", () => {
     renderWithProviders(
-      <ExternalPageDrawer title="Project Hub" url={URL} onClose={vi.fn()} />,
+      <ExternalPageDrawer title="Project Hub" url={URL} embedUrl={EMBED_URL} onClose={vi.fn()} />,
     );
     const link = screen.getByRole("link", { name: /Открыть в новой вкладке/i });
     expect(link).toHaveAttribute("href", URL);
@@ -31,7 +33,7 @@ describe("ExternalPageDrawer", () => {
 
   it("omits allow-forms from the sandbox unless the page needs it", () => {
     renderWithProviders(
-      <ExternalPageDrawer title="Project Hub" url={URL} onClose={vi.fn()} />,
+      <ExternalPageDrawer title="Project Hub" url={URL} embedUrl={EMBED_URL} onClose={vi.fn()} />,
     );
     expect(getIframe()).toHaveAttribute(
       "sandbox",
@@ -41,7 +43,13 @@ describe("ExternalPageDrawer", () => {
 
   it("adds allow-forms for embeds that need to submit", () => {
     renderWithProviders(
-      <ExternalPageDrawer title="Feedback" url={URL} allowForms onClose={vi.fn()} />,
+      <ExternalPageDrawer
+        title="Feedback"
+        url={URL}
+        embedUrl={EMBED_URL}
+        allowForms
+        onClose={vi.fn()}
+      />,
     );
     expect(getIframe()).toHaveAttribute(
       "sandbox",
@@ -49,18 +57,29 @@ describe("ExternalPageDrawer", () => {
     );
   });
 
-  it("falls back to 'open in a new tab' when the frame settles suspiciously fast", async () => {
+  it("shows the frame and a secondary escape hatch once it loads", async () => {
+    renderWithProviders(
+      <ExternalPageDrawer title="Project Hub" url={URL} embedUrl={EMBED_URL} onClose={vi.fn()} />,
+    );
+    fireEvent.load(getIframe()!);
+
+    await waitFor(() => {
+      expect(getIframe()).not.toHaveClass("embed-overlay-iframe-hidden");
+    });
+    const hint = document.querySelector<HTMLElement>(".embed-overlay-hint")!;
+    expect(within(hint).getByRole("link")).toHaveAttribute("href", URL);
+  });
+
+  it("falls back to 'open in a new tab' if the frame never loads at all", async () => {
     renderWithProviders(
       <ExternalPageDrawer
         title="Project Hub"
         url={URL}
+        embedUrl={EMBED_URL}
         onClose={vi.fn()}
-        minEmbedMs={50}
-        maxWaitMs={5000}
+        maxWaitMs={30}
       />,
     );
-    // A blocked frame still fires `load` — just almost immediately.
-    fireEvent.load(getIframe()!);
 
     await waitFor(() => {
       expect(getIframe()).not.toBeInTheDocument();
@@ -69,28 +88,15 @@ describe("ExternalPageDrawer", () => {
     expect(within(fallback).getByRole("link")).toHaveAttribute("href", URL);
   });
 
-  it("keeps the iframe once it settles past the minimum window", async () => {
-    renderWithProviders(
-      <ExternalPageDrawer
-        title="Project Hub"
-        url={URL}
-        onClose={vi.fn()}
-        minEmbedMs={10}
-        maxWaitMs={5000}
-      />,
-    );
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    fireEvent.load(getIframe()!);
-
-    await waitFor(() => {
-      expect(getIframe()).not.toHaveClass("embed-overlay-iframe-hidden");
-    });
-  });
-
   it("closes on Escape, close button, and backdrop click but not on inner clicks", () => {
     const onClose = vi.fn();
     const { container } = renderWithProviders(
-      <ExternalPageDrawer title="Project Hub" url={URL} onClose={onClose} />,
+      <ExternalPageDrawer
+        title="Project Hub"
+        url={URL}
+        embedUrl={EMBED_URL}
+        onClose={onClose}
+      />,
     );
 
     fireEvent.click(screen.getByRole("dialog"));

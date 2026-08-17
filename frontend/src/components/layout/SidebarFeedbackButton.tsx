@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { FEEDBACK_FORM_URL } from "../../lib/externalLinks";
+import { FEEDBACK_FORM_EMBED_URL, FEEDBACK_FORM_URL } from "../../lib/externalLinks";
 import { ExternalPageDrawer } from "../help/ExternalPageDrawer";
 import { Icon } from "../ui/Icon";
 
@@ -34,6 +34,7 @@ export function SidebarFeedbackButton({ collapsed }: SidebarFeedbackButtonProps)
         <ExternalPageDrawer
           title={t("help.support.feedbackTitle")}
           url={FEEDBACK_FORM_URL}
+          embedUrl={FEEDBACK_FORM_EMBED_URL}
           allowForms
           onClose={() => setOpen(false)}
         />

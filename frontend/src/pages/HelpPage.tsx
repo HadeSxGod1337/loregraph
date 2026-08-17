@@ -3,7 +3,12 @@ import { useTranslation } from "react-i18next";
 
 import { ExternalPageDrawer } from "../components/help/ExternalPageDrawer";
 import { Icon, type IconName } from "../components/ui/Icon";
-import { FEEDBACK_FORM_URL, PROJECT_HUB_URL } from "../lib/externalLinks";
+import {
+  FEEDBACK_FORM_EMBED_URL,
+  FEEDBACK_FORM_URL,
+  PROJECT_HUB_EMBED_URL,
+  PROJECT_HUB_URL,
+} from "../lib/externalLinks";
 
 interface HelpTopic {
   id: string;
@@ -109,6 +114,7 @@ const OVERVIEW_ID = "overview";
 interface EmbedTarget {
   title: string;
   url: string;
+  embedUrl: string;
   allowForms: boolean;
 }
 
@@ -147,6 +153,7 @@ export function HelpPage() {
               setEmbedTarget({
                 title: t("help.support.hubTitle"),
                 url: PROJECT_HUB_URL,
+                embedUrl: PROJECT_HUB_EMBED_URL,
                 allowForms: false,
               })
             }
@@ -164,6 +171,7 @@ export function HelpPage() {
               setEmbedTarget({
                 title: t("help.support.feedbackTitle"),
                 url: FEEDBACK_FORM_URL,
+                embedUrl: FEEDBACK_FORM_EMBED_URL,
                 allowForms: true,
               })
             }
@@ -235,6 +243,7 @@ export function HelpPage() {
         <ExternalPageDrawer
           title={embedTarget.title}
           url={embedTarget.url}
+          embedUrl={embedTarget.embedUrl}
           allowForms={embedTarget.allowForms}
           onClose={() => setEmbedTarget(null)}
         />
