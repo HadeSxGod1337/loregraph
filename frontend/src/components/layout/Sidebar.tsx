@@ -169,8 +169,6 @@ export function Sidebar() {
 
       <SidebarStatus collapsed={collapsed} />
 
-      <div className="sidebar-zone-divider" />
-
       {!collapsed && <div className="sidebar-group-label">{t("sidebar.app")}</div>}
       <div className="sidebar-foot">
         <NavLink

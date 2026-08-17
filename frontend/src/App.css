@@ -292,6 +292,11 @@
   background: none;
   font: inherit;
   text-align: left;
+  /* The global `button` reset centers content by default (index.css) —
+     .sidebar-nav-item's own flex layout overrides display/padding/border
+     via higher specificity, but not justify-content, since it never sets
+     one itself (its other use is <a>, immune to the button reset). */
+  justify-content: flex-start;
   cursor: pointer;
 }
 
@@ -8470,12 +8475,6 @@ button.sheet-dot:focus-visible {
   text-transform: uppercase;
   color: var(--text-muted);
   padding: 12px 16px 6px;
-}
-
-.sidebar-zone-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 8px 12px 0;
 }
 
 .sidebar-recent-mark {
