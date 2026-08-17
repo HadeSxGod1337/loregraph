@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Entity, ProseMirrorDoc } from "../../api/types";
@@ -14,6 +14,13 @@ function isBlankDoc(doc: ProseMirrorDoc | null): boolean {
   return doc === null || JSON.stringify(doc) === JSON.stringify(EMPTY_DOC);
 }
 
+function sortedVisibleKeys(fields: Entity["fields"]): string[] {
+  return fields
+    .filter((f) => f.visible_to_players)
+    .map((f) => f.key)
+    .sort();
+}
+
 /** DM controls for limited player access, in one place used by both the entity
  * editor and the graph detail panel. Works with or without a sheet template —
  * the field whitelist is its own list of keys, so the sheet renderer and the
@@ -21,9 +28,14 @@ function isBlankDoc(doc: ProseMirrorDoc | null): boolean {
 export function EntityPlayerAccessPanel({
   projectId,
   entity,
+  onDirtyChange,
 }: {
   projectId: string;
   entity: Entity;
+  /** This panel saves through its own button, on its own schedule — a host
+   * page that wants to warn before navigating away with pending edits here
+   * (see EntityEditPage's leave-guards) reads that state through this. */
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const { t } = useTranslation();
   const setPlayerView = useSetEntityPlayerView(projectId, entity.id);
@@ -47,6 +59,20 @@ export function EntityPlayerAccessPanel({
       new Set(entity.fields.filter((f) => f.visible_to_players).map((f) => f.key)),
     );
   }, [entity]);
+
+  const isDirty = useMemo(() => {
+    if (revealed !== entity.revealed_to_players) return true;
+    if (JSON.stringify(playerText) !== JSON.stringify(entity.player_text ?? EMPTY_DOC)) {
+      return true;
+    }
+    const saved = sortedVisibleKeys(entity.fields);
+    const current = [...visibleKeys].sort();
+    return JSON.stringify(current) !== JSON.stringify(saved);
+  }, [entity, revealed, playerText, visibleKeys]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   function toggleKey(key: string) {
     setVisibleKeys((prev) => {
@@ -143,14 +169,17 @@ export function EntityPlayerAccessPanel({
         )}
       </div>
 
-      <button
-        type="button"
-        className="button-primary button-sm"
-        onClick={handleSave}
-        disabled={setPlayerView.isPending}
-      >
-        {t("playerAccess.save")}
-      </button>
+      <div className="player-access-foot">
+        <button
+          type="button"
+          className="button-primary button-sm"
+          onClick={handleSave}
+          disabled={!isDirty || setPlayerView.isPending}
+        >
+          {t("playerAccess.save")}
+        </button>
+        {isDirty && <span className="dirty-hint">{t("entityEdit.unsavedChanges")}</span>}
+      </div>
     </details>
   );
 }

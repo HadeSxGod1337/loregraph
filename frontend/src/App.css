@@ -286,6 +286,20 @@
   flex: none;
 }
 
+.sidebar-feedback-btn {
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  /* The global `button` reset centers content by default (index.css) —
+     .sidebar-nav-item's own flex layout overrides display/padding/border
+     via higher specificity, but not justify-content, since it never sets
+     one itself (its other use is <a>, immune to the button reset). */
+  justify-content: flex-start;
+  cursor: pointer;
+}
+
 .sidebar.collapsed .sidebar-nav-item {
   justify-content: center;
   padding: 8px;
@@ -438,7 +452,7 @@
 /* Wider than the reading pages: this one holds a card grid, and 900 px of it
    on a 1800 px screen reads as one thin column with a void beside it. */
 .project-list-page {
-  max-width: 1180px;
+  max-width: 1400px;
   width: 100%;
   margin: 0 auto;
   padding: 24px;
@@ -620,26 +634,10 @@
   flex-shrink: 0;
 }
 
-.project-create-form {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  padding: 16px 18px;
+.create-project-form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-width: 420px;
-  margin-bottom: 16px;
-}
-
-.project-create-form h2 {
-  margin: 0 0 4px;
-  font-size: 15px;
-}
-
-.project-create-actions {
-  display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .entity-type-badge,
@@ -1221,10 +1219,29 @@
   font-size: 12px;
 }
 
-.icon-picker-placeholder {
+/* Same row markup as the real entity list (.entity-list-item and friends,
+   defined with the rest of the entity list rules further down) — inert
+   instead of a link, so it can't be mistaken for one. */
+.entity-card-preview {
+  margin: 12px 0 4px;
+}
+
+.entity-card-preview-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
-  font-size: 13px;
-  margin-bottom: 16px;
+  margin-bottom: 6px;
+}
+
+.entity-card-preview-row.entity-list-item {
+  cursor: default;
+}
+
+.entity-card-preview-row.entity-list-item:hover {
+  border-color: var(--border);
 }
 
 .attachments-details {
@@ -1237,8 +1254,58 @@
   cursor: pointer;
 }
 
-/* Sticky action bar: save is always reachable, delete is pushed to the far
-   edge so the two are never adjacent click targets. */
+/* Jump nav for the long edit form — only rendered once there is more than
+   Basics/Content to jump to (see EntityEditPage). Sticky at the top so it
+   stays reachable while the sticky Save bar bookends the bottom. */
+.entity-edit-toc {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 -24px 16px;
+  padding: 10px 24px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Plain divider between logical groups, not a boxed card — the page should
+   still read as one document, not a stack of widgets. */
+.entity-edit-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.entity-edit-section:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.entity-edit-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+}
+
+/* The danger zone opts out of the plain-divider treatment above for the
+   same red-bordered card used on the project settings page — it should read
+   as visually set apart, not just another section. */
+.entity-edit-page .danger-zone {
+  margin-top: 20px;
+}
+
+.entity-edit-page [id^="entity-edit-"] {
+  scroll-margin-top: 56px;
+}
+
+/* Save is always reachable at the bottom; the danger zone lives in its own
+   card further up the page instead of sharing this bar (see .danger-zone). */
 .entity-edit-actions {
   position: sticky;
   bottom: 0;
@@ -1249,10 +1316,6 @@
   padding: 12px 24px;
   background: var(--bg);
   border-top: 1px solid var(--border);
-}
-
-.entity-edit-actions .spacer {
-  flex: 1;
 }
 
 .dirty-hint {
@@ -2151,6 +2214,38 @@
   background: var(--bg-subtle);
 }
 
+/* Zoom out / fit / zoom in, grouped as one segmented cluster rather than
+   three separate pills — reads as a single "camera" control the way the
+   view-mode toggle reads as a single switch. Tighter than the base
+   .segmented button padding since these hold an icon only, no label. */
+.graph-zoom-cluster button {
+  padding: 6px 10px;
+}
+
+/* Standalone icon-only dock buttons (center view, and later grid/snap) —
+   same pill/border language as .graph-dock-trigger-btn, without the
+   label+chevron layout that button assumes. */
+.graph-dock-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text);
+  padding: 7px;
+  border-radius: var(--radius-pill);
+}
+
+.graph-dock-icon-btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.graph-dock-icon-btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .graph-canvas {
   flex: 1;
   min-height: 0;
@@ -2189,24 +2284,6 @@
   color: var(--text-muted);
 }
 
-.graph-reset-layout-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 13px;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-}
-
-.graph-reset-layout-button:hover {
-  background: var(--bg-subtle);
-}
-
 /* React Flow's own theming hook — controls both the edge line and the
    arrowhead marker consistently (see @xyflow/react/dist/style.css). The
    library ships a `.dark` class variant of these tokens, but this app
@@ -2243,6 +2320,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: default;
+  transition: opacity 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+/* Edge touches whatever's currently focal (hovered node, selection, or the
+   active root) — see computeEdgeEmphasis in floatingEdgeUtils.ts. Also the
+   escape hatch that keeps a label visible under .react-flow-lod, below. */
+.graph-edge-label-emphasized {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Transient spotlight: a node elsewhere is hovered and this edge isn't part
+   of it. Never combined with -emphasized (see computeEdgeEmphasis). */
+.graph-edge-label-dimmed {
+  opacity: 0.35;
 }
 
 /* --- Player access --------------------------------------------------------- */
@@ -2360,6 +2452,13 @@
   font-size: 12px;
   color: var(--text-muted);
   margin: 0;
+}
+
+.player-access-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 /* --- Player view (/play/:token) -------------------------------------------- */
@@ -2785,12 +2884,30 @@
 
 .react-flow-lod .entity-node-icon-slot,
 .react-flow-lod .entity-type-badge,
-.react-flow-lod .entity-node-preview {
+.react-flow-lod .entity-node-preview,
+/* Illegible and unclickable at this size — same treatment as the rest of
+   the card's fine detail, not worth keeping around as visual noise. */
+.react-flow-lod .entity-node-collapse-toggle {
   display: none;
 }
 
 .react-flow-lod .entity-node-title {
   font-size: 11px;
+}
+
+/* Edge labels are the other big source of visual noise at scale — hundreds
+   of small pills stacking up across the canvas — and unlike node preview
+   fields they're illegible at LOD zoom anyway. Hidden by default, except for
+   whatever's incident to the current hover/selection/root focus
+   (.graph-edge-label-emphasized): that's exactly the relationship someone
+   zoomed out is trying to inspect, so it stays legible instead of also
+   disappearing. */
+.react-flow-lod .graph-edge-label {
+  display: none;
+}
+
+.react-flow-lod .graph-edge-label-emphasized {
+  display: block;
 }
 
 /* handle dots are only needed while dragging a connection — hide them at
@@ -2886,6 +3003,72 @@
 .entity-node-preview-item b {
   color: var(--text-muted);
   font-weight: 600;
+}
+
+/* Collapse/expand control for a hierarchy branch — same disclosure-chevron
+   concept as .entity-tree-chevron on the Entities page, packaged as a small
+   standalone control since a canvas card has no row for it to sit at the
+   start of. Bottom-right corner: clear of the revealed marker (top-left),
+   the icon slot (top-right) and both connection handles (top/bottom-center).
+   Was bottom-left in an earlier pass — moved because an incoming edge can
+   approach a card from any side (FloatingEdge routes from measured bounds,
+   not fixed handle positions), and a control sharing the edge's own corner
+   read as part of the connection instead of the card. Absolutely positioned
+   *inside* .entity-node's box (not overhanging past it) so it never adds to
+   the node's measured bounds that FloatingEdge/minimap/fitView compute
+   from, AND stays inside .entity-node's own clip-path — that clip only cuts
+   the top-right corner, but a clip-path clips all descendant painting to
+   its polygon, so anything overhanging any edge would be silently
+   unclickable there. No permanent border/shadow/fill at rest — the earlier
+   pill-with-shadow read as a floating chip near the card rather than part
+   of it; now it's just a muted glyph until something makes it worth noticing. */
+.entity-node-collapse-toggle {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 4px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s, border-color 0.12s, background-color 0.12s;
+}
+
+/* Collapsed is the state worth surfacing at a glance — always on. Expanded
+   stays out of the way, the same restraint as the connection handles right
+   next to it, until hover/selection/keyboard focus asks for it. */
+.entity-node-collapse-toggle.is-collapsed,
+.entity-node:hover .entity-node-collapse-toggle,
+.entity-node-selected .entity-node-collapse-toggle,
+.entity-node-collapse-toggle:focus-visible {
+  opacity: 1;
+}
+
+.entity-node-collapse-toggle:hover,
+.entity-node-collapse-toggle:focus-visible {
+  color: var(--accent);
+  background: var(--bg-subtle);
+}
+
+/* Collapsed *and* actually hiding something (the count only renders then) —
+   worth calling out with real color, so a branch worth reopening doesn't
+   read the same as an idle, nothing-to-see-here chevron. */
+.entity-node-collapse-toggle:has(.entity-node-collapse-count) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.entity-node-collapse-count {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 /* entity detail panel — positioned relative to .graph-canvas-area (its
@@ -3421,80 +3604,30 @@
 
 /* ---------- AI Assistant ---------- */
 
+/* Full-bleed, like .graph-view-page — fills .layout-content's height instead
+   of growing with its content, so AssistantPanel's own flex:1 transcript is
+   the only thing that scrolls (see "Assistant chat" below). The reading
+   column is capped by max-width/margin, same recipe as .entity-edit-page,
+   just taller instead of document-scrolled.
+   .app-shell only sets min-height: 100svh (a floor, for pages that are
+   meant to document-scroll) — flex:1/min-height:0 alone still lets a tall
+   transcript inflate the whole shell past the viewport instead of scrolling
+   internally. The max-height below (viewport minus .app-topbar's fixed
+   52px) is the actual ceiling that forces AssistantPanel's own chain to
+   shrink-and-scroll instead. Graph drawer doesn't need this: it's sized by
+   position:absolute top/bottom against .graph-canvas-area, which content
+   can't inflate the way normal flow can. */
 .assistant-page {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 24px 16px 64px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.assistant-header h1 {
-  margin: 0 0 4px;
-}
-
-.assistant-hint {
-  color: var(--text-muted);
-  margin: 4px 0;
-}
-
-.assistant-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
-
-.assistant-form-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.assistant-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.9em;
-  color: var(--text-muted);
   flex: 1;
-  min-width: 180px;
-}
-
-.assistant-form input,
-.assistant-form select,
-.assistant-form textarea {
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-}
-
-.assistant-form-actions {
+  min-height: 0;
+  max-height: calc(100svh - 52px);
   display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.assistant-form-actions button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--accent-text);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.assistant-form-actions button:disabled {
-  opacity: 0.6;
-  cursor: default;
+  flex-direction: column;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 20px 16px;
+  gap: 14px;
 }
 
 .assistant-error {
@@ -3520,72 +3653,6 @@
 
 .assistant-hint-chip:hover {
   border-color: var(--accent);
-  color: var(--accent);
-}
-
-.assistant-sessions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.assistant-sessions h2 {
-  margin: 8px 0 0;
-}
-
-.assistant-session {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-  padding: 12px 16px;
-}
-
-.assistant-session-head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.assistant-session-instruction {
-  flex: 1;
-  min-width: 200px;
-}
-
-.assistant-session-usage {
-  color: var(--text-muted);
-  font-size: 0.85em;
-}
-
-.assistant-status {
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.8em;
-  font-weight: 600;
-  background: var(--bg-subtle);
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.assistant-status-awaiting_review {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.assistant-status-committed {
-  background: var(--accent);
-  color: var(--accent-text);
-}
-
-.assistant-status-failed,
-.assistant-status-rejected {
-  background: var(--bg-subtle);
-  color: var(--danger);
-}
-
-.assistant-session-link {
-  display: inline-block;
-  margin-top: 8px;
   color: var(--accent);
 }
 
@@ -3616,18 +3683,6 @@
   font: inherit;
 }
 
-.assistant-review-title {
-  position: relative;
-}
-
-.assistant-review-type {
-  position: absolute;
-  right: 8px;
-  top: 0;
-  font-size: 0.85em;
-  color: var(--text-muted);
-}
-
 .assistant-warnings {
   margin: 0;
   padding: 8px 12px;
@@ -3640,18 +3695,6 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.assistant-provenance,
-.assistant-provenance-new {
-  margin: 0;
-  font-size: 0.85em;
-  color: var(--text-muted);
-}
-
-.assistant-relationships h3 {
-  margin: 0 0 6px;
-  font-size: 0.95em;
 }
 
 .assistant-relationship {
@@ -3765,6 +3808,9 @@
 }
 
 .assistant-onboarding {
+  flex: none;
+  min-height: 0;
+  overflow-y: auto;
   padding: 24px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -3783,27 +3829,32 @@
 /* ---------- Assistant drawer in the graph view ---------- */
 
 /* Sits in .graph-overlay-left right below the graph controls — exactly where
-   the drawer opens, and never over the entity detail panel (right side). */
+   the drawer opens, and never over the entity detail panel (right side).
+   Icon-only and sized/styled like the .graph-dock-icon-btn family so it
+   reads as one more graph control, not a competing accent-colored pill. */
 .assistant-drawer-toggle {
-  padding: 8px 16px;
-  border: 1px solid var(--border-strong);
-  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
   background: var(--surface);
   color: var(--accent);
-  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
-  transition: border-color 0.12s, transform 0.12s, box-shadow 0.12s;
+  box-shadow: var(--shadow);
+  transition: border-color 0.12s, background-color 0.12s, transform 0.12s;
 }
 
 .assistant-drawer-toggle:hover {
   border-color: var(--accent);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  background: var(--accent-soft);
 }
 
 .assistant-drawer-toggle:active {
   transform: translateY(1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
 }
 
 /* The drawer lives on the LEFT (below the graph controls); the entity detail
@@ -3821,7 +3872,7 @@
   border: 1px solid var(--border-strong);
   border-radius: 12px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
-  padding: 14px;
+  padding: 16px;
   animation: assistant-drawer-in 0.18s ease-out;
 }
 
@@ -3851,7 +3902,9 @@
    drawer-specific override, none needed today. */
 
 /* Textareas grow vertically only — horizontal resize breaks out of the
-   drawer/card bounds. */
+   drawer/card bounds. The composer's own textarea auto-grows instead (see
+   .assistant-composer-input in "Assistant chat" below), so a manual resize
+   handle there would just fight the JS-driven height. */
 .assistant-panel textarea {
   resize: vertical;
   width: 100%;
@@ -3859,18 +3912,49 @@
   box-sizing: border-box;
 }
 
-.assistant-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.assistant-panel textarea.assistant-composer-input {
+  resize: none;
 }
 
+/* The shared chat surface for both the full page and the graph drawer —
+   whichever ancestor establishes the bounded height (.assistant-page or
+   .assistant-drawer) hands this flex:1/min-height:0 chain the space to
+   fill. Session picker and composer size to their own content; only the
+   transcript between them scrolls (see .assistant-transcript). */
+.assistant-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.assistant-idle-state {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* A compact, subdued notice rather than a solid accent-filled block — the
+   idle state also carries the example-prompt chips below it now, so the
+   invite text itself doesn't need to shout. */
 .assistant-empty-invite {
   margin: 0;
-  padding: 10px 12px;
-  background: var(--accent-soft);
-  border-radius: 8px;
-  color: var(--text);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+  font-size: 0.92em;
+}
+
+.assistant-empty-invite svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent);
 }
 
 .assistant-anchor {
@@ -4155,56 +4239,162 @@
 
 /* ---------- Assistant chat ---------- */
 
-.assistant-panel {
-  flex: 1;
-  min-height: 0;
-}
-
 /* Scrollbars are styled globally in index.css. */
 
-.assistant-onboarding {
-  overflow-y: auto;
-  min-height: 0;
-}
-
+/* Reads as one control cluster (page title, history menu, new-conversation)
+   instead of a title floating above a bare <select> — the native select's
+   light browser-chrome popup never followed the app's dark theme, so the
+   history picker is a themed trigger + menu instead (see
+   .assistant-session-menu below). */
 .assistant-session-picker {
+  flex: none;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+  padding: 4px 4px 4px 10px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
 }
 
-.assistant-session-picker select {
+.assistant-session-heading {
+  flex: none;
+  margin: 0;
+  padding-right: 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.assistant-session-trigger-wrap {
+  position: relative;
   flex: 1;
   min-width: 0;
+}
+
+.assistant-session-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
   padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
+  border: none;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: none;
   color: var(--text-muted);
   font-size: 0.85em;
+  cursor: pointer;
 }
 
-.assistant-new-session-button {
-  padding: 6px 10px;
+.assistant-session-trigger:hover,
+.assistant-session-trigger[aria-expanded="true"] {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.assistant-session-trigger-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.assistant-session-trigger svg:last-child {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.assistant-session-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  min-width: 220px;
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow);
+  padding: 4px;
+}
+
+.assistant-session-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
   border: none;
-  border-radius: 6px;
+  border-radius: 5px;
   background: none;
-  color: var(--accent);
+  color: var(--text);
+  text-align: left;
   font-size: 0.85em;
   cursor: pointer;
-  white-space: nowrap;
-  transition: background-color 0.12s;
 }
 
-.assistant-new-session-button:hover {
+.assistant-session-option:hover,
+.assistant-session-option:focus-visible {
   background: var(--accent-soft);
 }
 
+.assistant-session-option[aria-current="true"] {
+  background: var(--bg-subtle);
+  font-weight: 600;
+}
+
+.assistant-session-option-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-session-status {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.assistant-session-status.tone-accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.assistant-session-status.tone-success {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.assistant-session-status.tone-danger {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
 .assistant-transcript {
-  /* Fill the drawer; scrolls only when messages overflow. */
+  /* Fills the panel; scrolls only when messages overflow — header and
+     composer above/below stay put (flex: none on both). */
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -4229,6 +4419,35 @@
   align-self: flex-start;
   background: var(--bg-subtle);
   border-bottom-left-radius: 4px;
+}
+
+/* Deterministic backend acks (commit/reject/budget notices) — a compact
+   centered pill instead of a speech bubble, so they read as system status
+   rather than something the agent "said". */
+.assistant-event-notice {
+  align-self: center;
+  max-width: 90%;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 0.85em;
+  text-align: center;
+}
+
+.assistant-event-notice.tone-success {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+}
+
+.assistant-event-notice.tone-danger {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.assistant-event-notice.tone-warning {
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
 }
 
 .assistant-attachment-chips {
@@ -4278,6 +4497,7 @@
 }
 
 .assistant-chat-input {
+  flex: none;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -4309,10 +4529,35 @@
   pointer-events: none;
 }
 
+/* One unified input bar — textarea and controls share a single border
+   instead of each carrying their own, so attach/context/send don't read as
+   loose separate controls stacked under the textarea. */
+.assistant-composer-surface {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.12s;
+}
+
+.assistant-composer-surface:focus-within {
+  border-color: var(--accent);
+}
+
+.assistant-composer-surface textarea {
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+
 .assistant-input-row {
   display: flex;
   gap: 8px;
   align-items: center;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
 }
 
 .assistant-input-row select {
@@ -4467,6 +4712,158 @@
   color: var(--accent, inherit);
 }
 
+/* ---------- External page overlay (Project Hub / feedback drawer) ----------
+   Notion's public pages send a frame-ancestors CSP that refuses embedding
+   from any outside origin, so .embed-overlay-fallback is the state most
+   users actually see — see useEmbedLoadStatus for how "blocked" is
+   inferred. */
+
+.embed-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 24px;
+}
+
+.embed-overlay {
+  display: flex;
+  flex-direction: column;
+  width: min(880px, 100%);
+  height: min(720px, calc(100vh - 48px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.embed-overlay-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.embed-overlay-head h2 {
+  margin: 0;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.embed-overlay-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.embed-overlay-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.embed-overlay-close:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.embed-overlay-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.embed-overlay-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  background: var(--surface);
+}
+
+.embed-overlay-frame-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.embed-overlay-iframe {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border: 0;
+}
+
+.embed-overlay-iframe-hidden {
+  visibility: hidden;
+}
+
+.embed-overlay-hint {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.embed-overlay-hint a {
+  color: var(--accent);
+}
+
+.embed-overlay-fallback {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.embed-overlay-fallback svg {
+  color: var(--accent);
+}
+
+.embed-overlay-fallback p {
+  margin: 0;
+  max-width: 360px;
+  font-size: 13.5px;
+}
+
+@media (max-width: 640px) {
+  .embed-overlay {
+    height: calc(100vh - 32px);
+  }
+}
+
 /* react-easy-crop's <Cropper> absolutely-positions itself to fill its
    nearest positioned ancestor — this is that ancestor, matched to
    ICON_CROP_ASPECT (ImageCropModal.tsx) so the crop window's proportions
@@ -4490,6 +4887,43 @@
 
 .image-crop-zoom input {
   accent-color: var(--accent);
+}
+
+.image-crop-mode {
+  align-self: flex-start;
+}
+
+/* Same box fitImageToBlob paints its canvas with — two stacked copies of the
+   same image reproduce its blurred-cover-background-plus-sharp-contain-
+   foreground composite, so this preview is what the export actually looks
+   like. `background` below is only a loading-state fallback: both images
+   cover the box completely once loaded. */
+.image-crop-fit-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2;
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+
+.image-crop-fit-preview-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Scaled past `cover` so the blur's soft edge clears the frame instead of
+     bleeding in from it — same overscan idea as fitImageToBlob's canvas. */
+  transform: scale(1.15);
+  filter: blur(20px);
+}
+
+.image-crop-fit-preview-fg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 /* ---------- Toasts ---------- */
@@ -4620,7 +5054,11 @@
   top: calc(100% + 4px);
   right: 0;
   z-index: 20;
-  min-width: 160px;
+  /* Wide enough for the longest current item ("Закрепить позиции узлов" /
+     "Lock node positions") plus its padding without wrapping to a second
+     line — 160px used to be too tight for that pair once the graph dock's
+     menu grew past its original two items. */
+  min-width: 220px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
@@ -4630,14 +5068,22 @@
   flex-direction: column;
 }
 
+/* Trigger sits at the bottom of its container (the graph dock) — open
+   upward instead of off-screen. */
+.kebab-menu.upward .kebab-menu-list {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
 .kebab-menu-list button {
   justify-content: flex-start;
   border: none;
   background: none;
   width: 100%;
-  padding: 7px 10px;
+  padding: 8px 12px;
   border-radius: 5px;
   font-weight: 400;
+  white-space: nowrap;
 }
 
 .kebab-menu-list button:hover:not(:disabled) {
@@ -4651,6 +5097,15 @@
 
 .kebab-menu-list button.danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+/* Between groups of items (e.g. layout actions vs. hierarchy actions) —
+ * plain rule, no label, matching the menu's own inset padding rather than
+ * running edge to edge. */
+.kebab-menu-separator {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border);
 }
 
 /* ---------- Entity list rows ---------- */
@@ -5025,7 +5480,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
-  width: min(420px, calc(100vw - 48px));
+  width: min(460px, calc(100vw - 48px));
   pointer-events: none;
 }
 
@@ -6007,6 +6462,69 @@ label.checkbox-wrapper.checkbox-with-hint {
   max-width: 480px;
   color: var(--text-muted);
   font-size: 14px;
+}
+
+.help-support-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 36px;
+}
+
+.help-support-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.help-support-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.help-support-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 280px;
+  max-width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.help-support-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.help-support-card svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.help-support-card strong {
+  display: block;
+  font-size: 13.5px;
+}
+
+.help-support-card-desc {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 .help-layout {
@@ -7957,12 +8475,6 @@ button.sheet-dot:focus-visible {
   text-transform: uppercase;
   color: var(--text-muted);
   padding: 12px 16px 6px;
-}
-
-.sidebar-zone-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 8px 12px 0;
 }
 
 .sidebar-recent-mark {

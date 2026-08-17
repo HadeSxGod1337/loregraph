@@ -17,6 +17,56 @@ before upgrading.
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-08-17
+
+This release is mostly about the two screens you spend the most time in —
+the graph and the assistant panel — plus a public place to see what's next
+and say something about it without leaving the app.
+
+### Added
+
+- **Hierarchy collapse on the graph.** Entities with children (a faction and
+  its members, a town and its places) get a collapse/expand chevron on the
+  graph canvas, using the same containment rules as the Entities list.
+  Collapsing a branch hides its descendants and shows how many are folded
+  away; "collapse all" / "expand all" live in the graph's overflow menu, and
+  the collapsed state is remembered per project.
+- **Graph toolbar consolidation.** Zoom, fit, reset and lock are one toolbar
+  instead of scattered controls, with an optional grid and snap-to-grid for
+  laying out a scene by hand. Edges declutter automatically based on zoom,
+  hover and selection instead of staying uniformly dense at every level.
+- **One assistant composer.** The input bar, attachments and send controls
+  are a single component instead of three kept in sync by hand. The idle
+  state and event notices read apart more easily, and the session-history
+  menu now follows the app's own theme instead of default browser chrome.
+- **Modal project creation.** "New project" opens as a dialog instead of an
+  inline form on the projects page, which also gained filtering and a real
+  empty state.
+- **Entity editor sections.** The edit form is split into jump-to sections
+  with delete moved into its own danger zone, instead of one long scroll.
+  Creating an entity now stages its icon and shows the card preview before
+  the first save. The rich-text toolbar tucks rarely-used actions into an
+  overflow menu, and image cropping gained a Fit mode that pads instead of
+  cropping.
+- **Project Hub & feedback, in-app.** Help has a new support block linking
+  to the public Loregraph Project Hub (roadmap, what's next) and a feedback
+  form — both public Notion pages, opened in an overlay inside Loregraph via
+  Notion's dedicated embed route rather than just a link out. "Open in a new
+  tab" stays available in every state, in case an embed doesn't load. A
+  compact feedback button also sits in the sidebar footer, since it doesn't
+  need a project open the way Help does. No backend involvement — these are
+  public URLs, nothing is proxied, and nothing is stored.
+
+### Changed
+
+- Project settings' scrollbar gutter is now always reserved, so opening a
+  panel that adds a scrollbar no longer narrows the page by a few pixels.
+- The demo build's fake backend returns independent clones of its seed data
+  instead of shared references, so editing one demo entity can no longer
+  bleed into another.
+- The image crop modal's Fit-mode backdrop is a blurred version of the image
+  instead of a flat matte color.
+
 ## [0.5.0] — 2026-08-14
 
 Create, edit and relate used to be three skills the assistant picked between up
@@ -481,7 +531,8 @@ First tagged release. Everything below is the state of the app as of this tag.
 None — this is the first release.
 
 [#1]: https://github.com/HadeSxGod1337/loregraph/issues/1
-[Unreleased]: https://github.com/HadeSxGod1337/loregraph/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/HadeSxGod1337/loregraph/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.6.0
 [0.5.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.5.0
 [0.4.0]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.4.0
 [0.3.1]: https://github.com/HadeSxGod1337/loregraph/releases/tag/v0.3.1

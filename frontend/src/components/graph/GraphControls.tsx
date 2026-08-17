@@ -5,6 +5,8 @@ import type { Entity } from "../../api/types";
 import { useDismiss } from "../../hooks/useDismiss";
 import { Checkbox } from "../ui/Checkbox";
 import { Icon } from "../ui/Icon";
+import { KebabMenu } from "../ui/KebabMenu";
+import type { GraphActionType } from "./GraphCanvas";
 
 const DEPTH_OPTIONS = [1, 2, 3] as const;
 const MAX_COMBOBOX_OPTIONS = 50;
@@ -18,10 +20,29 @@ interface GraphControlsProps {
   edgeTypes: string[];
   availableEdgeTypes: string[];
   viewMode: GraphViewMode;
+  /** See GraphCanvasProps — freezes dragging/connecting/selecting. */
+  locked: boolean;
+  /** See GraphCanvasProps — grid background + snap-to-grid. */
+  gridEnabled: boolean;
   onRootChange: (rootId: string) => void;
   onDepthChange: (depth: number) => void;
   onEdgeTypesChange: (types: string[]) => void;
   onViewModeChange: (mode: GraphViewMode) => void;
+  /** Fire-once camera/layout commands — see GraphActionRequest. */
+  onAction: (type: GraphActionType) => void;
+  /** Centers the camera on whatever's currently selected, falling back to
+   * the root/active entity — reuses the same focusRequest plumbing as the
+   * detail panel's own "focus camera" button (see GraphViewPage). */
+  onCenterView: () => void;
+  onLockedChange: (locked: boolean) => void;
+  onGridEnabledChange: (enabled: boolean) => void;
+  /** Whether the current view has any hierarchy branch to collapse at all —
+   * hides both kebab actions below when the project doesn't use hierarchy
+   * edge types, same spirit as EntityListPage only offering its collapse
+   * toggle once `allFolders.length > 0`. */
+  hasHierarchyBranches: boolean;
+  onCollapseAllHierarchy: () => void;
+  onExpandAllHierarchy: () => void;
 }
 
 /** Horizontal dock anchored at the bottom of the canvas, next to the create
@@ -34,10 +55,19 @@ export function GraphControls({
   edgeTypes,
   availableEdgeTypes,
   viewMode,
+  locked,
+  gridEnabled,
   onRootChange,
   onDepthChange,
   onEdgeTypesChange,
   onViewModeChange,
+  onAction,
+  onCenterView,
+  onLockedChange,
+  onGridEnabledChange,
+  hasHierarchyBranches,
+  onCollapseAllHierarchy,
+  onExpandAllHierarchy,
 }: GraphControlsProps) {
   const { t } = useTranslation();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -129,6 +159,60 @@ export function GraphControls({
           )}
         </div>
       )}
+
+      <div className="graph-dock-divider" />
+
+      <div className="segmented graph-zoom-cluster" role="group" aria-label={t("graph.zoomGroup")}>
+        <button type="button" title={t("graph.zoomOut")} aria-label={t("graph.zoomOut")} onClick={() => onAction("zoomOut")}>
+          <Icon name="zoom-out" size={14} />
+        </button>
+        <button type="button" title={t("graph.fitView")} aria-label={t("graph.fitView")} onClick={() => onAction("fitView")}>
+          <Icon name="maximize" size={14} />
+        </button>
+        <button type="button" title={t("graph.zoomIn")} aria-label={t("graph.zoomIn")} onClick={() => onAction("zoomIn")}>
+          <Icon name="zoom-in" size={14} />
+        </button>
+      </div>
+
+      <button
+        type="button"
+        className="graph-dock-icon-btn"
+        title={t("graph.centerView")}
+        aria-label={t("graph.centerView")}
+        onClick={onCenterView}
+      >
+        <Icon name="expand" size={14} />
+      </button>
+
+      <button
+        type="button"
+        className="graph-dock-icon-btn"
+        title={t("graph.gridTitle")}
+        aria-label={t("graph.grid")}
+        aria-pressed={gridEnabled}
+        onClick={() => onGridEnabledChange(!gridEnabled)}
+      >
+        <Icon name="grid" size={14} />
+      </button>
+
+      <KebabMenu
+        label={t("graph.moreActions")}
+        placement="up"
+        items={[
+          { label: t("graph.resetLayout"), onClick: () => onAction("resetLayout") },
+          {
+            label: locked ? t("graph.unlockPositions") : t("graph.lockPositions"),
+            onClick: () => onLockedChange(!locked),
+          },
+          ...(hasHierarchyBranches
+            ? [
+                { separator: true } as const,
+                { label: t("graph.collapseAllHierarchy"), onClick: onCollapseAllHierarchy },
+                { label: t("graph.expandAllHierarchy"), onClick: onExpandAllHierarchy },
+              ]
+            : []),
+        ]}
+      />
     </div>
   );
 }

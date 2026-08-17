@@ -7,6 +7,16 @@
   background: var(--bg);
 }
 
+/* Page content scrolls at the document level (.app-shell has no fixed
+   height, see App.css), so the vertical scrollbar comes and goes with each
+   page's content height. Reserving its gutter unconditionally keeps the
+   viewport width constant either way — without it, switching to a shorter
+   tab/page removes the scrollbar and the whole centered layout shifts
+   sideways by its width. */
+html {
+  scrollbar-gutter: stable;
+}
+
 /*
   Each preset is a complete theme (bg/surface/border/text AND accent), not
   just an accent color layered on shared neutrals — a "Blue" preset should

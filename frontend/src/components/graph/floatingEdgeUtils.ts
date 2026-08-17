@@ -118,3 +118,55 @@ export function edgeGroupOffsets(count: number, step = 46): number[] {
   if (count <= 1) return [0];
   return Array.from({ length: count }, (_, i) => (i - (count - 1) / 2) * step);
 }
+
+export interface EdgeEmphasisInput {
+  sourceId: string;
+  targetId: string;
+  hoveredEntityId: string | null;
+  selectedEntityId: string | null;
+  rootId: string;
+}
+
+export interface EdgeEmphasisState {
+  /** This edge touches whatever's currently focal (a hovered node, the
+   * selected node, or the active root) — gets a stronger stroke and its
+   * label stays visible even when the rest of the canvas is zoomed into LOD
+   * mode, where edge labels are hidden by default (see App.css). */
+  emphasized: boolean;
+  /** Softly faded because a node is actively hovered and this edge isn't
+   * incident to it. A transient "spotlight" effect — never set from
+   * selection or root alone, or the graph would read as permanently
+   * greyed-out the moment anything is selected. */
+  dimmed: boolean;
+}
+
+/**
+ * Per-edge visual state driving both label visibility and stroke styling
+ * (see FloatingEdge.tsx). Kept as a plain function of primitive ids —
+ * `FloatingEdge` calls this from its own props/context reads rather than the
+ * edge array carrying precomputed emphasis, so hovering/selecting doesn't
+ * require rebuilding `edges` (see HoveredEntityContext/SelectedEntityContext).
+ */
+export function computeEdgeEmphasis({
+  sourceId,
+  targetId,
+  hoveredEntityId,
+  selectedEntityId,
+  rootId,
+}: EdgeEmphasisInput): EdgeEmphasisState {
+  const isIncidentToHover =
+    hoveredEntityId != null && (sourceId === hoveredEntityId || targetId === hoveredEntityId);
+  const isIncidentToSelection =
+    selectedEntityId != null && (sourceId === selectedEntityId || targetId === selectedEntityId);
+  const isIncidentToRoot = rootId !== "" && (sourceId === rootId || targetId === rootId);
+  const emphasized = isIncidentToHover || isIncidentToSelection || isIncidentToRoot;
+
+  return {
+    emphasized,
+    // Never dims an edge that's already emphasized via selection/root, even
+    // while an unrelated node elsewhere is being hovered — a "sticky"
+    // emphasis reason should win over the transient hover spotlight, not
+    // fight it.
+    dimmed: hoveredEntityId != null && !emphasized,
+  };
+}

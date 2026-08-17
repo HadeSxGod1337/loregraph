@@ -397,7 +397,17 @@ export async function demoRequest(
   for (const route of routes) {
     if (route.method !== method) continue;
     const m = matchPath(route.pattern, path);
-    if (m) return route.handler(m, body, query);
+    if (m) {
+      const result = await route.handler(m, body, query);
+      // Handlers hand back live references into the in-memory store (see
+      // e.g. updateEntity's in-place mutation) — a real HTTP round-trip
+      // could never do that, every response is independently deserialized
+      // JSON. Cloning here keeps that same-reference-in, same-reference-out
+      // shortcut from leaking into the app: callers (React Query's cache)
+      // rely on a changed value producing a new object identity to notice
+      // updates, e.g. useMemo/useEffect deps keyed on query data.
+      return structuredClone(result);
+    }
   }
   notFound(method, path);
 }

@@ -22,7 +22,8 @@
     "close": "Close",
     "undo": "Undo",
     "on": "on",
-    "off": "off"
+    "off": "off",
+    "openInNewTab": "Open in new tab"
   },
   "sheet": {
     "sheetTitle": "Sheet",
@@ -119,7 +120,8 @@
     "integrations": "Integrations",
     "help": "Help",
     "appSettings": "Settings",
-    "projectSettings": "Project settings"
+    "projectSettings": "Project settings",
+    "feedback": "Feedback"
   },
   "theme": {
     "light": "Light",
@@ -226,6 +228,7 @@
     "importProject": "Import",
     "noProjects": "No projects yet.",
     "emptyBody": "Create your first project — or import an existing one from an export file.",
+    "emptyCreateButton": "Create project",
     "newProjectButton": "New project",
     "newProjectHeading": "New project",
     "namePlaceholder": "Name",
@@ -246,11 +249,12 @@
     "entitiesCount_other": "{{count}} entities",
     "edgesCount_one": "{{count}} relationship",
     "edgesCount_other": "{{count}} relationships",
-    "continue": "Continue",
+    "lastProjectLabel": "Last project",
     "openButton": "Open",
     "filterPlaceholder": "Filter by name…",
     "noMatches": "No project matches “{{query}}”.",
-    "summary": "{{projects}} projects · {{entities}} entities"
+    "projectsCount_one": "{{count}} project",
+    "projectsCount_other": "{{count}} projects"
   },
   "entities": {
     "title": "Entities",
@@ -281,16 +285,26 @@
     "newTitle": "New Entity",
     "editTitle": "Edit Entity",
     "backToList": "Entities",
+    "sectionsNavLabel": "Sections",
+    "sectionBasics": "Basics",
+    "sectionContent": "Content",
     "typeLabel": "Type",
     "titleLabel": "Title",
     "iconLabel": "Icon",
     "otherFiles": "Other files",
     "unsavedChanges": "Unsaved changes",
+    "saving": "Saving…",
+    "allSaved": "All changes saved",
     "savedToast": "Entity saved",
     "createdToast": "Entity created",
     "deletedToast": "Entity deleted",
+    "iconUploadFailedToast": "Entity created, but the icon failed to upload — try setting it again",
+    "previewLabel": "Card preview",
+    "previewUntitled": "Untitled",
     "deleteConfirmTitle": "Delete entity?",
     "deleteConfirmBody": "\"{{title}}\" and all of its fields and relationships will be deleted forever.",
+    "dangerHeading": "Danger zone",
+    "dangerHint": "Irreversible actions on this entity.",
     "templateChip": "Template: {{name}}",
     "templateReadOnlyHint": "sheet layout is read-only here — edit it in the template designer",
     "editTemplate": "Edit template"
@@ -328,6 +342,16 @@
     "edgeTypesLabel": "Edge types",
     "edgeTypesAll": "all types",
     "edgeTypesSelected": "{{count}} selected",
+    "zoomGroup": "Zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fitView": "Fit view",
+    "centerView": "Center view",
+    "grid": "Grid",
+    "gridTitle": "Toggle grid & snap-to-grid",
+    "moreActions": "More actions",
+    "lockPositions": "Lock node positions",
+    "unlockPositions": "Unlock node positions",
     "resetLayout": "Reset layout",
     "resetLayoutConfirmTitle": "Reset layout?",
     "resetLayoutConfirmBody": "Every manually placed node in view will be rearranged. This can't be undone.",
@@ -337,7 +361,13 @@
     "createEntityTitle": "Create entity on graph",
     "typeLabel": "Type",
     "titleLabel": "Title",
-    "titlePlaceholder": "Entity name"
+    "titlePlaceholder": "Entity name",
+    "collapseBranch": "Collapse branch",
+    "expandBranch": "Expand branch",
+    "expandBranchHiddenCount_one": "Expand branch — {{count}} entity hidden",
+    "expandBranchHiddenCount_other": "Expand branch — {{count}} entities hidden",
+    "collapseAllHierarchy": "Collapse all branches",
+    "expandAllHierarchy": "Expand all"
   },
   "edges": {
     "linkToEntity": "— link to entity —",
@@ -369,10 +399,14 @@
     "heading": "Attachments"
   },
   "icon": {
-    "saveFirst": "Save the entity first to set an icon.",
     "noIcon": "no icon",
     "cropTitle": "Crop image",
-    "cropZoom": "Zoom"
+    "cropZoom": "Zoom",
+    "cropModeLabel": "Crop mode",
+    "cropModeFill": "Fill",
+    "cropModeFit": "Fit",
+    "cropModeFillHint": "Crops the image to fill the frame — drag and zoom to choose what's kept.",
+    "cropModeFitHint": "Shows the whole image. Empty space is filled with a blurred background from the image."
   },
   "richText": {
     "insertImage": "Insert image",
@@ -438,6 +472,9 @@
       "toggleHeaderRow": "Toggle header row",
       "mergeOrSplit": "Merge / split cells",
       "delete": "Delete table"
+    },
+    "more": {
+      "menu": "More formatting"
     }
   },
   "entityLink": {
@@ -587,15 +624,32 @@
       "setupCta": "Open AI settings",
       "setupEnvNote": "backend/.env still works as a starting point, but it is only read when the app starts."
     },
-    "historyPlaceholder": "— conversation history —",
+    "historyPlaceholder": "Conversation history",
     "newConversation": "New conversation",
-    "newConversationButton": "+ New",
     "emptyInviteEmptyWorld": "Your world is empty. Describe it in a couple of sentences — the assistant will propose starting lore: locations, factions, characters and their connections. Nothing becomes canon without your approval. You can also just ask questions.",
     "emptyInviteHasWorld": "Ask about the world, ask it to expand a part of it, or add new lore — the assistant answers grounded in existing canon and proposes drafts for review.",
+    "examplePrompts": {
+      "addLore": {
+        "label": "Add new lore",
+        "instruction": "Come up with a new piece of lore for this world — a location, faction, NPC, or item, whichever fits best."
+      },
+      "weaveCharacter": {
+        "label": "Weave in a character",
+        "instruction": "Find a character with no connections in this world and weave them in — invent who and what they're tied to, and add the missing entities and relationships."
+      },
+      "checkConsistency": {
+        "label": "Check consistency",
+        "instruction": "Check the existing lore for inconsistencies and contradictions, and tell me what's worth fixing."
+      },
+      "suggestLinks": {
+        "label": "Suggest relationships",
+        "instruction": "Look over the world and suggest new relationships between existing entities that make sense but aren't captured yet."
+      }
+    },
     "removeFileTitle": "Remove file",
     "dropHint": "Drop to attach",
     "inputPlaceholderBlocked": "Finish reviewing the draft above first (approve / request changes / reject)",
-    "inputPlaceholderDefault": "Ask about the world or request new lore… (Enter to send)",
+    "inputPlaceholderDefault": "Ask about the world or suggest new lore…",
     "anchorWholeWorld": "whole world",
     "contextLabel": "Context",
     "anchorTitle": "Which entity to build around",
@@ -891,6 +945,15 @@
         "title": "Reindexing",
         "body": "Rebuilds the lore search vector index from the current entity state — useful after a bulk import."
       }
+    },
+    "support": {
+      "title": "Project & feedback",
+      "hubTitle": "Project Hub",
+      "hubDescription": "Roadmap, changelog and background on where Loregraph is headed.",
+      "feedbackTitle": "Leave feedback",
+      "feedbackDescription": "Report a bug or suggest an idea — goes straight to the person building this.",
+      "blockedMessage": "This page can't be embedded here — Notion is blocking the frame. Open it in a new tab instead.",
+      "troubleLoading": "Not loading?"
     }
   },
   "appSettings": {
