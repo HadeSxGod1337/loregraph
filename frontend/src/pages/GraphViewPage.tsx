@@ -210,10 +210,11 @@ export function GraphViewPage() {
             <button
               type="button"
               className="assistant-drawer-toggle"
+              title={t("graph.openAssistant")}
+              aria-label={t("graph.openAssistant")}
               onClick={() => setAssistantOpen(true)}
             >
-              <Icon name="sparkles" size={15} />
-              {t("graph.openAssistant")}
+              <Icon name="sparkles" size={16} />
             </button>
           )}
           {assistantVisible && (

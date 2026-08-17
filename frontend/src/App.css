@@ -3770,27 +3770,32 @@
 /* ---------- Assistant drawer in the graph view ---------- */
 
 /* Sits in .graph-overlay-left right below the graph controls — exactly where
-   the drawer opens, and never over the entity detail panel (right side). */
+   the drawer opens, and never over the entity detail panel (right side).
+   Icon-only and sized/styled like the .graph-dock-icon-btn family so it
+   reads as one more graph control, not a competing accent-colored pill. */
 .assistant-drawer-toggle {
-  padding: 8px 16px;
-  border: 1px solid var(--border-strong);
-  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
   background: var(--surface);
   color: var(--accent);
-  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
-  transition: border-color 0.12s, transform 0.12s, box-shadow 0.12s;
+  box-shadow: var(--shadow);
+  transition: border-color 0.12s, background-color 0.12s, transform 0.12s;
 }
 
 .assistant-drawer-toggle:hover {
   border-color: var(--accent);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  background: var(--accent-soft);
 }
 
 .assistant-drawer-toggle:active {
   transform: translateY(1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
 }
 
 /* The drawer lives on the LEFT (below the graph controls); the entity detail
@@ -3808,7 +3813,7 @@
   border: 1px solid var(--border-strong);
   border-radius: 12px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
-  padding: 14px;
+  padding: 16px;
   animation: assistant-drawer-in 0.18s ease-out;
 }
 
@@ -5054,7 +5059,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
-  width: min(420px, calc(100vw - 48px));
+  width: min(460px, calc(100vw - 48px));
   pointer-events: none;
 }
 
