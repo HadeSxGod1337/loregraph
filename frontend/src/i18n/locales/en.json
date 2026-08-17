@@ -226,6 +226,7 @@
     "importProject": "Import",
     "noProjects": "No projects yet.",
     "emptyBody": "Create your first project — or import an existing one from an export file.",
+    "emptyCreateButton": "Create project",
     "newProjectButton": "New project",
     "newProjectHeading": "New project",
     "namePlaceholder": "Name",
@@ -246,11 +247,12 @@
     "entitiesCount_other": "{{count}} entities",
     "edgesCount_one": "{{count}} relationship",
     "edgesCount_other": "{{count}} relationships",
-    "continue": "Continue",
+    "lastProjectLabel": "Last project",
     "openButton": "Open",
     "filterPlaceholder": "Filter by name…",
     "noMatches": "No project matches “{{query}}”.",
-    "summary": "{{projects}} projects · {{entities}} entities"
+    "projectsCount_one": "{{count}} project",
+    "projectsCount_other": "{{count}} projects"
   },
   "entities": {
     "title": "Entities",
