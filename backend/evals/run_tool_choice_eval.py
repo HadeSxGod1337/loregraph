@@ -25,10 +25,13 @@ Usage (from backend/):
 import argparse
 import asyncio
 import statistics
+import tempfile
 from collections import Counter
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from functools import partial
+from pathlib import Path
 
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -39,10 +42,13 @@ from loregraph.agent.skills.registry import pipeline_entry_node
 from loregraph.agent.state import AgentState
 from loregraph.config import Settings
 from loregraph.exceptions import EntityNotFoundError
+from loregraph.llm.embeddings import get_embedding_provider
 from loregraph.llm.factory import ModelTier, get_chat_model
 from loregraph.schemas.edge import EdgeOut
 from loregraph.schemas.entity import EntityOut
 from loregraph.schemas.project import ProjectOut
+from loregraph.services.knowledge_index import KnowledgeIndex
+from loregraph.storage.vectorstore.chroma_store import ChromaVectorStore
 
 # The tier the chat assistant runs on in production (api/deps.py builds the
 # graph with tier="assistant") — measuring a different one would measure a
@@ -145,6 +151,42 @@ async def _with_backoff[T](call: Callable[[], Awaitable[T]]) -> T:
     raise AssertionError("unreachable")
 
 
+@asynccontextmanager
+async def _case_knowledge_index(
+    case: ToolChoiceCase, settings: Settings
+) -> AsyncIterator[KnowledgeIndex | None]:
+    """A real (temp-dir, real embedder) KnowledgeIndex for cases that upload
+    reference documents — a fake embedder would test nothing about whether an
+    IMPLICIT question ("Откуда Норвинтер получает энергию?", no mention of
+    "document" or "upload") actually surfaces the relevant chunk; that is
+    exactly the judgment call under measurement. None (same contour as
+    production's "embeddings disabled") for every case with no kb_documents —
+    the overwhelming majority — and also when this deployment's own settings
+    have no embedder configured, which is reported rather than silently
+    changing what the case measures."""
+    if not case.kb_documents:
+        yield None
+        return
+    embedder = get_embedding_provider(settings)
+    if embedder is None:
+        print(
+            f"  ({case.case_id}: embeddings are disabled in this deployment's "
+            "settings — search_knowledge_base will report unavailable)"
+        )
+        yield None
+        return
+    # ignore_cleanup_errors: ChromaVectorStore/chromadb.PersistentClient keeps
+    # its sqlite file handle open for the process lifetime (no close()/dispose
+    # exposed by either) — on Windows that makes the directory's own deletion
+    # fail with WinError 32 ("file in use") on __exit__. Best-effort cleanup
+    # (a leftover temp dir occasionally, on Windows only) beats a crashed eval
+    # run; confirmed against a real PersistentClient in this session.
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as kb_dir:
+        knowledge_index = KnowledgeIndex(ChromaVectorStore(Path(kb_dir), embedder))
+        await knowledge_index.index_source(PROJECT_ID, "eval-doc", case.kb_documents)
+        yield knowledge_index
+
+
 async def _tools_used(
     case: ToolChoiceCase, settings: Settings, max_turns: int
 ) -> tuple[list[str], frozenset[str]]:
@@ -170,46 +212,48 @@ async def _tools_used(
     used: list[str] = []
     target_titles: set[str] = set()
 
-    for _ in range(max_turns):
-        update = await _with_backoff(
-            partial(
-                assistant,
-                state,
-                chat_model=chat_model,
-                token_budget=100_000,
-                project_store=_EvalProjectStore(),  # type: ignore[arg-type]
-                usage_store=None,
-                model_name="eval",
+    async with _case_knowledge_index(case, settings) as knowledge_index:
+        for _ in range(max_turns):
+            update = await _with_backoff(
+                partial(
+                    assistant,
+                    state,
+                    chat_model=chat_model,
+                    token_budget=100_000,
+                    project_store=_EvalProjectStore(),  # type: ignore[arg-type]
+                    usage_store=None,
+                    model_name="eval",
+                )
             )
-        )
-        message = update["messages"][0]
-        state = state.model_copy(
-            update={"messages": [*state.messages, *update["messages"]]}
-        )
-        if not isinstance(message, AIMessage) or not message.tool_calls:
-            break
-        used.extend(call["name"] for call in message.tool_calls)
-        for call in message.tool_calls:
-            if call["name"] == "propose_changes":
-                for entity_id in call["args"].get("target_entity_ids", []) or []:
-                    if entity_id in title_by_id:
-                        target_titles.add(title_by_id[entity_id])
-        # A branching skill (propose_changes / brainstorm_lore) ends the chat
-        # turn in production — route_after_assistant hands off to its pipeline
-        # instead of the read-tool executor. Mirroring that (data-driven off the
-        # same registry) keeps the loop faithful and stops here.
-        if any(pipeline_entry_node(call["name"]) for call in message.tool_calls):
-            break
-        tool_update = await run_tools(
-            state,
-            vector_index=None,
-            knowledge_index=None,
-            entity_store=entity_store,  # type: ignore[arg-type]
-            edge_store=edge_store,  # type: ignore[arg-type]
-        )
-        state = state.model_copy(
-            update={"messages": [*state.messages, *tool_update["messages"]]}
-        )
+            message = update["messages"][0]
+            state = state.model_copy(
+                update={"messages": [*state.messages, *update["messages"]]}
+            )
+            if not isinstance(message, AIMessage) or not message.tool_calls:
+                break
+            used.extend(call["name"] for call in message.tool_calls)
+            for call in message.tool_calls:
+                if call["name"] == "propose_changes":
+                    for entity_id in call["args"].get("target_entity_ids", []) or []:
+                        if entity_id in title_by_id:
+                            target_titles.add(title_by_id[entity_id])
+            # A branching skill (propose_changes / brainstorm_lore) ends the
+            # chat turn in production — route_after_assistant hands off to its
+            # pipeline instead of the read-tool executor. Mirroring that
+            # (data-driven off the same registry) keeps the loop faithful and
+            # stops here.
+            if any(pipeline_entry_node(call["name"]) for call in message.tool_calls):
+                break
+            tool_update = await run_tools(
+                state,
+                vector_index=None,
+                knowledge_index=knowledge_index,
+                entity_store=entity_store,  # type: ignore[arg-type]
+                edge_store=edge_store,  # type: ignore[arg-type]
+            )
+            state = state.model_copy(
+                update={"messages": [*state.messages, *tool_update["messages"]]}
+            )
     return used, frozenset(target_titles)
 
 

@@ -113,6 +113,7 @@ def build_agent_graph(
             brainstorm,
             creative=creative,
             vector_index=vector_index,
+            knowledge_index=knowledge_index,
             entity_store=entity_store,
             edge_store=edge_store,
             project_store=project_store,

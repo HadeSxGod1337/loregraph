@@ -170,9 +170,13 @@ class list_relationships(BaseModel):
 
 class search_knowledge_base(BaseModel):
     """Semantic search over the project's uploaded reference documents
-    (rulebooks, setting bibles) — NOT world canon. Use it when the game
-    master's question is about rules or reference material rather than the
-    world's own established facts (that's search_lore)."""
+    (rulebooks, setting bibles) — NOT world canon. Use it for rules/background
+    questions, and also for a world fact search_lore does not answer: an
+    uploaded document may describe something that is not yet a canon entity,
+    so do not assume search_lore's silence means the fact does not exist
+    anywhere. Never cite what this returns as an established fact of the
+    world's own canon (that's search_lore) — say where a fact came from if it
+    matters."""
 
     query: str = Field(description="What to look for, in the document's language.")
 
