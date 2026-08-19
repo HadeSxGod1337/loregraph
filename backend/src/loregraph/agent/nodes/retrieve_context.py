@@ -2,13 +2,17 @@ import asyncio
 import logging
 from typing import Any
 
-from loregraph.agent.state import NO_LORE_SENTINEL, AgentState
+from loregraph.agent.state import NO_KNOWLEDGE_SENTINEL, NO_LORE_SENTINEL, AgentState
 from loregraph.connectors.live import LiveSourceEntry, LiveSourceProvider
 from loregraph.connectors.protocols import ExternalChunk
 from loregraph.schemas.entity import EntityOut
 from loregraph.schemas.graph import SubgraphOut
 from loregraph.services.graph_query import edges_among, get_subgraph
-from loregraph.services.knowledge_index import KB_RETRIEVAL_K, KnowledgeIndex
+from loregraph.services.knowledge_index import (
+    KB_RETRIEVAL_K,
+    KnowledgeIndex,
+    log_retrieval,
+)
 from loregraph.services.lore_format import relationship_line
 from loregraph.services.vector_index import VectorIndex, entity_to_text
 from loregraph.storage.protocols import EdgeStore, EntityStore
@@ -31,13 +35,6 @@ EXTERNAL_GROUNDING_TIMEOUT_S = 8.0
 EXTERNAL_GROUNDING_TEXT_LIMIT = 800
 EXTERNAL_GROUNDING_CHUNKS_PER_SOURCE = 4
 EXTERNAL_GROUNDING_SOURCE_LIMIT = 2
-
-# Told explicitly instead of an empty block, same rationale as NO_LORE_SENTINEL:
-# the model must not assume silence means "nothing was uploaded, invent freely".
-NO_KNOWLEDGE_SENTINEL = (
-    "(no knowledge-base documents are relevant to this request — either none "
-    "were uploaded for this project, or embeddings are disabled)"
-)
 
 
 async def retrieve_context(
@@ -111,6 +108,12 @@ async def retrieve_context(
         subgraph = subgraph_task.result()
     if knowledge_task is not None:
         kb_chunks = knowledge_task.result()
+    log_retrieval(
+        logger,
+        project_id=state.project_id,
+        knowledge_index=knowledge_index,
+        chunks=kb_chunks,
+    )
     external_chunks = [chunk for task in external_tasks for chunk in task.result()]
 
     # Entities the request points at directly (to edit or link) are always in

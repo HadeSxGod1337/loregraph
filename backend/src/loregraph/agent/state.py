@@ -35,6 +35,16 @@ NO_LORE_SENTINEL = (
     "this is a brand-new part of the world)"
 )
 
+# Same rationale as NO_LORE_SENTINEL, for the knowledge-base contour — shared
+# by every node that queries a KnowledgeIndex (retrieve_context, brainstorm,
+# the assistant's search_knowledge_base tool result) so "nothing relevant was
+# uploaded" and "the game master should keep inventing" always read the same
+# way, whichever mode is asking.
+NO_KNOWLEDGE_SENTINEL = (
+    "(no knowledge-base documents are relevant to this request — either none "
+    "were uploaded for this project, or embeddings are disabled)"
+)
+
 
 class AgentState(BaseModel):
     state_version: int = STATE_VERSION

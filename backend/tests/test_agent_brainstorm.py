@@ -7,6 +7,7 @@ turning one into world content is a separate propose_changes the game master
 asks for afterwards.
 """
 
+import hashlib
 from collections import deque
 from collections.abc import AsyncGenerator
 from pathlib import Path
@@ -24,7 +25,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from loregraph.agent.graph import build_agent_graph
-from loregraph.agent.state import AgentState
+from loregraph.agent.state import NO_KNOWLEDGE_SENTINEL, AgentState
 from loregraph.llm.structured import StructuredResult
 from loregraph.llm.usage import LLMCallUsage
 from loregraph.schemas.agent import (
@@ -37,6 +38,7 @@ from loregraph.schemas.entity import EntityCreate
 from loregraph.schemas.project import ProjectCreate
 from loregraph.services.edge_service import EdgeService
 from loregraph.services.entity_service import EntityService
+from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.services.vector_index import VectorIndex
 from loregraph.storage.sqlite.db import (
     create_engine_for,
@@ -46,6 +48,7 @@ from loregraph.storage.sqlite.db import (
 from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
+from loregraph.storage.vectorstore.chroma_store import ChromaVectorStore
 from tests.fakes import FixedVectorIndex
 
 pytestmark = pytest.mark.asyncio
@@ -99,6 +102,21 @@ class CapturingGenerator:
         return StructuredResult(value, LLMCallUsage(input_tokens=10, output_tokens=5))
 
 
+class FakeEmbedder:
+    """Deterministic embeddings without any model download — same rationale
+    as test_vector_index.py's FakeEmbedder (duplicated per-file per this
+    codebase's convention for small fakes)."""
+
+    model_id = "fake-embedder-v1"
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        vectors = []
+        for text in texts:
+            digest = hashlib.sha256(text.encode()).digest()
+            vectors.append([b / 255.0 for b in digest[:16]])
+        return vectors
+
+
 @pytest_asyncio.fixture
 async def db_session(tmp_path: Path) -> AsyncGenerator[AsyncSession, None]:
     engine = create_engine_for(tmp_path / "test.sqlite3")
@@ -119,6 +137,7 @@ def make_graph(
     creative_results: list[BaseModel] | None = None,
     extraction_results: list[BaseModel] | None = None,
     retrieved_entity_ids: list[str] | None = None,
+    knowledge_index: KnowledgeIndex | None = None,
 ) -> Any:
     entity_store = SqliteEntityStore(session)
     edge_store = SqliteEdgeStore(session)
@@ -131,7 +150,7 @@ def make_graph(
             if retrieved_entity_ids is not None
             else None
         ),
-        knowledge_index=None,
+        knowledge_index=knowledge_index,
         entity_store=entity_store,
         edge_store=edge_store,
         project_store=SqliteProjectStore(session),
@@ -306,3 +325,62 @@ async def test_brainstorm_writes_nothing_even_with_a_reject_never_offered(
     await graph.ainvoke(turn(project.id, "накидай идей"), CONFIG)
     snapshot = await graph.aget_state(CONFIG)
     assert snapshot.next == ()  # turn finished, not paused at an interrupt
+
+
+async def test_brainstorm_receives_knowledge_base_context(
+    db_session: AsyncSession, tmp_path: Path
+) -> None:
+    """P0 regression: graph.py never wired knowledge_index into the brainstorm
+    node at all, so a creative prompt built on an uploaded setting document
+    silently ignored it — brainstorm has no tool-calling loop of its own (a
+    single creative.generate() call, not an agentic model), so this can only
+    be fixed by retrieving the KB deterministically before generation, the
+    same way canon is already gathered in _gather_material."""
+    project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
+    knowledge_index = KnowledgeIndex(
+        ChromaVectorStore(tmp_path / "chroma", FakeEmbedder())
+    )
+    await knowledge_index.index_source(
+        project.id,
+        "setting-bible",
+        ["Город построен вокруг древнего механического реактора."],
+    )
+    capturing = CapturingGenerator([_ideas()])
+    graph = make_graph(
+        db_session,
+        [brainstorm_call("какие проблемы могут возникнуть в этом городе")],
+        creative=capturing,
+        knowledge_index=knowledge_index,
+    )
+
+    await graph.ainvoke(
+        turn(
+            project.id,
+            "придумай пять проблем, которые могут возникнуть в этом городе",
+        ),
+        CONFIG,
+    )
+
+    assert len(capturing.prompts) == 1
+    assert "механического реактора" in capturing.prompts[0]
+
+
+async def test_brainstorm_without_knowledge_index_uses_sentinel(
+    db_session: AsyncSession,
+) -> None:
+    """Embeddings disabled (knowledge_index=None, the make_graph default):
+    brainstorm must degrade cleanly, same NO_KNOWLEDGE_SENTINEL contract as
+    retrieve_context, never a silent empty block the model reads as license
+    to invent an upload that was never there."""
+    project = await SqliteProjectStore(db_session).create(ProjectCreate(name="P"))
+    capturing = CapturingGenerator([_ideas()])
+    graph = make_graph(
+        db_session,
+        [brainstorm_call("придумай проблему")],
+        creative=capturing,
+    )
+
+    await graph.ainvoke(turn(project.id, "придумай проблему для города"), CONFIG)
+
+    assert len(capturing.prompts) == 1
+    assert NO_KNOWLEDGE_SENTINEL in capturing.prompts[0]

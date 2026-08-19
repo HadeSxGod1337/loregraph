@@ -20,7 +20,11 @@ from loregraph.exceptions import ConnectorError, EntityNotFoundError
 from loregraph.schemas.edge import EdgeOut
 from loregraph.schemas.entity import EntityOut
 from loregraph.services.graph_query import get_subgraph
-from loregraph.services.knowledge_index import KB_RETRIEVAL_K, KnowledgeIndex
+from loregraph.services.knowledge_index import (
+    KB_RETRIEVAL_K,
+    KnowledgeIndex,
+    log_retrieval,
+)
 from loregraph.services.lore_format import relationship_line
 from loregraph.services.lore_search import search_lore
 from loregraph.services.vector_index import VectorIndex, entity_to_text
@@ -634,11 +638,15 @@ async def _search_knowledge_base(
     knowledge_index: KnowledgeIndex | None, project_id: str, query: str
 ) -> str:
     if knowledge_index is None:
+        log_retrieval(logger, project_id=project_id, knowledge_index=None, chunks=[])
         return (
             "Knowledge base search is unavailable (embeddings are disabled "
             "for this deployment)."
         )
     chunks = await knowledge_index.query(project_id, query, k=KB_RETRIEVAL_K)
+    log_retrieval(
+        logger, project_id=project_id, knowledge_index=knowledge_index, chunks=chunks
+    )
     if not chunks:
         return "No knowledge base documents matched this query."
     return "\n".join(chunk.text[:KB_SEARCH_TEXT_LIMIT] for chunk in chunks)
