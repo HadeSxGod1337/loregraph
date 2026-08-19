@@ -17,6 +17,50 @@ before upgrading.
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-08-19
+
+Two reliability fixes for the AI assistant: a project's own instructions
+could get treated as a nice-to-have the moment a creative answer pulled
+against them, and Brainstorm never looked at your uploaded reference
+documents at all.
+
+### Fixed
+
+- **Project instructions are requirements, not suggestions.** A project's
+  "Инструкции для ассистента" — language, tone, a naming rule, "no magic",
+  "every NPC needs a secret" — were wrapped internally as the game master's
+  "style/format preferences", which undersold a world/content rule as
+  something a creative pass could deprioritize as optional flavor. They are
+  now delivered as mandatory project requirements, still subordinate to
+  Loregraph's own non-overridable rules (grounding, tool-result isolation,
+  project isolation, Human Review, honesty about what was actually written)
+  — and if your current request genuinely conflicts with a standing project
+  instruction, the assistant now says so instead of silently picking one.
+  Delivery already worked correctly in every mode; this was a fix to how
+  those instructions were framed internally, not to the plumbing.
+- **Brainstorm now sees your knowledge base.** Uploaded reference documents
+  (rulebooks, setting bibles) never reached Brainstorm at all — ideas were
+  generated blind to anything you had uploaded. Brainstorm now gathers your
+  world's canon and your uploaded references together before inventing.
+- **Fact questions look in the knowledge base more readily.** If a setting
+  fact lives only in an uploaded document and not yet as an entity in your
+  world, the assistant used to only reach for the knowledge base on
+  clearly rules-flavored questions. It now also tries it whenever a look at
+  your existing lore doesn't answer the question and the uploaded material
+  could plausibly cover it. Tool selection here is still the model's own
+  judgment call, not a guarantee — see docs/knowledge.md.
+- Added diagnostics for knowledge-base lookups (attempted, and how many
+  documents matched) to the backend log, without ever logging document
+  contents.
+
+### Changed
+
+- docs/world.md and docs/knowledge.md now describe both features as they
+  actually behave: project instructions as binding project requirements
+  rather than style tips, and the knowledge base as a source both fact
+  questions and Brainstorm draw on — while remaining reference material,
+  never established campaign canon on its own.
+
 ## [0.6.0] — 2026-08-17
 
 This release is mostly about the two screens you spend the most time in —
