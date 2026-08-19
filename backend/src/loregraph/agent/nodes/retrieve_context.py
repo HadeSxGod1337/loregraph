@@ -54,7 +54,7 @@ async def retrieve_context(
     SENTINEL rather than left for the model to fill with guesses. The
     knowledge base is a separate contour from existing_lore/context_entity_
     ids on purpose: its chunks are reference material, never a valid
-    grounded_in target (see prompts/generate_lore.system.md)."""
+    grounded_in target (see prompts/propose_changes.system.md)."""
     subgraph: SubgraphOut | None = None
     chunk_ids: list[str] = []
     kb_chunks: list[RetrievedChunk] = []

@@ -19,7 +19,7 @@ MAX_CONCURRENT_LLM_CALLS = 5
 # single structured-output call from unbounded size/latency/quality
 # degradation. NOT a limit on the document: with N windows the total across
 # the whole import is unbounded (see prompts/import_extract.system.md
-# rule 7). Contrast with generate_lore.system.md's "never exceed 12", which
+# rule 7). Contrast with propose_changes.system.md's "never exceed 12", which
 # IS a real ceiling on one ad-hoc chat proposal.
 IMPORT_MAX_ENTITIES_PER_WINDOW = 30
 

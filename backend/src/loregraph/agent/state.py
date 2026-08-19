@@ -72,7 +72,7 @@ class AgentState(BaseModel):
     # additive field with a default, safe for pre-existing checkpoints
     # (STATE_VERSION unchanged, unlike breaking renames). Deliberately kept
     # separate from existing_lore/context_entity_ids: it is never a valid
-    # grounded_in target (see prompts/generate_lore.system.md).
+    # grounded_in target (see prompts/propose_changes.system.md).
     knowledge_context: str = ""
     context_entity_ids: list[str] = Field(default_factory=list)
     # Full text of the entities the request points at directly (the ones to

@@ -64,7 +64,7 @@ async def test_retrieve_context_populates_knowledge_context(
     assert "Barovia" in update["knowledge_context"]
     assert "<kb_chunk" in update["knowledge_context"]
     # The knowledge base contour must stay separate from existing_lore's
-    # grounded_in-eligible ids (see prompts/generate_lore.system.md rule 12).
+    # grounded_in-eligible ids (see prompts/propose_changes.system.md rule 12).
     assert update["context_entity_ids"] == []
 
 
