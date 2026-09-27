@@ -35,6 +35,11 @@ export type FieldValue =
 
 export interface EntityField {
   key: string;
+  /** Human-readable name from the source data, when there was one — the
+   * LSS importer fills this for skill fields, everything else is null.
+   * The UI falls back to its own dictionary when absent (see
+   * lib/fieldLabels.ts). */
+  label?: string | null;
   field_type: FieldType;
   value: FieldValue;
   show_on_card: boolean;

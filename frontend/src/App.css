@@ -9,6 +9,23 @@
   display: flex;
 }
 
+/* Inline images in rich text: shrink to fit the column, cap the height so a
+   4K portrait does not push the whole page down by two screens. Full
+   resolution is preserved — this is display sizing only, and the lightbox
+   on click shows the original pixels. `max-width: 100%` handles horizontal
+   overflow, `max-height` handles vertical, and `width/height: auto` lets
+   the browser keep the aspect ratio without distortion. */
+.rich-text-image-wrapper img,
+.rich-text-content img {
+  max-width: 100%;
+  max-height: 400px;
+  width: auto;
+  height: auto;
+  border-radius: var(--radius-control);
+  cursor: zoom-in;
+  object-fit: contain;
+}
+
 /* ---------- Sidebar ----------
    Sticky rather than fixed-height: it pins to the viewport while the page
    scrolls, but still participates in .app-shell's own layout sizing so the

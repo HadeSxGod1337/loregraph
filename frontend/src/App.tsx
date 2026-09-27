@@ -16,12 +16,15 @@ import { EntityListPage } from "./pages/EntityListPage";
 import { GraphViewPage } from "./pages/GraphViewPage";
 import { HelpPage } from "./pages/HelpPage";
 import { IntegrationsPage } from "./pages/IntegrationsPage";
+import { LoginPage } from "./pages/LoginPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectSettingsPage } from "./pages/ProjectSettingsPage";
 import { PlayBoardPage } from "./play/PlayBoardPage";
 import { PlayEntityListPage } from "./play/PlayEntityListPage";
 import { PlayEntityPage } from "./play/PlayEntityPage";
 import { PlayLayout } from "./play/PlayLayout";
+import { RegisterPage } from "./pages/RegisterPage";
+import { RequireMaster } from "./components/RequireMaster";
 
 // Data router (not <BrowserRouter>) — pages with unsaved edits use
 // useBlocker to intercept in-app navigation, which plain routers don't
@@ -33,7 +36,15 @@ const createRouter = import.meta.env.VITE_DEMO
   : createBrowserRouter;
 
 const router = createRouter([
-  {
+    {
+    path: "/login",
+    element: <LoginPage />,
+    },
+    {
+      path: "/register",
+      element: <RegisterPage />,
+    },
+    {
     // Player view: sibling to the DM Layout, not a child — no DM sidebar or
     // tools. The token in the path is exchanged for a session cookie in
     // PlayLayout.
@@ -47,9 +58,11 @@ const router = createRouter([
   },
   {
     element: (
+    <RequireMaster>
       <Layout>
         <Outlet />
       </Layout>
+    </RequireMaster>
     ),
     children: [
       { path: "/", element: <ProjectListPage /> },

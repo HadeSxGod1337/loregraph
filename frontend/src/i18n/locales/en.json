@@ -4,6 +4,39 @@
     "banner": "Demo — your edits reset on reload, and the AI assistant is scripted (no live model). In a real install you bring your own API key and pay your LLM provider for tokens.",
     "source": "Source & self-hosting"
   },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Enter your DM credentials.",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "noAccount": "No account yet? Create one"
+    },
+    "error": {
+      "invalidCredentials": "Wrong email or password.",
+      "server": "The auth service is unavailable. Try again.",
+      "network": "Cannot reach the auth service.",
+      "generic": "Sign-in failed.",
+      "passwordMismatch": "Passwords do not match.",
+      "emailTaken": "This email is already registered.",
+      "registrationClosed": "Registration is closed. Ask the administrator for an account."
+    },
+    "register": {
+      "title": "Create account",
+      "subtitle": "Register as the DM. Only the first account becomes a master.",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "submit": "Create account",
+      "submitting": "Creating…",
+      "createdTitle": "Account created",
+      "createdBody": "Ask the administrator to assign the master role, then sign in.",
+      "goToLogin": "Go to sign in",
+      "haveAccount": "Already have an account? Sign in"
+}
+  },
   "common": {
     "loading": "Loading...",
     "save": "Save",
@@ -121,8 +154,35 @@
     "help": "Help",
     "appSettings": "Settings",
     "projectSettings": "Project settings",
-    "feedback": "Feedback"
+    "feedback": "Feedback",
+    "logout": "Log out"
   },
+  "users": {
+    "title": "Users",
+    "close": "Close",
+    "loading": "Loading…",
+    "empty": "No users yet.",
+    "self": "(you)",
+    "col": {
+      "email": "Email",
+      "role": "Role"
+    },
+    "role": {
+      "user": "User",
+      "master": "Master",
+      "owner": "Owner"
+    },
+    "delete": "Delete user",
+    "cancel": "Cancel",
+    "deleteConfirm": "Delete",
+    "confirmDelete": "Delete {{email}}? This cannot be undone.",
+    "error": {
+      "load": "Could not load users.",
+      "forbidden": "Only the owner can manage users.",
+      "change": "Could not change role.",
+      "delete": "Could not delete user."
+    }
+},
   "theme": {
     "light": "Light",
     "dark": "Dark",
@@ -183,7 +243,9 @@
     "public": "public",
     "private": "private",
     "noNotes": "No notes yet.",
-    "save": "Save player access"
+    "save": "Save player access",
+    "selectAll": "Select all",
+    "clearAll": "Clear all"
   },
   "players": {
     "intro": "Invite players to see the cards and board you reveal, and to keep their own notes.",

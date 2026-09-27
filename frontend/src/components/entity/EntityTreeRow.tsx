@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { API_URL } from "../../api/client";
 import type { Entity } from "../../api/types";
 import { entityCardSubtitle } from "../../lib/entityCard";
 import { typeColor, typeSoftBackground } from "../../lib/typeColor";
 import { Icon } from "../ui/Icon";
+import { useAuthImage } from "../../hooks/useAuthImage";
 
 interface EntityTreeRowProps {
   projectId: string;
@@ -118,8 +118,9 @@ export function EntityTreeRow({
 }
 
 function EntityAvatar({ entity }: { entity: Entity }) {
-  if (entity.icon) {
-    return <img className="entity-avatar" src={API_URL + entity.icon.url} alt="" />;
+  const iconUrl = useAuthImage(entity.icon?.url);
+  if (entity.icon && iconUrl) {
+    return <img className="entity-avatar" src={iconUrl} alt="" />;
   }
   return (
     <span

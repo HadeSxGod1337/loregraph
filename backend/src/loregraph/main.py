@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from loregraph.api.go_auth_proxy import router as go_auth_proxy_router
 from loregraph.api.rate_limit import RateLimiter
 from loregraph.api.routers import (
     agent,
@@ -30,6 +31,7 @@ from loregraph.api.routers import (
     updates,
     usage,
 )
+
 from loregraph.api.routers import (
     network as network_router,
 )
@@ -37,6 +39,7 @@ from loregraph.api.routers import (
     settings as settings_router,
 )
 from loregraph.api.security import require_master
+from loregraph.api.go_auth import go_master_authenticator
 from loregraph.api.spa import mount_frontend
 from loregraph.composition import AppComposition
 from loregraph.config import Settings
@@ -327,6 +330,9 @@ def create_app(
     # would bypass every guard and hand any file to anyone on the network).
     # Its own route resolves either identity, so no blanket master dependency.
     app.include_router(files.router)
+    # Server-side proxy to the Go auth service, for packaged installs where
+    # only the backend faces the network (see api/go_auth_proxy.py).
+    app.include_router(go_auth_proxy_router)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
@@ -429,4 +435,6 @@ def _register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(CampaignError, lambda _r, e: _error_response(400, e))
 
 
-app = create_app()
+app = create_app(
+    composition=AppComposition(build_master_authenticator=go_master_authenticator)
+)

@@ -12,7 +12,6 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useEffect, useMemo } from "react";
 
-import { API_URL } from "../api/client";
 import type { Edge, Entity, PlayerEntity } from "../api/types";
 import { ActiveRootContext } from "../components/graph/ActiveRootContext";
 import { EntityNode, type EntityNodeData } from "../components/graph/EntityNode";
@@ -44,7 +43,10 @@ function toFlowNode(
     data: {
       label: entity.title,
       entityType: entity.type,
-      iconUrl: entity.icon ? API_URL + entity.icon.url : null,
+      // Relative path, like the DM side: EntityNode resolves it through
+      // useAuthImage, which attaches whatever credential this session has —
+      // the player cookie here, the master token there.
+      iconUrl: entity.icon ? entity.icon.url : null,
       previewFields: getPlayPreviewFields(entity),
     },
   };

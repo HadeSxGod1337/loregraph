@@ -15,7 +15,6 @@ import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { API_URL } from "../../api/client";
 import { entitiesApi, type PositionEntry } from "../../api/entities";
 import type { Edge, Entity } from "../../api/types";
 import { useDebouncedCallback } from "../../hooks/useDebouncedCallback";
@@ -121,7 +120,7 @@ function toFlowNode(
     data: {
       label: entity.title,
       entityType: entity.type,
-      iconUrl: entity.icon ? API_URL + entity.icon.url : null,
+      iconUrl: entity.icon ? entity.icon.url : null,
       previewFields: getPreviewFields(entity),
       revealed: entity.revealed_to_players,
     },

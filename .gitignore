@@ -35,3 +35,13 @@ CLAUDE.md
 
 # mimo
 .mimocode/
+
+# auth
+*.pem
+argon2_pepper.b64
+sha256_salt.b64
+coverage
+users.json
+refresh_tokens.json
+.tools/
+*.exe

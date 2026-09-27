@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { typeColor, typeSoftBackground } from "../../lib/typeColor";
 import { Icon } from "../ui/Icon";
 import { useActiveRoot } from "./ActiveRootContext";
+import { useAuthImage } from "../../hooks/useAuthImage";
 import { useHierarchyCollapse } from "./HierarchyCollapseContext";
 import { useSelectedEntity } from "./SelectedEntityContext";
 
@@ -56,6 +57,8 @@ export const EntityNode = memo(function EntityNode({ id, data }: NodeProps) {
         : t("graph.expandBranch")
       : t("graph.collapseBranch");
 
+  const resolvedIconUrl = useAuthImage(iconUrl);
+
   return (
     <div
       className={`entity-node${isRoot ? " entity-node-root" : ""}${isSelected ? " entity-node-selected" : ""}`}
@@ -78,9 +81,9 @@ export const EntityNode = memo(function EntityNode({ id, data }: NodeProps) {
       {revealed && (
         <span className="entity-node-revealed" title="Revealed to players" />
       )}
-      {iconUrl && (
+      {resolvedIconUrl && (
         <div className="entity-node-icon-slot">
-          <img className="entity-node-icon" src={iconUrl} alt="" />
+          <img className="entity-node-icon" src={resolvedIconUrl} alt="" />
         </div>
       )}
       {hasHierarchyChildren && (

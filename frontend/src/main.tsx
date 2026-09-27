@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import App from "./App.tsx";
+import { LightboxProvider } from "./components/ui/Lightbox.tsx";
 import { ToastProvider } from "./components/ui/Toast.tsx";
 import "./i18n";
 import "./index.css";
@@ -11,13 +12,15 @@ import { ThemeProvider } from "./theme/ThemeContext.tsx";
 const queryClient = new QueryClient();
 
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
-  </StrictMode>,
+    <StrictMode>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>
+            <LightboxProvider>
+              <App />
+            </LightboxProvider>
+          </ToastProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </StrictMode>
 );

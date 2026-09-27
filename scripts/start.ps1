@@ -46,6 +46,17 @@ $UpdateCheckInterval = 600
 # break that, so an unanswered question just continues without updating.
 $UpdatePromptTimeout = 30
 
+# Pinned on purpose: a floating "latest" would turn a security patch into a
+# surprise build failure. Must be >= the `go` directive in auth/go.mod.
+$GoVersion = "1.27.0"
+$GoDownloadUrl = "https://go.dev/dl/go$GoVersion.windows-amd64.zip"
+$AuthDir = Join-Path $Root "auth"
+$AuthExe = Join-Path $AuthDir "auth.exe"
+$AuthEnv = Join-Path $AuthDir ".env"
+$AuthEnvExample = Join-Path $AuthDir ".env.example"
+$ToolsDir = Join-Path $Root ".tools"
+$PortableGoDir = Join-Path $ToolsDir "go"
+
 function Write-Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg) { Write-Host "    $msg" -ForegroundColor Green }
 function Write-Warn2($msg) { Write-Host "    $msg" -ForegroundColor Yellow }
@@ -74,6 +85,165 @@ function Get-LocalAddressToward($target) {
             return $sock.LocalEndPoint.Address.IPAddressToString
         } finally { $sock.Close() }
     } catch { return $null }
+}
+
+function Get-GoVersion {
+    # Returns $null when go is not on PATH; otherwise "1.27.0" and up.
+    # The `2>$null` matters: without it, a missing go.exe prints a red
+    # error to the console even though we handle the absence below.
+    if (-not (Test-Command "go")) { return $null }
+    $raw = (& go version 2>$null) -join ""
+    if ($raw -match 'go([0-9]+\.[0-9]+(\.[0-9]+)?)') { return $Matches[1] }
+    return $null
+}
+
+function Test-GoVersionAtLeast([string]$have, [string]$need) {
+    try { return ([version]$have).CompareTo([version]$need) -ge 0 }
+    catch { return $false }
+}
+
+function Ensure-Go {
+    # Prefer a system Go of sufficient version; only fall back to a portable
+    # download when there is none, or when the installed one is older than
+    # auth/go.mod requires. Devs with a working toolchain pay nothing; a
+    # non-developer gets a working build without leaving the launcher.
+    $have = Get-GoVersion
+    if ($have -and (Test-GoVersionAtLeast $have $GoVersion)) {
+        Write-Ok "Go: $have (системный)"
+        return
+    }
+
+    $portableGo = Join-Path $PortableGoDir "bin\go.exe"
+    if (Test-Path $portableGo) {
+        $portableVersion = (& $portableGo version 2>$null) -join ""
+        if ($portableVersion -match 'go([0-9]+\.[0-9]+(\.[0-9]+)?)' -and
+            (Test-GoVersionAtLeast $Matches[1] $GoVersion)) {
+            $env:Path = "$(Join-Path $PortableGoDir 'bin');$env:Path"
+            # Keep module/build caches inside the project: a portable install
+            # that spills a hundred megabytes into %USERPROFILE% is not
+            # portable, and uninstall.bat would miss it.
+            $env:GOPATH = Join-Path $ToolsDir "gopath"
+            $env:GOCACHE = Join-Path $ToolsDir "gocache"
+            Write-Ok "Go: $($Matches[1]) (portable, в .tools/)"
+            return
+        }
+    }
+
+    if ($have) {
+        Write-Warn2 "Системный Go $have старше требуемого $GoVersion, скачиваю portable..."
+    } else {
+        Write-Warn2 "Go не найден, скачиваю $GoVersion (portable, ~80 МБ)..."
+    }
+
+    New-Item -ItemType Directory -Force $ToolsDir | Out-Null
+    $zipPath = Join-Path $ToolsDir "go.zip"
+    Invoke-WebRequest -Uri $GoDownloadUrl -OutFile $zipPath -UseBasicParsing
+
+    # The archive extracts to a top-level `go/` directory; unpack it into
+    # .tools/ so it lands at .tools/go without an extra move.
+    if (Test-Path $PortableGoDir) { Remove-Item $PortableGoDir -Recurse -Force }
+    Expand-Archive -Path $zipPath -DestinationPath $ToolsDir -Force
+    Remove-Item $zipPath -Force
+
+    $env:Path = "$(Join-Path $PortableGoDir 'bin');$env:Path"
+    $env:GOPATH = Join-Path $ToolsDir "gopath"
+    $env:GOCACHE = Join-Path $ToolsDir "gocache"
+    Write-Ok "Go $GoVersion установлен."
+}
+
+function Build-AuthService {
+    # Skips the rebuild when auth.exe is newer than every source file that
+    # feeds it. First run: 30-60 seconds. Every later start: a fraction of a
+    # second, which matters because the launcher has always been "click and
+    # it is up".
+    $sources = @(
+        Get-ChildItem -Path $AuthDir -Recurse -Include *.go, go.mod, go.sum -File
+    )
+    if ($sources.Count -eq 0) {
+        throw "Не найдены исходники Go-сервиса в $AuthDir"
+    }
+
+    if (Test-Path $AuthExe) {
+        $exeTime = (Get-Item $AuthExe).LastWriteTimeUtc
+        $newest = ($sources | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1).LastWriteTimeUtc
+        if ($exeTime -ge $newest) {
+            Write-Ok "auth.exe актуален."
+            return
+        }
+    }
+
+    Write-Warn2 "Собираю auth.exe..."
+    Push-Location $AuthDir
+    try {
+        # ./cmd/server, not . — main.go lives there, and go build . would
+        # fail with "no Go files" at the module root (see auth/go.mod).
+        & go build -o $AuthExe ./cmd/server
+        if ($LASTEXITCODE -ne 0) {
+            throw "go build завершился с кодом $LASTEXITCODE"
+        }
+    } finally {
+        Pop-Location
+    }
+    Write-Ok "auth.exe собран."
+}
+
+function Ensure-AuthEnv {
+    # The launcher never edits this file: it copies the template on first
+    # run and leaves it alone afterwards, so a user's tweaks survive every
+    # restart and every update.
+    if (Test-Path $AuthEnv) { return }
+    if (-not (Test-Path $AuthEnvExample)) {
+        throw "Не найден $AuthEnvExample - релиз повреждён."
+    }
+    Copy-Item $AuthEnvExample $AuthEnv
+    Write-Ok "Создан auth\.env из шаблона."
+}
+function Start-AuthService {
+    # Runs the auth service as a child of THIS console, pinned to one CPU
+    # core at below-normal priority.
+    #
+    # Why affinity: Argon2id is deliberately expensive, and without a limit
+    # a single login would briefly contend for every core — visible as a
+    # stutter in Loregraph's embeddings or the SPA. One core is plenty for a
+    # workload of one login per hour.
+    #
+    # Why below-normal: the Python backend and the SPA are the user-facing
+    # parts; auth should always yield to them.
+    #
+    # WorkingDirectory = auth/ matters: .env, keys/ and data/ are all
+    # resolved relative to cwd, not relative to the exe.
+    $proc = Start-Process -FilePath $AuthExe `
+        -WorkingDirectory $AuthDir `
+        -NoNewWindow -PassThru
+    try {
+        $proc.ProcessorAffinity = [IntPtr]1  # CPU 0
+        $proc.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::BelowNormal
+    } catch {
+        # Some Windows editions refuse these setters from a non-admin
+        # process. The service still runs, just unpinned — a degraded
+        # optimization, not a failure.
+        Write-Warn2 "Не удалось ограничить ресурсы auth.exe: $_"
+    }
+    return $proc
+}
+
+function Wait-AuthHealthy {
+    # The backend fetches the public key at startup, so it must not be
+    # launched until the auth service is answering. Bounded wait so a
+    # genuinely broken binary surfaces as an error instead of a hang.
+    param([System.Diagnostics.Process]$Process)
+    foreach ($i in 1..30) {
+        if ($Process.HasExited) {
+            throw "auth.exe завершился с кодом $($Process.ExitCode) до готовности."
+        }
+        try {
+            $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8080/public-key" `
+                -UseBasicParsing -TimeoutSec 2
+            if ($resp.StatusCode -eq 200) { return }
+        } catch {}
+        Start-Sleep -Milliseconds 500
+    }
+    throw "auth.exe не ответил за 15 секунд."
 }
 
 function Get-PrimaryLanIp {
@@ -769,7 +939,14 @@ Push-Location $Frontend
 try { npm run build } finally { Pop-Location }
 Write-Ok "Интерфейс собран."
 
-# --- 5. LAN play mode (opt-in) --------------------------------------------------
+# --- 5. Go auth service (build only; start happens with the backend below) ---
+
+Write-Step "Готовлю сервис аутентификации..."
+Ensure-Go
+Build-AuthService
+Ensure-AuthEnv
+
+# --- 6. LAN play mode (opt-in) --------------------------------------------------
 
 # The server reads TLS settings itself (see loregraph/server.py); this only
 # needs to know the scheme to print the right links.
@@ -805,36 +982,43 @@ if ($Lan) {
     if ($Internet) { $env:CAMPAIGN_INTERNET_MODE_ENABLED = "1" }
 }
 
-# --- 6. Launch ------------------------------------------------------------------
+# --- 7. Launch ------------------------------------------------------------------
 
 Write-Step "Запускаю Loregraph..."
 
+# Проверки портов — оба, до всего остального.
 $portsBusy = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
     Where-Object { $_.LocalPort -eq $AppPort }
 if ($null -ne $portsBusy) {
     throw "Порт $AppPort уже занят. Возможно, Loregraph уже запущен - проверьте открытые окна (или браузер: $LocalUrl)."
 }
 
-Write-Host "    Первый запуск может занять пару минут (скачивается локальная embedding-модель)." -ForegroundColor Gray
+$authPortBusy = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+    Where-Object { $_.LocalPort -eq 8080 }
+if ($null -ne $authPortBusy) {
+    throw "Порт 8080 уже занят. Вероятно, старая копия auth.exe висит после неудачного запуска. Закройте её и запустите снова."
+}
 
 if ($AppScheme -eq "https") {
-    # The health poll below must not fail on a self-signed certificate — the
-    # common case for a home game. PS 5.1 has no -SkipCertificateCheck, so
-    # trust is relaxed for THIS process only, and only for our own poll.
     [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 }
 
-# One process, one port: the backend serves the built interface too.
-# loregraph-serve (not uvicorn directly) so TLS is read from settings in one
-# place instead of being parsed out of .env by each launcher script.
-# -NoNewWindow keeps it attached to this console, so closing this window
-# (or Ctrl+C) takes it down with it.
-$backendProc = Start-Process -FilePath "uv" `
-    -ArgumentList "run", "loregraph-serve", "--host", $BindHost, "--port", "$AppPort" `
-    -WorkingDirectory $Backend -NoNewWindow -PassThru
+# Оба процесса объявляем заранее — иначе finally не увидит их, если
+# исключение случится до присваивания.
+$authProc = $null
+$backendProc = $null
 
 try {
-    # Wait for the health endpoint before opening the browser.
+    Write-Host "    Запускаю сервис аутентификации..." -ForegroundColor Gray
+    $authProc = Start-AuthService
+    Wait-AuthHealthy -Process $authProc
+    Write-Ok "Сервис аутентификации готов."
+
+    Write-Host "    Первый запуск может занять пару минут (скачивается локальная embedding-модель)." -ForegroundColor Gray
+
+    $backendProc = Start-Process -FilePath "uv" `
+        -ArgumentList "run", "loregraph-serve", "--host", $BindHost, "--port", "$AppPort" `
+        -WorkingDirectory $Backend -NoNewWindow -PassThru
     $healthy = $false
     foreach ($i in 1..120) {
         if ($backendProc.HasExited) { throw "Loregraph завершился с ошибкой - смотрите сообщения выше." }
@@ -940,7 +1124,9 @@ try {
 } finally {
     Write-Host "`nОстанавливаю Loregraph..." -ForegroundColor Cyan
     if ($null -ne $backendProc -and -not $backendProc.HasExited) {
-        # /T kills the whole tree (uv -> python).
         cmd /c "taskkill /PID $($backendProc.Id) /T /F >nul 2>&1"
+    }
+    if ($null -ne $authProc -and -not $authProc.HasExited) {
+        cmd /c "taskkill /PID $($authProc.Id) /T /F >nul 2>&1"
     }
 }

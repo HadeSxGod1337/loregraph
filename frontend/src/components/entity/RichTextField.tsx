@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useMatch } from "react-router-dom";
 
-import { API_URL } from "../../api/client";
 import type { ProseMirrorDoc } from "../../api/types";
 import { useUploadAttachment } from "../../hooks/useAttachments";
 import { RichTextToolbar } from "./RichTextToolbar";
@@ -45,7 +44,11 @@ export function RichTextField({ value, onChange, entityId }: RichTextFieldProps)
     e.target.value = "";
     if (!file || !editor || !entityId) return;
     const attachment = await upload.mutateAsync(file);
-    editor.chain().focus().setImage({ src: API_URL + attachment.url }).run();
+    // Store the relative path, not an absolute URL: the same document then
+    // works from localhost, from a LAN address and from a domain, without
+    // baking in whichever origin the DM happened to be on at the time. The
+    // NodeView reattaches the correct origin (and the token) on every render.
+    editor.chain().focus().setImage({ src: attachment.url }).run();
   }
 
   if (!editor) return null;

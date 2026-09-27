@@ -53,6 +53,22 @@ class Settings(BaseSettings):
     # the API surface isn't mapped for anyone on the network. play_host is the
     # address to put in a player's invite link; play_frontend_port is where the
     # frontend is served.
+
+    # --- Go auth service (access tokens verified locally via RS256) ---
+    # Path to the RS256 public key (PEM). Same file the Go service keeps next to
+    # its private key. When None, the Go-auth path is inactive and the loopback
+    # authenticator is used instead.
+    # URL of the Go auth service's public-key endpoint. The backend fetches it
+    # at startup and verifies tokens locally — no per-request round-trip. In a
+    # packaged install this goes through the local proxy (see api/go_auth_proxy.py);
+    # in dev it can point directly at :8080.
+    # None disables Go-auth and falls back to loopback trust.
+    go_auth_url: str | None = None
+    # Expected `iss` claim. Must match JWTManager.Issuer on the Go side.
+    go_auth_issuer: str = "loregraph-auth"
+    # Value of the `role` claim that marks a user as the DM.
+    go_auth_master_role: str = "master"
+
     play_mode_enabled: bool = False
     # Internet mode (--internet): also ask the router, over UPnP, to forward
     # the port so players outside the local network can connect. Never on by
@@ -297,3 +313,5 @@ EMBEDDING_SENSITIVE_FIELDS: frozenset[str] = (
 
 # Stored, but only picked up by the next process start.
 RESTART_REQUIRED_FIELDS: frozenset[str] = TRACING_SETTINGS_FIELDS
+
+

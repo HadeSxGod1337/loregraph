@@ -1,4 +1,5 @@
-import { API_URL } from "../../../api/client";
+import { AuthImage } from "../../ui/AuthImage";
+import { useLightbox } from "../../ui/Lightbox";
 import type {
   AttachmentRef,
   EntityField,
@@ -421,30 +422,60 @@ function EditableWidget({
 }
 
 function ImageWidget({ field, label }: { field: EntityField; label: string }) {
-  const src =
+  const { open } = useLightbox();
+
+  const raw =
     field.field_type === "attachment"
-      ? // An attachment slot the entity never filled in has an empty url;
-        // prefixing API_URL to it yields the API root, which renders as a
-        // broken-image glyph rather than nothing.
-        attachmentUrl(field.value as AttachmentRef)
-      : imageUrlFromText(String(field.value));
-  if (!src) return null;
-  return <img className="sheet-portrait" src={src} alt={label} />;
-}
+      ? ((field.value as AttachmentRef | null)?.url ?? "")
+      : String(field.value);
+  if (!raw) return null;
 
-function attachmentUrl(ref: AttachmentRef | null): string {
-  return ref?.url ? API_URL + ref.url : "";
-}
+  // A full URL to a third party — Discord, Imgur, the LSS avatar host — is
+  // loaded by the browser directly, no token involved. Only URLs pointing
+  // at our own origin go through the auth wrapper, and those can be either
+  // "/files/..." or a legacy "http://host/files/..." saved before the field
+  // started storing relative paths.
+  //
+  // Either way, the picture opens in the lightbox: a DM inspecting a
+  // character sheet wants to click the portrait, and a row that looks
+  // clickable but isn't is the exact bug this used to be.
+  if (/^https?:\/\//.test(raw)) {
+    let own = false;
+    try {
+      own = new URL(raw).origin === window.location.origin;
+    } catch {
+      own = false;
+    }
+    if (!own) {
+      return (
+        <img
+          className="sheet-portrait"
+          src={raw}
+          alt={label}
+          style={{ cursor: "zoom-in" }}
+          onClick={(e) => {
+            e.stopPropagation();
+            open(raw, label);
+          }}
+        />
+      );
+    }
+  }
 
-function imageUrlFromText(value: string): string {
-  if (/^https?:\/\//.test(value)) return value;
-  // A bare word with no path separator (e.g. stray placeholder text typed
-  // into the field) is never a real upload path — treat it as empty rather
-  // than building a URL that 404s as a broken-image glyph.
-  if (!value.includes("/")) return "";
-  return API_URL + value;
-}
+  let path = raw;
+  if (/^https?:\/\//.test(raw)) {
+    try {
+      path = new URL(raw).pathname;
+    } catch {
+      return null;
+    }
+  } else if (!path.includes("/")) {
+    // A stray word typed into a text field is not an upload path.
+    return null;
+  }
 
+  return <AuthImage className="sheet-portrait" path={path} alt={label} />;
+}
 function StatModifier({
   value,
   label,

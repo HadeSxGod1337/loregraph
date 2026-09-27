@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, useLocation, useMatch } from "react-router-dom";
 
+import { getAccessToken } from "../../lib/authStorage";
+import { logoutGo } from "../../lib/goAuth";
 import { privateNavItems } from "@loregraph/private-ui";
 import { useLastProject } from "../../hooks/useLastProject";
 import { useProjects } from "../../hooks/useProjects";
@@ -12,6 +14,7 @@ import { ProjectSwitcher } from "./ProjectSwitcher";
 import { SidebarFeedbackButton } from "./SidebarFeedbackButton";
 import { SidebarStatus } from "./SidebarStatus";
 import { ThemeToggle } from "./ThemeToggle";
+import { UsersDialog } from "./UsersDialog";
 
 const PROJECT_NAV: { to: string; icon: IconName; labelKey: string; end?: boolean }[] = [
   { to: "entities", icon: "layers", labelKey: "nav.entities", end: true },
@@ -50,6 +53,7 @@ export function Sidebar() {
     () => localStorage.getItem(COLLAPSE_STORAGE_KEY) === "1",
   );
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -199,6 +203,7 @@ export function Sidebar() {
         )}
         <SidebarFeedbackButton collapsed={collapsed} />
         <ThemeToggle collapsed={collapsed} />
+        <LogoutButton collapsed={collapsed} onOpenUsers={() => setUsersOpen(true)} />
       </div>
 
       <CommandPalette
@@ -206,6 +211,7 @@ export function Sidebar() {
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
       />
+      <UsersDialog open={usersOpen} onClose={() => setUsersOpen(false)} />
     </aside>
   );
 }
@@ -230,5 +236,76 @@ function CollapseButton({
     >
       <Icon name="panel-left" size={17} />
     </button>
+  );
+}
+
+/** Logs the DM out of the Go auth service and reloads to /login.
+ *
+ * Only rendered when a token exists — on loopback there usually isn't one
+ * (the backend trusts the machine), and offering a "log out" for a session
+ * that never started is just confusing. Reload rather than React navigate:
+ * React Query's cache still holds data fetched with the old token, and
+ * rendering it after logout would show things the user no longer has the
+ * right to see. */
+/** Two adjacent controls: "manage users" (owner-only on the server — the
+ * dialog shows a permission error for a master) and "log out". Only shown
+ * when there is a token at all: on loopback there is no session to end. */
+function LogoutButton({
+  collapsed,
+  onOpenUsers,
+}: {
+  collapsed: boolean;
+  onOpenUsers: () => void;
+}) {
+  const { t } = useTranslation();
+  if (getAccessToken() === null) return null;
+
+  async function handleLogout() {
+    await logoutGo();
+    window.location.assign("/login");
+  }
+
+  return (
+    <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
+      <button
+        type="button"
+        className="sidebar-nav-item"
+        onClick={onOpenUsers}
+        title={collapsed ? t("users.title") : undefined}
+        style={{
+          flex: 1,
+          borderRadius: 12,
+          padding: "5px 8px",
+          fontSize: 12.5,
+          gap: 4,
+          justifyContent: "center",
+        }}
+      >
+        <Icon name="users" size={15} className="sidebar-nav-icon" />
+        {!collapsed && <span className="sidebar-nav-label">{t("users.title")}</span>}
+      </button>
+      <button
+        type="button"
+        className="sidebar-nav-item"
+        onClick={handleLogout}
+        title={collapsed ? t("nav.logout") : undefined}
+        style={{
+          flex: 1,
+          borderRadius: 12,
+          padding: "5px 8px",
+          fontSize: 12.5,
+          gap: 4,
+          justifyContent: "center",
+        }}
+      >
+        <Icon
+          name="logout"
+          size={15}
+          className="sidebar-nav-icon"
+          style={{ color: "var(--danger)" }}
+        />
+        {!collapsed && <span className="sidebar-nav-label">{t("nav.logout")}</span>}
+      </button>
+    </div>
   );
 }

@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
-import { API_URL } from "../api/client";
 import type { EntityField, ProseMirrorDoc } from "../api/types";
 import { RichTextView } from "../components/entity/RichTextView";
+import { AuthImage } from "../components/ui/AuthImage";
 import { usePlayEntity } from "../hooks/usePlay";
 import { PlayNotesPanel } from "./PlayNotesPanel";
 
@@ -44,7 +44,7 @@ export function PlayEntityPage() {
 
       <header className="play-entity-head">
         {entity.icon && (
-          <img className="play-entity-icon" src={API_URL + entity.icon.url} alt="" />
+          <AuthImage className="play-entity-icon" path={entity.icon.url} />
         )}
         <div>
           <span className="entity-type-badge">{entity.type}</span>
