@@ -1,4 +1,5 @@
 import type { AnyExtension } from "@tiptap/core";
+import { AuthImage } from "../ui/AuthImage";
 import Highlight from "@tiptap/extension-highlight";
 import Image from "@tiptap/extension-image";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
@@ -22,6 +23,7 @@ import { useMatch } from "react-router-dom";
 import { entitiesApi } from "../../api/entities";
 import type { Entity } from "../../api/types";
 import { useEntityNavigation } from "../EntityNavigationContext";
+import { useLightbox } from "../ui/Lightbox";
 
 const SUGGESTION_LIMIT = 8;
 
@@ -239,6 +241,83 @@ function suggestionConfig(projectId: string | undefined) {
   };
 }
 
+/** NodeView for TipTap's image node: instead of a plain <img src="/files/...">
+ * — which the browser fetches with no Authorization header and the backend
+ * therefore rejects on any non-loopback origin — it renders through
+ * AuthImage, the same wrapper the entity tree and card previews use.
+ *
+ * External images (Discord, Imgur, any pasted link) load directly: they
+ * live on another origin, are not behind our auth, and fetching them
+ * through the DM token would fail anyway. Same-origin URLs from older
+ * documents — saved as "http://host/files/..." before this change — are
+ * split back into a path and routed through AuthImage too, so they keep
+ * working. */
+function RichTextImageView({ node }: NodeViewProps) {
+  const { open } = useLightbox();
+  const src = (node.attrs.src as string) ?? "";
+  const alt = (node.attrs.alt as string) ?? "";
+  if (!src) return null;
+
+  const openExternal = (url: string) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    open(url, alt);
+  };
+
+  if (src.startsWith("data:")) {
+    return (
+      <NodeViewWrapper as="div" className="rich-text-image-wrapper">
+        <img
+          src={src}
+          alt={alt}
+          style={{ cursor: "zoom-in" }}
+          onClick={openExternal(src)}
+        />
+      </NodeViewWrapper>
+    );
+  }
+
+  if (/^https?:\/\//.test(src)) {
+    let url: URL;
+    try {
+      url = new URL(src);
+    } catch {
+      return null;
+    }
+    if (url.origin !== window.location.origin) {
+      return (
+        <NodeViewWrapper as="div" className="rich-text-image-wrapper">
+          <img
+            src={src}
+            alt={alt}
+            style={{ cursor: "zoom-in" }}
+            onClick={openExternal(src)}
+          />
+        </NodeViewWrapper>
+      );
+    }
+    return (
+      <NodeViewWrapper as="div" className="rich-text-image-wrapper">
+        <AuthImage path={url.pathname} alt={alt} />
+      </NodeViewWrapper>
+    );
+  }
+
+  return (
+    <NodeViewWrapper as="div" className="rich-text-image-wrapper">
+      <AuthImage path={src} alt={alt} />
+    </NodeViewWrapper>
+  );
+}
+
+/** Same schema as @tiptap/extension-image, only the node view changes. Any
+ * later config (inline, allowBase64, HTMLAttributes) stays on the base
+ * extension — this is a rendering swap, not a new node. */
+const RichTextImage = Image.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(RichTextImageView);
+  },
+});
+
 /** The single extension list shared by the editor (RichTextField) and the
  * read-only view (RichTextView) — the two must never diverge, or documents
  * would render differently between editing and viewing.
@@ -261,7 +340,7 @@ export function buildRichTextExtensions(
     TaskList,
     TaskItem.configure({ nested: true }),
     TableKit.configure({ table: { resizable: true } }),
-    Image,
+    RichTextImage,
     EntityLink.configure({ suggestion: suggestionConfig(projectId) }),
   ];
 }

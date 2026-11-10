@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { API_URL } from "../../api/client";
+import { AuthImage } from "../ui/AuthImage";
 import type { Edge, EntityField, EntityTemplate, ProseMirrorDoc } from "../../api/types";
 import { useEntities } from "../../hooks/useEntities";
 import {
@@ -235,7 +235,7 @@ export function EntityDetailPanel({
         <div className="panel-body">
           {entity.icon && (
             <div className="panel-section">
-              <img className="portrait" src={API_URL + entity.icon.url} alt="" />
+              <AuthImage className="portrait" path={entity.icon.url} />
             </div>
           )}
 
@@ -419,7 +419,11 @@ export function EntityDetailPanel({
               )}
 
               <div className="panel-section">
-                <EntityPlayerAccessPanel projectId={projectId} entity={entity} />
+                <EntityPlayerAccessPanel
+                  projectId={projectId}
+                  entity={entity}
+                  fieldDefs={template?.field_defs}
+                />
               </div>
             </>
           ) : (

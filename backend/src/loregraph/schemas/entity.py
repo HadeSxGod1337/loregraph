@@ -23,6 +23,14 @@ class AttachmentRef(BaseModel):
 
 class EntityFieldIn(BaseModel):
     key: str
+    # Optional human-readable name, filled in only where the source of the
+    # data actually has one — currently the LSS importer, which reads skill
+    # names straight off the sheet. `None` means "no better label than the
+    # key": built-in template fields never had one, and the frontend falls
+    # back to its own dictionary for those (see lib/fieldLabels.ts). Stored
+    # in the fields JSON like the rest of the row, so adding it needs no
+    # migration and old rows read back as None.
+    label: str | None = None
     field_type: FieldType
     value: Any
     show_on_card: bool = False

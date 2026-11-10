@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 // Optional private UI extension package (separate repo, not published here,
@@ -33,5 +33,9 @@ export default defineConfig({
   },
   server: {
     host: "127.0.0.1",
+  },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
   },
 })

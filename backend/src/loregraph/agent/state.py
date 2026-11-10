@@ -35,6 +35,16 @@ NO_LORE_SENTINEL = (
     "this is a brand-new part of the world)"
 )
 
+# Same rationale as NO_LORE_SENTINEL, for the knowledge-base contour — shared
+# by every node that queries a KnowledgeIndex (retrieve_context, brainstorm,
+# the assistant's search_knowledge_base tool result) so "nothing relevant was
+# uploaded" and "the game master should keep inventing" always read the same
+# way, whichever mode is asking.
+NO_KNOWLEDGE_SENTINEL = (
+    "(no knowledge-base documents are relevant to this request — either none "
+    "were uploaded for this project, or embeddings are disabled)"
+)
+
 
 class AgentState(BaseModel):
     state_version: int = STATE_VERSION
@@ -62,7 +72,7 @@ class AgentState(BaseModel):
     # additive field with a default, safe for pre-existing checkpoints
     # (STATE_VERSION unchanged, unlike breaking renames). Deliberately kept
     # separate from existing_lore/context_entity_ids: it is never a valid
-    # grounded_in target (see prompts/generate_lore.system.md).
+    # grounded_in target (see prompts/propose_changes.system.md).
     knowledge_context: str = ""
     context_entity_ids: list[str] = Field(default_factory=list)
     # Full text of the entities the request points at directly (the ones to

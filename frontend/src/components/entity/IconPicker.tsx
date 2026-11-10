@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { API_URL } from "../../api/client";
+import { AuthImage } from "../ui/AuthImage";
 import type { AttachmentRef } from "../../api/types";
 import { useClearEntityIcon, useSetEntityIcon } from "../../hooks/useEntity";
 import { useUploadAttachment } from "../../hooks/useAttachments";
@@ -78,7 +78,7 @@ export function IconPicker({
         {staging && stagedPreviewUrl ? (
           <img src={stagedPreviewUrl} alt="" />
         ) : !staging && icon ? (
-          <img src={API_URL + icon.url} alt="" />
+          <AuthImage path={icon.url} alt="" />
         ) : (
           <span>{t("icon.noIcon")}</span>
         )}

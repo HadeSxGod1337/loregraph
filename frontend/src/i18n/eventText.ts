@@ -15,6 +15,30 @@ export function translateWarning(warning: AgentWarning, t: TFunction): string {
   return t(`warnings.${warning.code}`, { ...warning.params, defaultValue: warning.code });
 }
 
+export type EventTone = "success" | "danger" | "warning" | "neutral";
+
+const EVENT_TONE: Record<string, EventTone> = {
+  batch_committed: "success",
+  entity_updated: "success",
+  relationships_committed: "success",
+  changes_committed: "success",
+  batch_rejected: "danger",
+  draft_failed: "danger",
+  edit_failed: "danger",
+  relationships_failed: "danger",
+  review_stale: "warning",
+  budget_exhausted_reply: "warning",
+  brainstorm_empty: "neutral",
+};
+
+/** Coarse visual category for a deterministic chat event — lets the
+ * transcript accent a commit ack differently from a rejection without the
+ * rendering code needing to know every event code by name. Unrecognized
+ * codes (a fallback string outside the catalog) read as neutral. */
+export function eventTone(code: string): EventTone {
+  return EVENT_TONE[code] ?? "neutral";
+}
+
 /** Renders a deterministic, backend-composed chat event (see
  * agent/events.py). `draft_failed` is special-cased: its `reason_codes`
  * param is a comma-separated list of warning codes explaining *why*, so the

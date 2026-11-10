@@ -4,7 +4,9 @@ import type { Edge, Entity } from "../api/types";
 import {
   buildForest,
   buildHierarchy,
+  computeHierarchyVisibility,
   filterForest,
+  filterVisibleEdges,
   folderKeys,
   wouldCycle,
 } from "./hierarchy";
@@ -168,6 +170,160 @@ describe("folderKeys", () => {
     ]);
     const forest = filterForest(buildForest(entities, index), () => true);
     expect(folderKeys(forest)).toEqual(["region", "region/town"]);
+  });
+});
+
+describe("computeHierarchyVisibility", () => {
+  it("shows a plain parent and child when nothing is collapsed", () => {
+    const entities = [entity("faction"), entity("npc_a")];
+    const index = buildHierarchy([edge("faction", "npc_a", "contains")]);
+    const { visibleIds } = computeHierarchyVisibility(entities, index, new Set());
+    expect(visibleIds).toEqual(new Set(["faction", "npc_a"]));
+  });
+
+  it("shows every node down a deep branch when nothing is collapsed", () => {
+    const entities = [entity("region"), entity("town"), entity("tavern")];
+    const index = buildHierarchy([
+      edge("town", "region", "located_in"),
+      edge("tavern", "town", "located_in"),
+    ]);
+    const { visibleIds } = computeHierarchyVisibility(entities, index, new Set());
+    expect(visibleIds).toEqual(new Set(["region", "town", "tavern"]));
+  });
+
+  it("collapsing a parent hides its descendants, transitively", () => {
+    const entities = [entity("region"), entity("town"), entity("tavern")];
+    const index = buildHierarchy([
+      edge("town", "region", "located_in"),
+      edge("tavern", "town", "located_in"),
+    ]);
+    const { visibleIds, hiddenDescendantCount } = computeHierarchyVisibility(
+      entities,
+      index,
+      new Set(["region"]),
+    );
+    expect(visibleIds).toEqual(new Set(["region"]));
+    expect(hiddenDescendantCount.get("region")).toBe(2);
+  });
+
+  it("expanding again shows the descendants once more", () => {
+    const entities = [entity("region"), entity("town"), entity("tavern")];
+    const index = buildHierarchy([
+      edge("town", "region", "located_in"),
+      edge("tavern", "town", "located_in"),
+    ]);
+    // Same data as the collapse case above, minus "region" from the set —
+    // exactly what toggling the chevron back open does to collapsedIds.
+    const { visibleIds } = computeHierarchyVisibility(entities, index, new Set());
+    expect(visibleIds).toEqual(new Set(["region", "town", "tavern"]));
+  });
+
+  it("collapsing one of two parents does not hide a child reachable through the other", () => {
+    const entities = [entity("guild"), entity("watch"), entity("npc_a")];
+    const index = buildHierarchy([
+      edge("guild", "npc_a", "contains"),
+      edge("npc_a", "watch", "member_of"),
+    ]);
+    const { visibleIds, hiddenDescendantCount } = computeHierarchyVisibility(
+      entities,
+      index,
+      new Set(["guild"]),
+    );
+    expect(visibleIds).toEqual(new Set(["guild", "watch", "npc_a"]));
+    // Nothing is actually hidden yet — the watch path is still open — so the
+    // collapsed guild shouldn't claim it's hiding anything.
+    expect(hiddenDescendantCount.has("guild")).toBe(false);
+  });
+
+  it("collapsing every parent hides a child with multiple parents", () => {
+    const entities = [entity("guild"), entity("watch"), entity("npc_a")];
+    const index = buildHierarchy([
+      edge("guild", "npc_a", "contains"),
+      edge("npc_a", "watch", "member_of"),
+    ]);
+    const { visibleIds, hiddenDescendantCount } = computeHierarchyVisibility(
+      entities,
+      index,
+      new Set(["guild", "watch"]),
+    );
+    expect(visibleIds).toEqual(new Set(["guild", "watch"]));
+    expect(hiddenDescendantCount.get("guild")).toBe(1);
+    expect(hiddenDescendantCount.get("watch")).toBe(1);
+  });
+
+  it("collapsing the promoted root of a cycle hides the other member", () => {
+    const entities = [entity("a"), entity("b")];
+    const index = buildHierarchy([
+      edge("a", "b", "contains"),
+      edge("b", "a", "contains"),
+    ]);
+    // "a" is promoted to root (see buildForest's own cycle test) — collapsing
+    // it must still terminate and hide exactly "b", not loop forever.
+    const collapsed = computeHierarchyVisibility(entities, index, new Set(["a"]));
+    expect(collapsed.visibleIds).toEqual(new Set(["a"]));
+    const expanded = computeHierarchyVisibility(entities, index, new Set());
+    expect(expanded.visibleIds).toEqual(new Set(["a", "b"]));
+  });
+
+  it("collapses an inverse-typed hierarchy edge the same way as a forward one", () => {
+    const entities = [entity("faction"), entity("npc_b")];
+    const index = buildHierarchy([edge("npc_b", "faction", "member_of")]);
+    const { visibleIds } = computeHierarchyVisibility(
+      entities,
+      index,
+      new Set(["faction"]),
+    );
+    expect(visibleIds).toEqual(new Set(["faction"]));
+  });
+
+  it("never hides an entity that has no hierarchy children, even if collapsed", () => {
+    const entities = [entity("item")];
+    const index = buildHierarchy([]);
+    const { visibleIds, hiddenDescendantCount } = computeHierarchyVisibility(
+      entities,
+      index,
+      new Set(["item"]),
+    );
+    expect(visibleIds).toEqual(new Set(["item"]));
+    expect(hiddenDescendantCount.size).toBe(0);
+  });
+
+  it("only reasons about entities in the given (e.g. Focused-mode) base view", () => {
+    // "tavern" exists in the wider project (the edge references it) but is
+    // outside this base view — Focused mode must not silently pull it in.
+    const entities = [entity("region"), entity("town")];
+    const index = buildHierarchy([
+      edge("town", "region", "located_in"),
+      edge("tavern", "town", "located_in"),
+    ]);
+    const { visibleIds } = computeHierarchyVisibility(entities, index, new Set());
+    expect(visibleIds).toEqual(new Set(["region", "town"]));
+  });
+
+  it("ignores a stale collapsed id that matches nothing in this project", () => {
+    const entities = [entity("faction"), entity("npc_a")];
+    const index = buildHierarchy([edge("faction", "npc_a", "contains")]);
+    const { visibleIds, hiddenDescendantCount } = computeHierarchyVisibility(
+      entities,
+      index,
+      new Set(["deleted_ghost"]),
+    );
+    expect(visibleIds).toEqual(new Set(["faction", "npc_a"]));
+    expect(hiddenDescendantCount.size).toBe(0);
+  });
+});
+
+describe("filterVisibleEdges", () => {
+  it("drops an ordinary edge when either endpoint is hidden", () => {
+    const edges = [edge("a", "b", "ally_of"), edge("b", "c", "enemy_of")];
+    const kept = filterVisibleEdges(edges, new Set(["a", "b"]));
+    expect(kept.map((e) => e.id)).toEqual([edges[0].id]);
+  });
+
+  it("keeps every edge whose endpoints are both visible", () => {
+    const edges = [edge("a", "b", "ally_of"), edge("b", "c", "enemy_of")];
+    const kept = filterVisibleEdges(edges, new Set(["a", "b", "c"]));
+    expect(kept).toEqual(edges);
   });
 });
 

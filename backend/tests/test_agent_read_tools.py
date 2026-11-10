@@ -6,6 +6,7 @@ answering "how many X" from a five-result semantic search, and presenting a
 capped list as if it were the whole world.
 """
 
+import hashlib
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,7 @@ from loregraph.agent.state import AgentState
 from loregraph.schemas.edge import EdgeCreate
 from loregraph.schemas.entity import EntityCreate, EntityFieldIn, FieldType
 from loregraph.schemas.project import ProjectCreate
+from loregraph.services.knowledge_index import KnowledgeIndex
 from loregraph.storage.sqlite.db import (
     create_engine_for,
     init_db,
@@ -29,6 +31,22 @@ from loregraph.storage.sqlite.db import (
 from loregraph.storage.sqlite.edge_store import SqliteEdgeStore
 from loregraph.storage.sqlite.entity_store import SqliteEntityStore
 from loregraph.storage.sqlite.project_store import SqliteProjectStore
+from loregraph.storage.vectorstore.chroma_store import ChromaVectorStore
+
+
+class FakeEmbedder:
+    """Deterministic embeddings without any model download — same rationale
+    as test_vector_index.py's FakeEmbedder (duplicated per-file per this
+    codebase's convention for small fakes)."""
+
+    model_id = "fake-embedder-v1"
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        vectors = []
+        for text in texts:
+            digest = hashlib.sha256(text.encode()).digest()
+            vectors.append([b / 255.0 for b in digest[:16]])
+        return vectors
 
 
 class World:
@@ -40,6 +58,9 @@ class World:
         self.project_id = project_id
         self.entities = SqliteEntityStore(session)
         self.edges = SqliteEdgeStore(session)
+        # None (the make_graph-style default) unless a test opts in — most of
+        # this file's tools have nothing to do with the knowledge base.
+        self.knowledge_index: KnowledgeIndex | None = None
 
     async def entity(self, entity_type: str, title: str, **text_fields: str) -> str:
         entity = await self.entities.create(
@@ -83,7 +104,7 @@ class World:
                 messages=[AIMessage("", tool_calls=[call])],
             ),
             vector_index=None,
-            knowledge_index=None,
+            knowledge_index=self.knowledge_index,
             entity_store=self.entities,
             edge_store=self.edges,
         )
@@ -363,3 +384,54 @@ async def test_list_relationships_reports_none_for_isolated(world: World) -> Non
 async def test_list_relationships_unknown_entity(world: World) -> None:
     content = await world.call("list_relationships", {"entity_id": "nope"})
     assert content == "Entity not found: nope"
+
+
+# ---------------------------------------------------------------------------
+# search_knowledge_base — the one tool in this registry with no coverage here
+# at all before this P0: every other read tool above is exercised against the
+# real executor, but a call to search_knowledge_base was never driven through
+# it, so a break in this specific case dispatch would have gone unnoticed.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_search_knowledge_base_returns_matching_chunks(
+    world: World, tmp_path: Path
+) -> None:
+    world.knowledge_index = KnowledgeIndex(
+        ChromaVectorStore(tmp_path / "chroma", FakeEmbedder())
+    )
+    await world.knowledge_index.index_source(
+        world.project_id,
+        "setting-bible",
+        ["Город Норвинтер получает всю энергию от Сердца Титана."],
+    )
+
+    content = await world.call(
+        "search_knowledge_base", {"query": "источник энергии Норвинтера"}
+    )
+
+    assert "Сердца Титана" in content
+
+
+@pytest.mark.asyncio
+async def test_search_knowledge_base_reports_no_match_distinctly(
+    world: World, tmp_path: Path
+) -> None:
+    """A configured but empty/irrelevant index must read differently from the
+    index being absent entirely (see the next test) — the diagnostic
+    distinction the P0 asked for, visible here in the tool result text."""
+    world.knowledge_index = KnowledgeIndex(
+        ChromaVectorStore(tmp_path / "chroma", FakeEmbedder())
+    )
+
+    content = await world.call("search_knowledge_base", {"query": "что угодно"})
+
+    assert content == "No knowledge base documents matched this query."
+
+
+@pytest.mark.asyncio
+async def test_search_knowledge_base_unavailable_without_index(world: World) -> None:
+    # world.knowledge_index stays None — embeddings disabled for this deployment.
+    content = await world.call("search_knowledge_base", {"query": "что угодно"})
+    assert "unavailable" in content

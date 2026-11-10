@@ -1,7 +1,7 @@
+import { AuthImage } from "../ui/AuthImage";
 import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { API_URL } from "../../api/client";
 import {
   useAttachments,
   useDeleteAttachment,
@@ -31,7 +31,7 @@ export function AttachmentUploader({ entityId }: { entityId: string }) {
       <div className="attachment-gallery">
         {attachments?.map((attachment) => (
           <div key={attachment.id} className="attachment-thumb">
-            <img src={API_URL + attachment.url} alt={attachment.original_filename} />
+            <AuthImage path={attachment.url} alt={attachment.original_filename} />
             <button
               type="button"
               className="button-danger"

@@ -4,6 +4,39 @@
     "banner": "Demo — your edits reset on reload, and the AI assistant is scripted (no live model). In a real install you bring your own API key and pay your LLM provider for tokens.",
     "source": "Source & self-hosting"
   },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Enter your DM credentials.",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "noAccount": "No account yet? Create one"
+    },
+    "error": {
+      "invalidCredentials": "Wrong email or password.",
+      "server": "The auth service is unavailable. Try again.",
+      "network": "Cannot reach the auth service.",
+      "generic": "Sign-in failed.",
+      "passwordMismatch": "Passwords do not match.",
+      "emailTaken": "This email is already registered.",
+      "registrationClosed": "Registration is closed. Ask the administrator for an account."
+    },
+    "register": {
+      "title": "Create account",
+      "subtitle": "Register as the DM. Only the first account becomes a master.",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "submit": "Create account",
+      "submitting": "Creating…",
+      "createdTitle": "Account created",
+      "createdBody": "Ask the administrator to assign the master role, then sign in.",
+      "goToLogin": "Go to sign in",
+      "haveAccount": "Already have an account? Sign in"
+}
+  },
   "common": {
     "loading": "Loading...",
     "save": "Save",
@@ -22,7 +55,8 @@
     "close": "Close",
     "undo": "Undo",
     "on": "on",
-    "off": "off"
+    "off": "off",
+    "openInNewTab": "Open in new tab"
   },
   "sheet": {
     "sheetTitle": "Sheet",
@@ -119,8 +153,36 @@
     "integrations": "Integrations",
     "help": "Help",
     "appSettings": "Settings",
-    "projectSettings": "Project settings"
+    "projectSettings": "Project settings",
+    "feedback": "Feedback",
+    "logout": "Log out"
   },
+  "users": {
+    "title": "Users",
+    "close": "Close",
+    "loading": "Loading…",
+    "empty": "No users yet.",
+    "self": "(you)",
+    "col": {
+      "email": "Email",
+      "role": "Role"
+    },
+    "role": {
+      "user": "User",
+      "master": "Master",
+      "owner": "Owner"
+    },
+    "delete": "Delete user",
+    "cancel": "Cancel",
+    "deleteConfirm": "Delete",
+    "confirmDelete": "Delete {{email}}? This cannot be undone.",
+    "error": {
+      "load": "Could not load users.",
+      "forbidden": "Only the owner can manage users.",
+      "change": "Could not change role.",
+      "delete": "Could not delete user."
+    }
+},
   "theme": {
     "light": "Light",
     "dark": "Dark",
@@ -181,7 +243,9 @@
     "public": "public",
     "private": "private",
     "noNotes": "No notes yet.",
-    "save": "Save player access"
+    "save": "Save player access",
+    "selectAll": "Select all",
+    "clearAll": "Clear all"
   },
   "players": {
     "intro": "Invite players to see the cards and board you reveal, and to keep their own notes.",
@@ -226,6 +290,7 @@
     "importProject": "Import",
     "noProjects": "No projects yet.",
     "emptyBody": "Create your first project — or import an existing one from an export file.",
+    "emptyCreateButton": "Create project",
     "newProjectButton": "New project",
     "newProjectHeading": "New project",
     "namePlaceholder": "Name",
@@ -246,11 +311,12 @@
     "entitiesCount_other": "{{count}} entities",
     "edgesCount_one": "{{count}} relationship",
     "edgesCount_other": "{{count}} relationships",
-    "continue": "Continue",
+    "lastProjectLabel": "Last project",
     "openButton": "Open",
     "filterPlaceholder": "Filter by name…",
     "noMatches": "No project matches “{{query}}”.",
-    "summary": "{{projects}} projects · {{entities}} entities"
+    "projectsCount_one": "{{count}} project",
+    "projectsCount_other": "{{count}} projects"
   },
   "entities": {
     "title": "Entities",
@@ -357,7 +423,13 @@
     "createEntityTitle": "Create entity on graph",
     "typeLabel": "Type",
     "titleLabel": "Title",
-    "titlePlaceholder": "Entity name"
+    "titlePlaceholder": "Entity name",
+    "collapseBranch": "Collapse branch",
+    "expandBranch": "Expand branch",
+    "expandBranchHiddenCount_one": "Expand branch — {{count}} entity hidden",
+    "expandBranchHiddenCount_other": "Expand branch — {{count}} entities hidden",
+    "collapseAllHierarchy": "Collapse all branches",
+    "expandAllHierarchy": "Expand all"
   },
   "edges": {
     "linkToEntity": "— link to entity —",
@@ -614,15 +686,32 @@
       "setupCta": "Open AI settings",
       "setupEnvNote": "backend/.env still works as a starting point, but it is only read when the app starts."
     },
-    "historyPlaceholder": "— conversation history —",
+    "historyPlaceholder": "Conversation history",
     "newConversation": "New conversation",
-    "newConversationButton": "+ New",
     "emptyInviteEmptyWorld": "Your world is empty. Describe it in a couple of sentences — the assistant will propose starting lore: locations, factions, characters and their connections. Nothing becomes canon without your approval. You can also just ask questions.",
     "emptyInviteHasWorld": "Ask about the world, ask it to expand a part of it, or add new lore — the assistant answers grounded in existing canon and proposes drafts for review.",
+    "examplePrompts": {
+      "addLore": {
+        "label": "Add new lore",
+        "instruction": "Come up with a new piece of lore for this world — a location, faction, NPC, or item, whichever fits best."
+      },
+      "weaveCharacter": {
+        "label": "Weave in a character",
+        "instruction": "Find a character with no connections in this world and weave them in — invent who and what they're tied to, and add the missing entities and relationships."
+      },
+      "checkConsistency": {
+        "label": "Check consistency",
+        "instruction": "Check the existing lore for inconsistencies and contradictions, and tell me what's worth fixing."
+      },
+      "suggestLinks": {
+        "label": "Suggest relationships",
+        "instruction": "Look over the world and suggest new relationships between existing entities that make sense but aren't captured yet."
+      }
+    },
     "removeFileTitle": "Remove file",
     "dropHint": "Drop to attach",
     "inputPlaceholderBlocked": "Finish reviewing the draft above first (approve / request changes / reject)",
-    "inputPlaceholderDefault": "Ask about the world or request new lore… (Enter to send)",
+    "inputPlaceholderDefault": "Ask about the world or suggest new lore…",
     "anchorWholeWorld": "whole world",
     "contextLabel": "Context",
     "anchorTitle": "Which entity to build around",
@@ -918,6 +1007,15 @@
         "title": "Reindexing",
         "body": "Rebuilds the lore search vector index from the current entity state — useful after a bulk import."
       }
+    },
+    "support": {
+      "title": "Project & feedback",
+      "hubTitle": "Project Hub",
+      "hubDescription": "Roadmap, changelog and background on where Loregraph is headed.",
+      "feedbackTitle": "Leave feedback",
+      "feedbackDescription": "Report a bug or suggest an idea — goes straight to the person building this.",
+      "blockedMessage": "This page can't be embedded here — Notion is blocking the frame. Open it in a new tab instead.",
+      "troubleLoading": "Not loading?"
     }
   },
   "appSettings": {

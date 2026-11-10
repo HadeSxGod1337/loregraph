@@ -67,6 +67,12 @@ class ToolChoiceCase:
     # (create vs edit). None means "not checked" (read-tool cases). An empty
     # set means "must name no targets" (a pure creation).
     expected_target_titles: frozenset[str] | None = None
+    # Uploaded reference documents for search_knowledge_base cases — indexed
+    # into a real (temp, per-run) KnowledgeIndex by run_tool_choice_eval.py.
+    # Never a substitute for `entities`: this is what a game master uploaded,
+    # not world canon. Empty for every case that isn't about the knowledge
+    # base (the overwhelming majority).
+    kb_documents: list[str] = field(default_factory=list)
 
 
 _EYELESS = _entity("fac_eyeless", "faction", "Безглазые", leader="Ортус")
@@ -88,6 +94,20 @@ _ASHEN = _entity(
     "faction",
     "Пепельный культ",
     summary="Культ, поклоняющийся тлению; давние враги Ордена.",
+)
+_NORVINTER = _entity(
+    "loc_norvinter",
+    "location",
+    "Норвинтер",
+    # Deliberately silent on its energy source — that fact lives only in the
+    # uploaded document (see KB_SETTING_BIBLE below), never in canon fields.
+    summary="Портовый город на северном побережье.",
+)
+# An uploaded reference document containing a world fact that is NOT (and
+# must not become, per the KB != canon invariant) a canon entity field.
+KB_SETTING_BIBLE = (
+    "Город Норвинтер получает всю энергию от Сердца Титана — древнего "
+    "механического реактора, вокруг которого построен город."
 )
 
 
@@ -228,5 +248,53 @@ CASES: list[ToolChoiceCase] = [
         acceptable_tools=frozenset({"propose_changes"}),
         entities=[_MIRA, _EYELESS],
         expected_target_titles=frozenset({"Мира Кузнец", "Безглазые"}),
+    ),
+    # -------------------------------------------------------------------
+    # Knowledge base — the P0 this set is expanding to cover (2026-08-19):
+    # a fact uploaded as reference material, never a canon entity, must
+    # still be found for a FACT/READ question. Retrieval mechanics are
+    # already covered deterministically in test_agent_graph.py; what can
+    # ONLY be measured here, against a real model, is whether it actually
+    # REACHES for search_knowledge_base — tool selection remains
+    # model-driven by design (see agent architecture notes), so these
+    # three cases are the closest thing to a regression suite that
+    # contract has.
+    # -------------------------------------------------------------------
+    ToolChoiceCase(
+        case_id="kb_explicit_reference_question_ru",
+        # Unambiguous: the game master names the document itself.
+        question="Что в загруженном setting bible сказано про Сердце Титана?",
+        acceptable_tools=frozenset({"search_knowledge_base"}),
+        entities=[_MIRA],
+        kb_documents=[KB_SETTING_BIBLE],
+    ),
+    ToolChoiceCase(
+        case_id="kb_implicit_world_fact_ru",
+        # The hard case (the P0's own example): phrased exactly like a canon
+        # question, with no hint that the answer lives in an upload. Canon
+        # has no entity or field about this at all — search_lore/list_
+        # entities structurally cannot answer it. The old assistant.system.md
+        # (rule 1 excluded search_knowledge_base from "facts about the
+        # world"; rule 12 framed it as rules-only) reliably steered models
+        # away from ever trying it here.
+        question="Откуда Норвинтер получает энергию?",
+        acceptable_tools=frozenset({"search_knowledge_base"}),
+        entities=[_MIRA],
+        kb_documents=[KB_SETTING_BIBLE],
+    ),
+    ToolChoiceCase(
+        case_id="kb_canon_hit_kb_supplementary_ru",
+        # Same question as kb_implicit_world_fact_ru, but Норвинтер now DOES
+        # exist in canon (so search_lore/get_entity_details are legitimate —
+        # even expected — first moves). The distinct failure mode this
+        # targets: a partial canon match satisficing the model into
+        # answering "not recorded" from the entity's fields alone, instead
+        # of also checking search_knowledge_base. Only correct if that
+        # happens at SOME point in the loop — extra canon calls before it
+        # are not a failure (see run_tool_choice_eval.py's _tools_used).
+        question="Откуда Норвинтер получает энергию?",
+        acceptable_tools=frozenset({"search_knowledge_base"}),
+        entities=[_NORVINTER, _MIRA],
+        kb_documents=[KB_SETTING_BIBLE],
     ),
 ]

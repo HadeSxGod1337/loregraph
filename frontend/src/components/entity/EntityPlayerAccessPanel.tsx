@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Entity, ProseMirrorDoc } from "../../api/types";
+import type { Entity, ProseMirrorDoc, TemplateFieldDef } from "../../api/types";
+import { fieldLabelFor } from "../../lib/fieldLabels";
 import { useEntityPlayerNotes, useSetEntityPlayerView } from "../../hooks/useEntity";
 import { Checkbox } from "../ui/Checkbox";
 import { Icon } from "../ui/Icon";
@@ -28,10 +29,15 @@ function sortedVisibleKeys(fields: Entity["fields"]): string[] {
 export function EntityPlayerAccessPanel({
   projectId,
   entity,
+  fieldDefs,
   onDirtyChange,
 }: {
   projectId: string;
   entity: Entity;
+  /** field_defs шаблона — тот же источник подписей, что использует
+   * SheetRenderer наверху листа. Необязателен: сущность без шаблона
+   * падает на словарь из lib/fieldLabels.ts. */
+  fieldDefs?: TemplateFieldDef[];
   /** This panel saves through its own button, on its own schedule — a host
    * page that wants to warn before navigating away with pending edits here
    * (see EntityEditPage's leave-guards) reads that state through this. */
@@ -40,6 +46,11 @@ export function EntityPlayerAccessPanel({
   const { t } = useTranslation();
   const setPlayerView = useSetEntityPlayerView(projectId, entity.id);
   const notes = useEntityPlayerNotes(projectId, entity.id);
+  const defsByKey = useMemo(() => {
+    const map = new Map<string, TemplateFieldDef>();
+    for (const def of fieldDefs ?? []) map.set(def.key, def);
+    return map;
+  }, [fieldDefs]);
 
   const [revealed, setRevealed] = useState(entity.revealed_to_players);
   const [playerText, setPlayerText] = useState<ProseMirrorDoc>(
@@ -91,7 +102,17 @@ export function EntityPlayerAccessPanel({
     });
   }
 
-  const fieldKeys = entity.fields.map((f) => f.key).filter(Boolean);
+  const fieldKeys = useMemo(
+    () => entity.fields.filter((f) => f.key).map((f) => f.key),
+    [entity.fields],
+  );
+  const fieldsWithLabels = useMemo(
+    () =>
+      entity.fields
+        .filter((f) => f.key)
+        .map((f) => ({ key: f.key, label: fieldLabelFor(f, defsByKey) })),
+    [entity.fields, defsByKey],
+  );
 
   return (
     <details className="player-access-panel">
@@ -125,12 +146,42 @@ export function EntityPlayerAccessPanel({
 
       {fieldKeys.length > 0 && (
         <div className="player-access-section">
-          <span className="player-access-label">{t("playerAccess.visibleFields")}</span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              marginBottom: 4,
+            }}
+          >
+            <span className="player-access-label">
+              {t("playerAccess.visibleFields")}
+            </span>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                type="button"
+                className="button-ghost button-sm"
+                onClick={() => setVisibleKeys(new Set(fieldKeys))}
+                disabled={visibleKeys.size === fieldKeys.length}
+              >
+                {t("playerAccess.selectAll")}
+              </button>
+              <button
+                type="button"
+                className="button-ghost button-sm"
+                onClick={() => setVisibleKeys(new Set())}
+                disabled={visibleKeys.size === 0}
+              >
+                {t("playerAccess.clearAll")}
+              </button>
+            </div>
+          </div>
           <ul className="player-access-fields">
-            {fieldKeys.map((key) => (
+            {fieldsWithLabels.map(({ key, label }) => (
               <li key={key}>
                 <Checkbox
-                  label={key}
+                  label={label}
                   checked={visibleKeys.has(key)}
                   onChange={() => toggleKey(key)}
                 />

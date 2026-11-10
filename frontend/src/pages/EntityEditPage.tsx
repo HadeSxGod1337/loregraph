@@ -353,6 +353,7 @@ export function EntityEditPage() {
           <EntityPlayerAccessPanel
             projectId={projectId!}
             entity={entity}
+            fieldDefs={resolvedTemplate?.field_defs}
             onDirtyChange={handlePlayerAccessDirty}
           />
         </section>

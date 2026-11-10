@@ -1,3 +1,6 @@
+import { getAccessToken } from "../lib/authStorage";
+import { refreshGo } from "../lib/goAuth";
+
 // Same origin as the page: in the packaged setup the backend serves this
 // bundle itself, so the API is wherever the page came from — localhost for the
 // DM, the LAN or public address for a player, http or https, whatever port.
@@ -7,6 +10,53 @@
 export const API_URL =
   import.meta.env.VITE_API_URL ??
   (typeof window !== "undefined" ? window.location.origin : "");
+
+/** Authorization header for Loregraph endpoints, when a DM token is present.
+ *
+ * Absent on loopback, where the backend trusts the local machine and no
+ * token is required — this is the "DM on their own desk" case. Present
+ * everywhere else, so a DM reached over the LAN or from outside carries the
+ * token the Go service issued at login (see lib/goAuth.ts).
+ *
+ * Not applied to player endpoints: those authenticate with a session cookie
+ * the play-session exchange sets, and adding an unrelated Bearer token would
+ * be noise at best.
+ */
+function authHeaders(): Record<string, string> {
+  const token = getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/** Single-flight wrapper around refreshGo: N parallel 401s share one
+ * refresh call instead of racing. The Go service's refresh tokens are
+ * one-shot, so racing would invalidate all but one caller's token and
+ * log the user out under load — exactly when the app looks busiest. */
+let refreshInFlight: Promise<string | null> | null = null;
+
+function refreshOnce(): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = refreshGo().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+/** Player endpoints authenticate with a session cookie, not a DM token.
+ * A 401 from those must not trigger a master-token refresh or a redirect
+ * to /login — the player is on /play/:token and stays there. */
+function isPlayerPath(path: string): boolean {
+  return path.startsWith("/api/play/");
+}
+
+function redirectToLogin(): void {
+  if (
+    typeof window !== "undefined" &&
+    !window.location.pathname.startsWith("/login")
+  ) {
+    window.location.assign("/login");
+  }
+}
 
 export class ApiError extends Error {
   status: number;
@@ -61,13 +111,36 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   // endpoint sets; including it is harmless for the loopback DM requests.
   const init: RequestInit = { method, credentials: "include" };
   if (json !== undefined) {
-    init.headers = { "Content-Type": "application/json" };
+    init.headers = { "Content-Type": "application/json", ...authHeaders() };
     init.body = JSON.stringify(json);
   } else if (body !== undefined) {
+    init.headers = authHeaders();
     init.body = body;
+  } else {
+    init.headers = authHeaders();
   }
 
-  const response = await fetch(buildUrl(path, params), init);
+  let response = await fetch(buildUrl(path, params), init);
+
+  // Access token expired (or absent on a non-loopback origin): try one
+  // refresh, then retry the original request once with the new token.
+  // Not applied to player endpoints — their 401 means "session expired",
+  // not "refresh the DM".
+  if (response.status === 401 && !isPlayerPath(path)) {
+    const newToken = await refreshOnce();
+    if (newToken === null) {
+      redirectToLogin();
+      throw new ApiError(
+        401,
+        `Session expired (${method} ${path})`,
+      );
+    }
+    init.headers = {
+      ...(init.headers as Record<string, string> | undefined),
+      Authorization: `Bearer ${newToken}`,
+    };
+    response = await fetch(buildUrl(path, params), init);
+  }
 
   if (!response.ok) {
     let detail = response.statusText;
@@ -107,11 +180,28 @@ export async function streamSse<TEvent>(
     return demoStream<TEvent>(path, body, onEvent);
   }
 
-  const response = await fetch(API_URL + path, {
+  let response = await fetch(API_URL + path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
   });
+
+  if (response.status === 401 && !isPlayerPath(path)) {
+    const newToken = await refreshOnce();
+    if (newToken === null) {
+      redirectToLogin();
+      throw new ApiError(401, `Session expired (POST ${path})`);
+    }
+    response = await fetch(API_URL + path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${newToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
   if (!response.ok || !response.body) {
     let detail = response.statusText;
     let code: string | undefined;

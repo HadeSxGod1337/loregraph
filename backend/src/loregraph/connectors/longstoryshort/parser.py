@@ -389,10 +389,19 @@ def _proficiency_flag_fields(data: dict[str, Any]) -> list[EntityFieldIn]:
         for name, entry in skills.items():
             if not isinstance(entry, dict):
                 continue
+            # LSS keys skills by their own display name ("sleight of hand"),
+            # so this is the one place the source data carries a readable
+            # name; every other field's only identifier is the key. The label
+            # is preserved verbatim (title-cased first letter only) rather
+            # than translated — the frontend dictionary is the layer that
+            # would localize, and keeping the upstream string here means a
+            # rename on their side shows up in our data, not silently in a
+            # mismatch between label and key.
+            label = name[:1].upper() + name[1:] if name else None
             fields.append(
                 EntityFieldIn(
-                    # "sleight of hand" -> "sleight_of_hand"
                     key=f"prof_{name.replace(' ', '_')}",
+                    label=label,
                     field_type=FieldType.BOOLEAN,
                     value=_is_proficient(entry.get("isProf")),
                 )

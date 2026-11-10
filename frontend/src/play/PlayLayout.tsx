@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, Outlet, useParams } from "react-router-dom";
 
+import { LightboxProvider } from "../components/ui/Lightbox";
 import { playApi } from "../api/play";
 import type { PlaySession } from "../api/types";
 import { PlaySessionProvider } from "./PlaySessionContext";
@@ -59,23 +60,25 @@ export function PlayLayout() {
 
   return (
     <PlaySessionProvider value={session}>
-      <div className="play-shell">
-        <header className="play-header">
-          <div className="play-header-titles">
-            <span className="play-project">{session.project_name}</span>
-            <span className="play-player">{session.name}</span>
-          </div>
-          <nav className="play-nav">
-            <NavLink to={`/play/${token}`} end>
-              {t("play.tabCards")}
-            </NavLink>
-            <NavLink to={`/play/${token}/board`}>{t("play.tabBoard")}</NavLink>
-          </nav>
-        </header>
-        <main className="play-main">
-          <Outlet />
-        </main>
-      </div>
+      <LightboxProvider>
+        <div className="play-shell">
+          <header className="play-header">
+            <div className="play-header-titles">
+              <span className="play-project">{session.project_name}</span>
+              <span className="play-player">{session.name}</span>
+            </div>
+            <nav className="play-nav">
+              <NavLink to={`/play/${token}`} end>
+                {t("play.tabCards")}
+              </NavLink>
+              <NavLink to={`/play/${token}/board`}>{t("play.tabBoard")}</NavLink>
+            </nav>
+          </header>
+          <main className="play-main">
+            <Outlet />
+          </main>
+        </div>
+      </LightboxProvider>
     </PlaySessionProvider>
   );
 }

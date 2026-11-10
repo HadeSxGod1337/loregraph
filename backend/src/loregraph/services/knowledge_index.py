@@ -1,3 +1,5 @@
+import logging
+
 from loregraph.storage.vectorstore.protocols import (
     LoreChunk,
     RetrievedChunk,
@@ -8,6 +10,36 @@ from loregraph.storage.vectorstore.protocols import (
 # agent/nodes/retrieve_context.py) — separate constant from the lore
 # RETRIEVAL_K since the two contours are independent.
 KB_RETRIEVAL_K = 4
+
+
+def log_retrieval(
+    logger: logging.Logger,
+    *,
+    project_id: str,
+    knowledge_index: "KnowledgeIndex | None",
+    chunks: list[RetrievedChunk],
+) -> None:
+    """Diagnostics for a KB query outcome, callable from any node that queries
+    a KnowledgeIndex (retrieve_context, the assistant's search_knowledge_base
+    tool, brainstorm). "Nothing relevant" and "the index isn't even
+    configured" both collapse to the same NO_KNOWLEDGE_SENTINEL text in the
+    prompt — deliberately, so the model reads either one as "keep inventing",
+    never as evidence the upload doesn't exist — which means the only place
+    left to tell them apart is here. Takes the caller's own logger so the
+    record's logger name still identifies which node ran the query. Never
+    logs chunk text: campaign lore is often private."""
+    if knowledge_index is None:
+        logger.debug(
+            "kb_retrieval project_id=%s available=false attempted=false "
+            "reason=embeddings_disabled",
+            project_id,
+        )
+        return
+    logger.debug(
+        "kb_retrieval project_id=%s available=true attempted=true hits=%d",
+        project_id,
+        len(chunks),
+    )
 
 
 def _kb_namespace(project_id: str) -> str:

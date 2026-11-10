@@ -21,7 +21,9 @@ export type IconName =
   | "grip"
   | "help"
   | "layers"
+  | "logout"
   | "maximize"
+  | "message-square"
   | "monitor"
   | "moon"
   | "more"
@@ -137,6 +139,17 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="m3 15 9 5 9-5" />
     </>
   ),
+  // Door + arrow pointing out — the standard "leave this session" glyph.
+  // Mirrored horizontally via a transform rather than rewritten path
+  // coordinates: one line to flip if the direction ever looks wrong again,
+  // versus six hand-mirrored numbers that have to stay consistent.
+  logout: (
+    <g transform="scale(-1 1) translate(-24 0)">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </g>
+  ),
   // Four independent corner brackets — "fit to view", distinct from
   // "expand"'s arrows-from-center glyph (that one means "focus on this one
   // entity" elsewhere in the app; this one means "fit everything on screen").
@@ -147,6 +160,9 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M3 16v3a2 2 0 0 0 2 2h3" />
       <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
     </>
+  ),
+  "message-square": (
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   ),
   monitor: (
     <>

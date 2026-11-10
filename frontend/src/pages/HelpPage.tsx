@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ExternalPageDrawer } from "../components/help/ExternalPageDrawer";
 import { Icon, type IconName } from "../components/ui/Icon";
+import {
+  FEEDBACK_FORM_EMBED_URL,
+  FEEDBACK_FORM_URL,
+  PROJECT_HUB_EMBED_URL,
+  PROJECT_HUB_URL,
+} from "../lib/externalLinks";
 
 interface HelpTopic {
   id: string;
@@ -104,9 +111,17 @@ const OVERVIEW_ID = "overview";
  * Selection-driven content (click sets what's rendered, not where the page
  * scrolls to) has none of that: the active item is exactly the one that
  * was clicked, always. */
+interface EmbedTarget {
+  title: string;
+  url: string;
+  embedUrl: string;
+  allowForms: boolean;
+}
+
 export function HelpPage() {
   const { t } = useTranslation();
   const [activeId, setActiveId] = useState<string>(OVERVIEW_ID);
+  const [embedTarget, setEmbedTarget] = useState<EmbedTarget | null>(null);
 
   // Switching sections swaps the content pane's height; start the reader
   // at its top rather than leaving them wherever the previous pane's
@@ -127,6 +142,50 @@ export function HelpPage() {
         </h1>
         <p>{t("help.subtitle")}</p>
       </header>
+
+      <div className="help-support-block">
+        <span className="help-support-label">{t("help.support.title")}</span>
+        <div className="help-support-cards">
+          <button
+            type="button"
+            className="help-support-card"
+            onClick={() =>
+              setEmbedTarget({
+                title: t("help.support.hubTitle"),
+                url: PROJECT_HUB_URL,
+                embedUrl: PROJECT_HUB_EMBED_URL,
+                allowForms: false,
+              })
+            }
+          >
+            <Icon name="external-link" size={18} />
+            <span>
+              <strong>{t("help.support.hubTitle")}</strong>
+              <span className="help-support-card-desc">{t("help.support.hubDescription")}</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className="help-support-card"
+            onClick={() =>
+              setEmbedTarget({
+                title: t("help.support.feedbackTitle"),
+                url: FEEDBACK_FORM_URL,
+                embedUrl: FEEDBACK_FORM_EMBED_URL,
+                allowForms: true,
+              })
+            }
+          >
+            <Icon name="message-square" size={18} />
+            <span>
+              <strong>{t("help.support.feedbackTitle")}</strong>
+              <span className="help-support-card-desc">
+                {t("help.support.feedbackDescription")}
+              </span>
+            </span>
+          </button>
+        </div>
+      </div>
 
       <div className="help-layout">
         <nav className="help-toc" aria-label={t("help.tocLabel")}>
@@ -179,6 +238,16 @@ export function HelpPage() {
           ))}
         </div>
       </div>
+
+      {embedTarget && (
+        <ExternalPageDrawer
+          title={embedTarget.title}
+          url={embedTarget.url}
+          embedUrl={embedTarget.embedUrl}
+          allowForms={embedTarget.allowForms}
+          onClose={() => setEmbedTarget(null)}
+        />
+      )}
     </div>
   );
 }

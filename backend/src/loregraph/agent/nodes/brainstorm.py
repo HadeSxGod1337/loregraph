@@ -11,22 +11,33 @@ separate propose_changes the game master asks for afterwards.
 
 Ideas are generated on the creative (generation) tier through the injected
 StructuredGenerator, not the cheap assistant model — brainstorming is exactly
-the task that tier exists for. Existing canon is pulled in first, so the ideas
-build on and play against what is really there (see prompts/brainstorm.*).
+the task that tier exists for. Existing canon and the project's knowledge
+base are both pulled in first, so the ideas build on and play against what is
+really there and what was uploaded as reference material (see
+prompts/brainstorm.*). Unlike the read tools' assistant loop, this node has no
+tool-calling model of its own — it is a single creative.generate() call — so
+knowledge-base grounding here can only happen through this deterministic
+gather step, never a model-initiated tool call.
 """
 
+import asyncio
 import logging
 from typing import Any
 
 from langchain_core.messages import AIMessage, ToolMessage
 
 from loregraph.agent.events import event_message
-from loregraph.agent.state import NO_LORE_SENTINEL, AgentState
+from loregraph.agent.state import NO_KNOWLEDGE_SENTINEL, NO_LORE_SENTINEL, AgentState
 from loregraph.agent.usage import record_usage
 from loregraph.llm.structured import StructuredGenerator
 from loregraph.prompts import project_instructions_block, render
 from loregraph.schemas.agent import BrainstormResult
 from loregraph.schemas.entity import EntityOut
+from loregraph.services.knowledge_index import (
+    KB_RETRIEVAL_K,
+    KnowledgeIndex,
+    log_retrieval,
+)
 from loregraph.services.lore_format import relationship_line
 from loregraph.services.lore_search import search_lore
 from loregraph.services.vector_index import VectorIndex, entity_to_text
@@ -36,6 +47,7 @@ from loregraph.storage.protocols import (
     ProjectStore,
     UsageStore,
 )
+from loregraph.storage.vectorstore.protocols import RetrievedChunk
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +61,7 @@ BRAINSTORM_SEARCH_K = 6
 # serves and stands near — the leverage an invented enemy should press on.
 BRAINSTORM_TARGET_EDGES = 30
 LORE_TEXT_LIMIT = 600  # chars per background entity — context, not a dump
+KB_TEXT_LIMIT = 800  # chars per KB chunk — reference material, not a dump
 DEFAULT_IDEA_COUNT_HINT = "3–5"
 
 # Reuse the assistant's budget-exhausted event code so the frontend localizes
@@ -65,6 +78,7 @@ async def brainstorm(
     *,
     creative: StructuredGenerator,
     vector_index: VectorIndex | None,
+    knowledge_index: KnowledgeIndex | None,
     entity_store: EntityStore,
     edge_store: EdgeStore,
     project_store: ProjectStore,
@@ -90,10 +104,11 @@ async def brainstorm(
             **reset,
         }
 
-    existing_lore, targets_block = await _gather_material(
+    existing_lore, targets_block, knowledge_context = await _gather_material(
         topic,
         target_ids,
         vector_index=vector_index,
+        knowledge_index=knowledge_index,
         entity_store=entity_store,
         edge_store=edge_store,
         project_id=state.project_id,
@@ -112,6 +127,7 @@ async def brainstorm(
             existing_lore=existing_lore,
             targets=targets_block
             or "(none — this is a blank-slate prompt with no named entity)",
+            knowledge_context=knowledge_context,
             topic=topic,
             count=str(count) if count else DEFAULT_IDEA_COUNT_HINT,
         ),
@@ -187,16 +203,26 @@ async def _gather_material(
     target_ids: list[str],
     *,
     vector_index: VectorIndex | None,
+    knowledge_index: KnowledgeIndex | None,
     entity_store: EntityStore,
     edge_store: EdgeStore,
     project_id: str,
-) -> tuple[str, str]:
-    """Related canon for the creative tier: the named targets in full plus
-    their relationships (who they fight, serve, stand near), and a handful of
-    topic-relevant entities as background inspiration.
+) -> tuple[str, str, str]:
+    """Related canon AND knowledge-base material for the creative tier: the
+    named targets in full plus their relationships (who they fight, serve,
+    stand near), a handful of topic-relevant entities as background
+    inspiration, and top-k relevant chunks from the project's uploaded
+    reference documents.
 
-    Never fails the run: a search that finds nothing yields NO_LORE_SENTINEL,
-    not an exception — the whole mode is about inventing where lore is thin."""
+    Canon and the knowledge base are gathered concurrently (independent I/O:
+    search_lore reads entity_store, knowledge_index.query reads Chroma, same
+    non-conflict as retrieve_context's vector/knowledge TaskGroup) — the
+    relationship walk that follows still runs sequentially because it shares
+    entity_store/edge_store's one AsyncSession.
+
+    Never fails the run: a search that finds nothing yields NO_LORE_SENTINEL/
+    NO_KNOWLEDGE_SENTINEL, not an exception — the whole mode is about
+    inventing where lore is thin."""
     targets = [
         entity
         for entity in await entity_store.get_many(target_ids)
@@ -204,12 +230,28 @@ async def _gather_material(
     ]
     target_id_set = {entity.id for entity in targets}
 
-    search = await search_lore(
-        vector_index=vector_index,
-        entity_store=entity_store,
+    async with asyncio.TaskGroup() as tg:
+        search_task = tg.create_task(
+            search_lore(
+                vector_index=vector_index,
+                entity_store=entity_store,
+                project_id=project_id,
+                query=topic,
+                limit=BRAINSTORM_SEARCH_K,
+            )
+        )
+        knowledge_task = (
+            tg.create_task(knowledge_index.query(project_id, topic, k=KB_RETRIEVAL_K))
+            if knowledge_index is not None
+            else None
+        )
+    search = search_task.result()
+    kb_chunks = knowledge_task.result() if knowledge_task is not None else []
+    log_retrieval(
+        logger,
         project_id=project_id,
-        query=topic,
-        limit=BRAINSTORM_SEARCH_K,
+        knowledge_index=knowledge_index,
+        chunks=kb_chunks,
     )
     background = [e for e in search.entities if e.id not in target_id_set]
 
@@ -218,7 +260,12 @@ async def _gather_material(
 
     existing_lore = "\n".join(lore_lines) if lore_lines else NO_LORE_SENTINEL
     targets_block = "\n".join(_target_line(entity) for entity in targets)
-    return existing_lore, targets_block
+    knowledge_context = (
+        "\n".join(_kb_chunk_line(chunk) for chunk in kb_chunks)
+        if kb_chunks
+        else NO_KNOWLEDGE_SENTINEL
+    )
+    return existing_lore, targets_block, knowledge_context
 
 
 async def _relationship_context(
@@ -260,6 +307,13 @@ def _background_line(entity: EntityOut) -> str:
     if len(text) > LORE_TEXT_LIMIT:
         text = text[:LORE_TEXT_LIMIT] + "…"
     return f'<entity id="{entity.id}" type="{entity.type}">{text}</entity>'
+
+
+def _kb_chunk_line(chunk: RetrievedChunk) -> str:
+    text = chunk.text
+    if len(text) > KB_TEXT_LIMIT:
+        text = text[:KB_TEXT_LIMIT] + "…"
+    return f'<kb_chunk source="{chunk.entity_id}">{text}</kb_chunk>'
 
 
 def _render_ideas(result: BrainstormResult) -> AIMessage:
